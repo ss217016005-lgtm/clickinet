@@ -62,7 +62,7 @@ app.get('/api/answer', (req, res) => {
     
     // אם הם רק התקשרו או שחזרו לשלוחה 1 לאיפוס:
     let msg = answersLocked ? "המענה סגור. הבט במסך" : "הקש את תשובתך";
-    res.send(`read=t-${msg}=val_1,no,1,1,10,No,No`);
+    res.send("id_list_message=t-תשובתך התקבלה בהצלחה.&go_to_folder=hangup");
 });
 
 io.on('connection', (socket) => {
@@ -128,5 +128,6 @@ io.on('connection', (socket) => {
         }
     });
 });
+
 
 http.listen(3000, () => console.log("=== Clickinet V12.1 (Anti-Disconnect) is ONLINE ==="));
