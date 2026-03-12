@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>ניהול קליקינט</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #f0f2f5; padding: 20px; }
+        .panel { background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        button { padding: 12px 18px; cursor: pointer; border-radius: 6px; border: none; font-weight: bold; font-size: 1.1em; margin: 4px; }
+        .btn-green { background: #28a745; color: white; }
+        .btn-blue { background: #007bff; color: white; }
+        .btn-yellow { background: #ffc107; color: black; }
+        .btn-red { background: #dc3545; color: white; }
+        input, select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        #lockStatus { padding: 10px; border-radius: 5px; font-weight: bold; text-align: center; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="panel" style="text-align: center; background: #343a40; color: white;">
+        <h1>מפקדת קליקינט 🎮</h1>
+    </div>
+
+    <div class="panel" style="border: 2px solid #007bff;">
+        <h2 style="text-align: center; margin-top: 0;">🚀 שליטה בשידור חי</h2>
+        <div style="text-align: center; margin-bottom: 20px;">
+            <button class="btn-green" style="font-size: 1.4em;" onclick="socket.emit('startGame')">▶️ התחל משחק</button>
+            <button class="btn-yellow" style="font-size: 1.4em;" onclick="socket.emit('nextQuestion')">➡️ שאלה הבאה (פותח מענה)</button>
+        </div>
+        
+        <div id="lockStatus">טוען מצב...</div>
+        
+        <div style="display: flex; justify-content: space-around; background: #f8f9fa; padding: 15px; border-radius: 8px;">
+            <div>
+                <button class="btn-green" onclick="socket.emit('toggleLock', false)">🔓 פתח מענה ידנית</button>
+                <button class="btn-red" onclick="socket.emit('toggleLock', true)">🔒 נעל מענה ידנית</button>
+            </div>
+            <div>
+                <input id="timerSec" type="number" value="30" style="width: 60px;"> שניות
+                <button class="btn-blue" onclick="socket.emit('startTimer', document.getElementById('timerSec').value)">⏱️ הפעל שעון (ינעל בסוף)</button>
+            </div>
+            <div>
+                <button class="btn-blue" onclick="socket.emit('revealPoll')">📊 הצג תוצאות/סקר על המסך</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid-2">
+        <div>
+            <div class="panel">
+                <h3>📱 הגדרות מערכת</h3>
+                שם: <input id="gameName"> טל': <input id="gamePhone">
+                <button class="btn-blue" onclick="saveSettings()">שמור</button>
+            </div>
+
+            <div class="panel">
+                <h3>📂 העלאה מאקסל</h3>
+                <input type="file" id="excelFile" accept=".xlsx, .xls">
+                <button class="btn-green" onclick="uploadExcel()">טען שאלות</button>
+            </div>
+
+            <div class="panel">
+                <h3>➕ הוספת שאלה/סקר ידנית</h3>
+                <small>*השאר "תשובה נכונה" ריק כדי שזה יהיה סקר ללא ניקוד</small><br><br>
+                <input id="qText" style="width: 90%;" placeholder="השאלה..."><br><br>
+                <input id="a1" placeholder="תשובה 1"> <input id="a2" placeholder="תשובה 2"><br>
+                <input id="a3" placeholder="תשובה 3"> <input id="a4" placeholder="תשובה 4"><br><br>
+                נכונה (1-4): <input id="ans" style="width: 50px;"> 
+                <br><br>קישור לתמונה/יוטיוב: <input id="mediaUrl" style="width: 70%;"><br><br>
+                <button class="btn-blue" onclick="addSingleQ()">הוסף למערכת</button>
+            </div>
+        </div>
+
+        <div>
+            <div class="panel">
+                <h3>👥 שחקנים (תשובות בלייב)</h3>
+                <button class="btn-red" onclick="socket.emit('clearPlayers')">🗑️ נקה שחקנים למשחק חדש</button>
+                <div id="playersList" style="margin-top: 15px; max-height: 400px; overflow-y: auto;"></div>
+            </div>
+
+            <div class="panel" style="background: #e2e3e5;">
+                <h3>💾 בנק משחקים שמורים</h3>
+                <input id="saveName" placeholder="שם לשמירה">
+                <button class="btn-green" onclick="socket.emit('saveGameToBank', document.getElementById('saveName').value)">שמור משידור</button>
+                <hr>
+                <select id="gameList"></select>
+                <button class="btn-blue" onclick="socket.emit('loadGameFromBank', document.getElementById('gameList').value)">טען לשידור</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        socket.on('lockState', (isLocked) => {
+            const el = document.getElementById('lockStatus');
+            if(isLocked) {
+                el.style.background = '#f8d7da'; el.style.color = '#721c24'; el.innerText = '🔒 אפשרות מענה חסומה עכשיו!';
+            } else {
+                el.style.background = '#d4edda'; el.style.color = '#155724'; el.innerText = '✅ אפשרות מענה פתוחה עכשיו!';
+            }
+        });
+
+        socket.on('updateSettings', s => { document.getElementById('gameName').value = s.gameName; document.getElementById('gamePhone').value = s.phoneNumber; });
+        function saveSettings() { socket.emit('saveSettings', { gameName: document.getElementById('gameName').value, phoneNumber: document.getElementById('gamePhone').value }); alert('נשמר!'); }
+
+        socket.on('updateSavedGames', gs => { document.getElementById('gameList').innerHTML = gs.map(g => `<option value="${g}">${g}</option>`).join(''); });
+
+        socket.on('updatePlayers', ps => {
+            document.getElementById('playersList').innerHTML = Object.keys(ps).map(id => `
+                <div style="background: #f8f9fa; padding: 10px; margin-bottom: 5px; border: 1px solid #ddd; border-radius: 5px;">
+                    📱 ${id} <br>
+                    שם: <input id="name-${id}" value="${ps[id].name}" style="width: 100px;"> 
+                    <button onclick="socket.emit('updatePlayerName', {phone: '${id}', newName: document.getElementById('name-${id}').value})">שמור</button>
+                    <div style="margin-top: 5px; font-size: 1.1em;">הקיש: <strong><span style="color:blue">${ps[id].currentChoice || 'טרם הקיש'}</span></strong></div>
+                </div>
+            `).join('');
+        });
+
+        function addSingleQ() {
+            socket.emit('addSingleQuestion', {
+                q: document.getElementById('qText').value,
+                options: [document.getElementById('a1').value, document.getElementById('a2').value, document.getElementById('a3').value, document.getElementById('a4').value],
+                ans: document.getElementById('ans').value, media: document.getElementById('mediaUrl').value
+            });
+            document.getElementById('qText').value = ''; document.getElementById('mediaUrl').value = '';
+        }
+
+        function uploadExcel() {
+            const file = document.getElementById('excelFile').files[0];
+            if (!file) return alert("בחר קובץ אקסל!");
+            const reader = new FileReader();
+            reader.onload = e => {
+                const wb = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
+                const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+                const qs = json.map(r => ({ q: r['שאלה'], options: [r['תשובה1'], r['תשובה2'], r['תשובה3'], r['תשובה4']], ans: String(r['נכונה'] || "") }));
+                socket.emit('addQuestions', qs);
+                alert("נטענו " + qs.length + " שאלות בהצלחה!");
+            };
+            reader.readAsArrayBuffer(file);
+        }
+    </script>
+</body>
+</html>

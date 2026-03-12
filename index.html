@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>קליקינט</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #0c051a; color: white; text-align: center; margin: 0; }
+        .top-bar { background: linear-gradient(90deg, #ff00ff, #4A00E0); padding: 20px; display: flex; justify-content: space-between; font-size: 1.8em; font-weight: bold; }
+        #timer { font-size: 6em; color: #0f0; margin: 10px; display: none; text-shadow: 0 0 20px #0f0; }
+        #lockBanner { background: #dc3545; color: white; padding: 10px; font-size: 1.5em; font-weight: bold; display: none; }
+        .question { font-size: 3.5em; margin: 30px; font-weight: bold; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; max-width: 900px; margin: auto; padding: 20px; }
+        .opt { padding: 40px; font-size: 2.2em; border-radius: 20px; position: relative; overflow: hidden; background: #333; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+        .bar { position: absolute; bottom: 0; right: 0; height: 100%; background: rgba(255,255,255,0.3); width: 0%; transition: 1s cubic-bezier(0.17, 0.67, 0.83, 0.67); }
+        .poll-text { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); font-weight: bold; display: none; text-shadow: 2px 2px 4px #000; }
+        .c1 { background: #ff416c; } .c2 { background: #1cb5e0; } .c3 { background: #f7971e; } .c4 { background: #56ab2f; }
+        .leaderboard { margin-top: 40px; background: rgba(255,255,255,0.1); padding: 20px; border-radius: 20px; max-width: 700px; margin: auto; }
+        .player-row { border-bottom: 1px solid rgba(255,255,255,0.1); padding: 10px; display: flex; justify-content: space-between; font-size: 1.6em; }
+    </style>
+</head>
+<body onclick="initAudio()">
+    <div class="top-bar">
+        <div id="gameNameDisplay">קליקינט</div>
+        <div style="background: yellow; color: black; padding: 5px 20px; border-radius: 50px;">📞 חייגו עכשיו: <span id="phoneDisplay">077-2296674</span></div>
+    </div>
+    
+    <div id="lockBanner">🔒 המענה נעול עכשיו. הביטו במסך!</div>
+    <div id="timer">30</div>
+    
+    <div class="question" id="qText">ברוכים הבאים! התקשרו כדי להצטרף... (לחץ פעם אחת על המסך להפעלת שמע)</div>
+    
+    <div id="media">
+        <iframe id="vid" width="700" height="400" src="" frameborder="0" style="display:none; margin:auto; border-radius:15px; border:3px solid white;"></iframe>
+        <img id="img" style="display:none; max-height:350px; margin:auto; border-radius:15px; border:3px solid white;">
+    </div>
+
+    <div class="grid" id="grid" style="display:none;">
+        <div class="opt c1"><div id="b1" class="bar"></div><span id="t1" style="position:relative; z-index:1;"></span><span id="p1" class="poll-text"></span></div>
+        <div class="opt c2"><div id="b2" class="bar"></div><span id="t2" style="position:relative; z-index:1;"></span><span id="p2" class="poll-text"></span></div>
+        <div class="opt c3"><div id="b3" class="bar"></div><span id="t3" style="position:relative; z-index:1;"></span><span id="p3" class="poll-text"></span></div>
+        <div class="opt c4"><div id="b4" class="bar"></div><span id="t4" style="position:relative; z-index:1;"></span><span id="p4" class="poll-text"></span></div>
+    </div>
+
+    <div class="leaderboard">
+        <h2 style="color: gold; margin-top: 0;">🏆 טבלת האלופים</h2>
+        <div id="playersList"></div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let audioCtx; let timerInterval;
+        
+        function initAudio() { if(!audioCtx) audioCtx = new AudioContext(); }
+        function beep(freq) { 
+            if(!audioCtx) return;
+            let osc = audioCtx.createOscillator(); let gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+        }
+
+        socket.on('updateSettings', s => { 
+            document.getElementById('gameNameDisplay').innerText = s.gameName; 
+            document.getElementById('phoneDisplay').innerText = s.phoneNumber;
+        });
+
+        socket.on('lockState', isLocked => {
+            document.getElementById('lockBanner').style.display = isLocked ? 'block' : 'none';
+        });
+
+        socket.on('startCountdown', sec => {
+            clearInterval(timerInterval);
+            let timeLeft = sec;
+            const el = document.getElementById('timer');
+            el.style.color = '#0f0'; el.style.textShadow = '0 0 20px #0f0';
+            el.style.display = 'block';
+            el.innerText = timeLeft;
+            
+            timerInterval = setInterval(() => {
+                timeLeft--; 
+                el.innerText = timeLeft;
+                if(timeLeft <= 5 && timeLeft > 0) {
+                    el.style.color = 'red'; el.style.textShadow = '0 0 20px red';
+                    beep(800);
+                } else if(timeLeft > 5) { beep(400); }
+                
+                if(timeLeft <= 0) { 
+                    clearInterval(timerInterval); 
+                    el.innerText = "זמן עבר!";
+                    setTimeout(() => el.style.display='none', 2000);
+                    socket.emit('timeUp'); // נועל את השרת
+                }
+            }, 1000);
+        });
+
+        socket.on('newQuestion', q => {
+            clearInterval(timerInterval);
+            document.getElementById('timer').style.display = 'none';
+            document.getElementById('grid').style.display = 'grid';
+            document.getElementById('qText').innerText = q.q;
+            
+            for(let i=1; i<=4; i++) {
+                document.getElementById('t'+i).innerText = q.options[i-1];
+                document.getElementById('b'+i).style.width = '0%';
+                document.getElementById('p'+i).style.display = 'none';
+            }
+            
+            const v = document.getElementById('vid'); const img = document.getElementById('img');
+            v.style.display = 'none'; img.style.display = 'none'; v.src = "";
+            
+            if(q.media && q.media.includes('youtu')) {
+                let id = q.media.split('v=')[1] || q.media.split('/').pop();
+                v.src = "https://www.youtube.com/embed/" + id + "?autoplay=0";
+                v.style.display = 'block';
+            } else if(q.media) {
+                img.src = q.media; img.style.display = 'block';
+            }
+        });
+
+        socket.on('showPollResults', d => {
+            for(let i=1; i<=4; i++) {
+                let pct = d.total ? Math.round((d.results[i]/d.total)*100) : 0;
+                document.getElementById('b'+i).style.width = pct + '%';
+                let pText = document.getElementById('p'+i);
+                pText.innerText = pct + '%';
+                pText.style.display = 'block';
+            }
+        });
+
+        socket.on('updateLeaderboard', ps => {
+            const sorted = Object.values(ps).sort((a,b) => b.score - a.score);
+            document.getElementById('playersList').innerHTML = sorted.map((p, index) => {
+                let medal = index === 0 && p.score > 0 ? '👑' : '👤';
+                return `<div class="player-row"><span>${medal} ${p.name}</span> <strong>${p.score} נק'</strong></div>`;
+            }).join('');
+        });
+
+        socket.on('gameOver', () => {
+            confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } });
+            document.getElementById('qText').innerText = "🏆 המשחק הסתיים! כל הכבוד לאלופים!";
+            document.getElementById('grid').style.display = 'none';
+        });
+    </script>
+</body>
+</html>
