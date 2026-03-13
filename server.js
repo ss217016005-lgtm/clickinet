@@ -34,11 +34,10 @@ app.get('/api/answer', (req, res) => {
         io.emit('updateLeaderboard', activePlayers);
     }
 
-    // הנה התיקון הענק!
+    // שלב 1: אם הלקוח כבר הקיש תשובה
     if (userChoice) {
         if (answersLocked) {
-            // אם הם הקישו אבל המענה חסום - אומרים להם שחסום וזורקים אותם לשלוחה 1 כדי לאפס!
-            return res.send("id_list_message=t-המענה סגור כעת&go_to_folder=/1");
+            return res.send("id_list_message=t-המענה סגור כעת&go_to_folder=hangup");
         }
         
         if (gameActive && currentQuestion >= 0 && currentQuestion < questions.length) {
@@ -56,13 +55,16 @@ app.get('/api/answer', (req, res) => {
                 io.emit('updatePlayers', activePlayers);
             }
         }
-        // גם כשהם עונים נכון, זורקים לשלוחה 1 לאיפוס
-        return res.send("id_list_message=t-נקלט&go_to_folder=/1");
+        // השרת אומר תודה ומנתק!
+        return res.send("id_list_message=t-תשובתך נקלטה בהצלחה&go_to_folder=hangup");
     }
     
-    // אם הם רק התקשרו או שחזרו לשלוחה 1 לאיפוס:
-    let msg = answersLocked ? "המענה סגור. הבט במסך" : "הקש את תשובתך";
-    res.send("id_list_message=t-תשובתך התקבלה בהצלחה.&go_to_folder=hangup");
+    // שלב 2: הלקוח הרגע חייג ועוד לא הקיש כלום
+    if (answersLocked) {
+        res.send("id_list_message=t-המענה סגור כעת, נא להביט במסך&go_to_folder=hangup");
+    } else {
+        res.send("read=t-הקש את תשובתך=val_1,no,1,1,10,No,No");
+    }
 });
 
 io.on('connection', (socket) => {
@@ -129,5 +131,5 @@ io.on('connection', (socket) => {
     });
 });
 
-
-http.listen(3000, () => console.log("=== Clickinet V12.1 (Anti-Disconnect) is ONLINE ==="));
+const PORT = process.env.PORT || 3000;
+http.listen(PORT, () => console.log("=== Clickinet V12.1 is ONLINE ==="));
