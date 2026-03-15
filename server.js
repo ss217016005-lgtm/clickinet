@@ -4,10 +4,14 @@ const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 const fs = require('fs'); 
 
+// שכבת הגנה למניעת קריסה מקבצים ריקים
 let phonebook = {};
-if (fs.existsSync('phonebook.json')) {
-    phonebook = JSON.parse(fs.readFileSync('phonebook.json'));
-}
+try {
+    if (fs.existsSync('phonebook.json')) {
+        let data = fs.readFileSync('phonebook.json', 'utf8');
+        if (data.trim() !== '') phonebook = JSON.parse(data);
+    }
+} catch(e) { console.log("Phonebook error bypassed"); }
 
 let activePlayers = {}; 
 let questions = []; 
@@ -17,9 +21,12 @@ let answersLocked = true;
 let gameSettings = { gameName: "קליקינט", phoneNumber: "077-2296674" };
 
 let savedGames = {};
-if (fs.existsSync('games.json')) {
-    savedGames = JSON.parse(fs.readFileSync('games.json'));
-}
+try {
+    if (fs.existsSync('games.json')) {
+        let data = fs.readFileSync('games.json', 'utf8');
+        if (data.trim() !== '') savedGames = JSON.parse(data);
+    }
+} catch(e) { console.log("Games error bypassed"); }
 
 app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
 app.get('/admin', (req, res) => res.sendFile(__dirname + '/admin.html'));
@@ -34,7 +41,6 @@ app.get('/api/answer', (req, res) => {
         io.emit('updateLeaderboard', activePlayers);
     }
 
-    // שלב 1: אם הלקוח כבר הקיש תשובה
     if (userChoice) {
         if (answersLocked) {
             return res.send("id_list_message=t-המענה סגור כעת&go_to_folder=hangup");
@@ -55,11 +61,9 @@ app.get('/api/answer', (req, res) => {
                 io.emit('updatePlayers', activePlayers);
             }
         }
-        // השרת אומר תודה ומנתק!
         return res.send("id_list_message=t-תשובתך נקלטה בהצלחה&go_to_folder=hangup");
     }
     
-    // שלב 2: הלקוח הרגע חייג ועוד לא הקיש כלום
     if (answersLocked) {
         res.send("id_list_message=t-המענה סגור כעת, נא להביט במסך&go_to_folder=hangup");
     } else {
@@ -78,7 +82,7 @@ io.on('connection', (socket) => {
     socket.on('saveSettings', s => { gameSettings = s; io.emit('updateSettings', s); });
     socket.on('updatePlayerName', ({ phone, newName }) => {
         phonebook[phone] = newName;
-        fs.writeFileSync('phonebook.json', JSON.stringify(phonebook)); 
+        try { fs.writeFileSync('phonebook.json', JSON.stringify(phonebook)); } catch(e){} 
         if (activePlayers[phone]) activePlayers[phone].name = newName;
         io.emit('updatePlayers', activePlayers);
         io.emit('updateLeaderboard', activePlayers);
@@ -88,7 +92,7 @@ io.on('connection', (socket) => {
     socket.on('addQuestions', qs => { questions = questions.concat(qs); io.emit('updateQuestions', questions); });
     socket.on('addSingleQuestion', q => { questions.push(q); io.emit('updateQuestions', questions); });
     socket.on('clearQuestions', () => { questions = []; io.emit('updateQuestions', questions); });
-    socket.on('saveGameToBank', n => { savedGames[n] = [...questions]; fs.writeFileSync('games.json', JSON.stringify(savedGames)); io.emit('updateSavedGames', Object.keys(savedGames)); });
+    socket.on('saveGameToBank', n => { savedGames[n] = [...questions]; try { fs.writeFileSync('games.json', JSON.stringify(savedGames)); } catch(e){} io.emit('updateSavedGames', Object.keys(savedGames)); });
     socket.on('loadGameFromBank', n => { questions = [...savedGames[n]]; io.emit('updateQuestions', questions); });
 
     socket.on('toggleLock', lock => { answersLocked = lock; io.emit('lockState', answersLocked); });
@@ -131,5 +135,6 @@ io.on('connection', (socket) => {
     });
 });
 
+// הגדרה קריטית לשרת של Render כדי שלא יקרוס
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, () => console.log("=== Clickinet V12.1 is ONLINE ==="));
+http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V12.2 is ONLINE ==="));
