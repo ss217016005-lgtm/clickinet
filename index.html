@@ -2,147 +2,400 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>קליקינט</title>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clickinet | קליקינט - מסך ראשי</title>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;500;800;900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #0c051a; color: white; text-align: center; margin: 0; }
-        .top-bar { background: linear-gradient(90deg, #ff00ff, #4A00E0); padding: 20px; display: flex; justify-content: space-between; font-size: 1.8em; font-weight: bold; }
-        #timer { font-size: 6em; color: #0f0; margin: 10px; display: none; text-shadow: 0 0 20px #0f0; }
-        #lockBanner { background: #dc3545; color: white; padding: 10px; font-size: 1.5em; font-weight: bold; display: none; }
-        .question { font-size: 3.5em; margin: 30px; font-weight: bold; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; max-width: 900px; margin: auto; padding: 20px; }
-        .opt { padding: 40px; font-size: 2.2em; border-radius: 20px; position: relative; overflow: hidden; background: #333; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
-        .bar { position: absolute; bottom: 0; right: 0; height: 100%; background: rgba(255,255,255,0.3); width: 0%; transition: 1s cubic-bezier(0.17, 0.67, 0.83, 0.67); }
-        .poll-text { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); font-weight: bold; display: none; text-shadow: 2px 2px 4px #000; }
-        .c1 { background: #ff416c; } .c2 { background: #1cb5e0; } .c3 { background: #f7971e; } .c4 { background: #56ab2f; }
-        .leaderboard { margin-top: 40px; background: rgba(255,255,255,0.1); padding: 20px; border-radius: 20px; max-width: 700px; margin: auto; }
-        .player-row { border-bottom: 1px solid rgba(255,255,255,0.1); padding: 10px; display: flex; justify-content: space-between; font-size: 1.6em; }
+        :root {
+            --bg-color: #0B0E14;
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --primary: #00F0FF;
+            --secondary: #FF0055;
+            --accent: #7000FF;
+            --text-main: #FFFFFF;
+            --text-muted: #8892B0;
+        }
+
+        body {
+            font-family: 'Heebo', sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(112, 0, 255, 0.15), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(0, 240, 255, 0.15), transparent 25%);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* הדר העליון */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 3rem;
+            background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, transparent 100%);
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        h1 {
+            margin: 0;
+            font-weight: 900;
+            font-size: 2.5rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            background: linear-gradient(90deg, var(--primary), #fff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+        }
+
+        .phone-instruction {
+            background: var(--glass-bg);
+            border: 1px solid var(--primary);
+            padding: 10px 25px;
+            border-radius: 50px;
+            font-size: 1.5rem;
+            font-weight: 800;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+            animation: pulse-border 2s infinite;
+        }
+
+        @keyframes pulse-border {
+            0% { box-shadow: 0 0 10px rgba(0, 240, 255, 0.2); }
+            50% { box-shadow: 0 0 25px rgba(0, 240, 255, 0.6); }
+            100% { box-shadow: 0 0 10px rgba(0, 240, 255, 0.2); }
+        }
+
+        /* אזור התוכן המרכזי */
+        main {
+            flex-grow: 1;
+            display: flex;
+            padding: 2rem 3rem;
+            gap: 3rem;
+        }
+
+        /* צד ימין - אזור השאלה והמצב */
+        .game-board {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .status-badge {
+            background: var(--secondary);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-weight: bold;
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 0 20px rgba(255, 0, 85, 0.4);
+            display: none;
+        }
+
+        .question-box {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 30px;
+            padding: 3rem;
+            width: 100%;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            transition: all 0.5s ease;
+        }
+
+        .question-text {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 2rem;
+            line-height: 1.2;
+        }
+
+        .answers-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .answer-card {
+            background: rgba(0, 0, 0, 0.4);
+            border: 2px solid;
+            border-radius: 15px;
+            padding: 1.5rem;
+            font-size: 1.8rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: transform 0.2s;
+        }
+
+        .answer-card.hidden { opacity: 0; pointer-events: none; }
+
+        .answer-card:nth-child(1) { border-color: #FF3366; }
+        .answer-card:nth-child(2) { border-color: #33CCFF; }
+        .answer-card:nth-child(3) { border-color: #FFCC00; }
+        .answer-card:nth-child(4) { border-color: #00FF66; }
+
+        .answer-num {
+            background: white;
+            color: black;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: 900;
+            font-size: 1.5rem;
+        }
+
+        /* מד מהירות / קליברציה מסך מלא */
+        .calibration-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(11, 14, 20, 0.95);
+            backdrop-filter: blur(15px);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            display: none;
+        }
+        
+        .radar {
+            width: 200px;
+            height: 200px;
+            border: 4px solid var(--primary);
+            border-radius: 50%;
+            position: relative;
+            box-shadow: 0 0 50px rgba(0, 240, 255, 0.5);
+            margin-bottom: 2rem;
+        }
+        
+        .radar::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 100%; height: 100%;
+            background: conic-gradient(from 0deg, transparent 70%, rgba(0, 240, 255, 0.8) 100%);
+            border-radius: 50%;
+            transform-origin: 0 0;
+            animation: radar-spin 2s linear infinite;
+        }
+
+        @keyframes radar-spin {
+            100% { transform: rotate(360deg) translate(-50%, -50%); }
+        }
+
+        /* צד שמאל - טבלת מובילים */
+        .leaderboard-panel {
+            flex: 1;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 30px;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .leaderboard-title {
+            text-align: center;
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 1.5rem;
+            color: var(--primary);
+            border-bottom: 1px solid var(--glass-border);
+            padding-bottom: 1rem;
+        }
+
+        .players-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+
+        .player-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            margin-bottom: 0.8rem;
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .player-row.top-1 { background: linear-gradient(90deg, rgba(255, 215, 0, 0.2), transparent); border-right: 4px solid gold; }
+        .player-row.top-2 { background: linear-gradient(90deg, rgba(192, 192, 192, 0.2), transparent); border-right: 4px solid silver; }
+        .player-row.top-3 { background: linear-gradient(90deg, rgba(205, 127, 50, 0.2), transparent); border-right: 4px solid #CD7F32; }
+
+        .player-name { font-size: 1.4rem; font-weight: 500; }
+        .player-score { font-size: 1.6rem; font-weight: 900; color: var(--primary); }
+
+        /* בר תחתון */
+        footer {
+            text-align: center;
+            padding: 1rem;
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            border-top: 1px solid var(--glass-border);
+            background: rgba(0,0,0,0.5);
+        }
+
     </style>
 </head>
-<body onclick="initAudio()">
-    <div class="top-bar">
-        <div id="gameNameDisplay">קליקינט</div>
-        <div style="background: yellow; color: black; padding: 5px 20px; border-radius: 50px;">📞 חייגו עכשיו: <span id="phoneDisplay">077-2296674</span></div>
-    </div>
-    
-    <div id="lockBanner">🔒 המענה נעול עכשיו. הביטו במסך!</div>
-    <div id="timer">30</div>
-    
-    <div class="question" id="qText">ברוכים הבאים! התקשרו כדי להצטרף... (לחץ פעם אחת על המסך להפעלת שמע)</div>
-    
-    <div id="media">
-        <iframe id="vid" width="700" height="400" src="" frameborder="0" style="display:none; margin:auto; border-radius:15px; border:3px solid white;"></iframe>
-        <img id="img" style="display:none; max-height:350px; margin:auto; border-radius:15px; border:3px solid white;">
+<body>
+
+    <header>
+        <div class="logo-area">
+            <h1>CLICKINET</h1>
+            <span style="color: var(--accent); font-weight: bold; font-size: 1.2rem;">PRO</span>
+        </div>
+        <div class="phone-instruction">
+            חייגו עכשיו: <span id="displayPhone">077-000-0000</span>
+        </div>
+    </header>
+
+    <div class="calibration-overlay" id="calibrationScreen">
+        <div class="radar"></div>
+        <h1 style="font-size: 4rem;">מבחן מהירות רשת</h1>
+        <h2 style="font-size: 2.5rem; color: var(--text-muted); margin-top: 1rem;">הניחו אצבע על ספרה 1, והמתינו להוראה הקולית!</h2>
+        <div style="margin-top: 3rem; font-size: 2rem; font-weight: bold; color: var(--primary);" id="calibrationCounter">
+            ממתין ללחיצות... <span id="pingCount">0</span>/100
+        </div>
     </div>
 
-    <div class="grid" id="grid" style="display:none;">
-        <div class="opt c1"><div id="b1" class="bar"></div><span id="t1" style="position:relative; z-index:1;"></span><span id="p1" class="poll-text"></span></div>
-        <div class="opt c2"><div id="b2" class="bar"></div><span id="t2" style="position:relative; z-index:1;"></span><span id="p2" class="poll-text"></span></div>
-        <div class="opt c3"><div id="b3" class="bar"></div><span id="t3" style="position:relative; z-index:1;"></span><span id="p3" class="poll-text"></span></div>
-        <div class="opt c4"><div id="b4" class="bar"></div><span id="t4" style="position:relative; z-index:1;"></span><span id="p4" class="poll-text"></span></div>
-    </div>
+    <main>
+        <div class="game-board">
+            <div class="status-badge" id="lockStatus">המענה סגור</div>
+            
+            <div class="question-box">
+                <div class="question-text" id="qText">ברוכים הבאים לקליקינט!</div>
+                <div style="font-size: 1.5rem; color: var(--text-muted);" id="qSubText">המשחק יתחיל בעוד רגע, נא להכין פלאפונים</div>
+                
+                <div class="answers-grid" id="answersArea" style="display: none;">
+                    <div class="answer-card" id="ans1"><div class="answer-num">1</div><span id="text1"></span></div>
+                    <div class="answer-card" id="ans2"><div class="answer-num">2</div><span id="text2"></span></div>
+                    <div class="answer-card" id="ans3"><div class="answer-num">3</div><span id="text3"></span></div>
+                    <div class="answer-card" id="ans4"><div class="answer-num">4</div><span id="text4"></span></div>
+                </div>
+            </div>
+        </div>
 
-    <div class="leaderboard">
-        <h2 style="color: gold; margin-top: 0;">🏆 טבלת האלופים</h2>
-        <div id="playersList"></div>
-    </div>
+        <div class="leaderboard-panel">
+            <div class="leaderboard-title">🏆 מובילים בזמן אמת</div>
+            <ul class="players-list" id="leaderboardList">
+                <li class="player-row"><div class="player-name">ממתין לשחקנים...</div></li>
+            </ul>
+        </div>
+    </main>
+
+    <footer>
+        מערכת קליקינט - פותח במיוחד עבור הפעלות ענק | V14.0 Speed-Sync
+    </footer>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        let audioCtx; let timerInterval;
-        
-        function initAudio() { if(!audioCtx) audioCtx = new AudioContext(); }
-        function beep(freq) { 
-            if(!audioCtx) return;
-            let osc = audioCtx.createOscillator(); let gain = audioCtx.createGain();
-            osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.frequency.value = freq;
-            gain.gain.setValueAtTime(1, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.1);
-        }
 
-        socket.on('updateSettings', s => { 
-            document.getElementById('gameNameDisplay').innerText = s.gameName; 
-            document.getElementById('phoneDisplay').innerText = s.phoneNumber;
+        socket.on('updateSettings', (settings) => {
+            document.getElementById('displayPhone').innerText = settings.phoneNumber;
         });
 
-        socket.on('lockState', isLocked => {
-            document.getElementById('lockBanner').style.display = isLocked ? 'block' : 'none';
+        socket.on('lockState', (isLocked) => {
+            const badge = document.getElementById('lockStatus');
+            badge.style.display = 'inline-block';
+            if(isLocked) {
+                badge.innerText = 'המענה סגור 🔒';
+                badge.style.background = 'var(--secondary)';
+                badge.style.boxShadow = '0 0 20px rgba(255, 0, 85, 0.4)';
+            } else {
+                badge.innerText = 'המענה פתוח! 🔥';
+                badge.style.background = '#00FF66';
+                badge.style.boxShadow = '0 0 20px rgba(0, 255, 102, 0.4)';
+                badge.style.color = '#000';
+            }
         });
 
-        socket.on('startCountdown', sec => {
-            clearInterval(timerInterval);
-            let timeLeft = sec;
-            const el = document.getElementById('timer');
-            el.style.color = '#0f0'; el.style.textShadow = '0 0 20px #0f0';
-            el.style.display = 'block';
-            el.innerText = timeLeft;
-            
-            timerInterval = setInterval(() => {
-                timeLeft--; 
-                el.innerText = timeLeft;
-                if(timeLeft <= 5 && timeLeft > 0) {
-                    el.style.color = 'red'; el.style.textShadow = '0 0 20px red';
-                    beep(800);
-                } else if(timeLeft > 5) { beep(400); }
-                
-                if(timeLeft <= 0) { 
-                    clearInterval(timerInterval); 
-                    el.innerText = "זמן עבר!";
-                    setTimeout(() => el.style.display='none', 2000);
-                    socket.emit('timeUp'); // נועל את השרת
-                }
-            }, 1000);
-        });
-
-        socket.on('newQuestion', q => {
-            clearInterval(timerInterval);
-            document.getElementById('timer').style.display = 'none';
-            document.getElementById('grid').style.display = 'grid';
+        socket.on('newQuestion', (q) => {
             document.getElementById('qText').innerText = q.q;
+            document.getElementById('qSubText').style.display = 'none';
+            document.getElementById('answersArea').style.display = 'grid';
             
             for(let i=1; i<=4; i++) {
-                document.getElementById('t'+i).innerText = q.options[i-1];
-                document.getElementById('b'+i).style.width = '0%';
-                document.getElementById('p'+i).style.display = 'none';
-            }
-            
-            const v = document.getElementById('vid'); const img = document.getElementById('img');
-            v.style.display = 'none'; img.style.display = 'none'; v.src = "";
-            
-            if(q.media && q.media.includes('youtu')) {
-                let id = q.media.split('v=')[1] || q.media.split('/').pop();
-                v.src = "https://www.youtube.com/embed/" + id + "?autoplay=0";
-                v.style.display = 'block';
-            } else if(q.media) {
-                img.src = q.media; img.style.display = 'block';
+                const ansDiv = document.getElementById('ans'+i);
+                if(q['a'+i] && q['a'+i].trim() !== '') {
+                    ansDiv.classList.remove('hidden');
+                    document.getElementById('text'+i).innerText = q['a'+i];
+                } else {
+                    ansDiv.classList.add('hidden');
+                }
             }
         });
 
-        socket.on('showPollResults', d => {
-            for(let i=1; i<=4; i++) {
-                let pct = d.total ? Math.round((d.results[i]/d.total)*100) : 0;
-                document.getElementById('b'+i).style.width = pct + '%';
-                let pText = document.getElementById('p'+i);
-                pText.innerText = pct + '%';
-                pText.style.display = 'block';
+        socket.on('updateLeaderboard', (players) => {
+            const list = document.getElementById('leaderboardList');
+            const arr = Object.values(players).sort((a,b) => b.score - a.score);
+            list.innerHTML = '';
+            
+            if(arr.length === 0) {
+                list.innerHTML = '<li class="player-row"><div class="player-name">אין שחקנים עדיין</div></li>';
+                return;
             }
-        });
 
-        socket.on('updateLeaderboard', ps => {
-            const sorted = Object.values(ps).sort((a,b) => b.score - a.score);
-            document.getElementById('playersList').innerHTML = sorted.map((p, index) => {
-                let medal = index === 0 && p.score > 0 ? '👑' : '👤';
-                return `<div class="player-row"><span>${medal} ${p.name}</span> <strong>${p.score} נק'</strong></div>`;
-            }).join('');
+            arr.slice(0, 10).forEach((p, index) => {
+                let medalClass = '';
+                if(index === 0) medalClass = 'top-1';
+                else if(index === 1) medalClass = 'top-2';
+                else if(index === 2) medalClass = 'top-3';
+                
+                list.innerHTML += `
+                    <li class="player-row ${medalClass}">
+                        <div class="player-name">#${index+1} ${p.name}</div>
+                        <div class="player-score">${p.score}</div>
+                    </li>`;
+            });
         });
 
         socket.on('gameOver', () => {
-            confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } });
-            document.getElementById('qText').innerText = "🏆 המשחק הסתיים! כל הכבוד לאלופים!";
-            document.getElementById('grid').style.display = 'none';
+            document.getElementById('qText').innerText = 'המשחק הסתיים! 🎉';
+            document.getElementById('answersArea').style.display = 'none';
+            document.getElementById('qSubText').style.display = 'block';
+            document.getElementById('qSubText').innerText = 'תודה לכל המשתתפים!';
+        });
+
+        // אזור הקליברציה
+        socket.on('startCalibration', () => {
+            document.getElementById('calibrationScreen').style.display = 'flex';
+            document.getElementById('pingCount').innerText = '0';
+        });
+
+        socket.on('calibrationProgress', (data) => {
+            document.getElementById('pingCount').innerText = data.count;
+        });
+
+        socket.on('endCalibration', () => {
+            document.getElementById('calibrationScreen').style.display = 'none';
         });
     </script>
 </body>
