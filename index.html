@@ -30,6 +30,7 @@
             flex-direction: column;
             min-height: 100vh;
             overflow-x: hidden;
+            transition: background 0.5s ease, background-image 0.5s ease;
         }
 
         /* הדר העליון */
@@ -167,7 +168,7 @@
 
         /* מד מהירות / קליברציה מסך מלא */
         .calibration-overlay {
-            position: absolute;
+            position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(11, 14, 20, 0.95);
             backdrop-filter: blur(15px);
@@ -281,7 +282,7 @@
         <h1 style="font-size: 4rem;">מבחן מהירות רשת</h1>
         <h2 style="font-size: 2.5rem; color: var(--text-muted); margin-top: 1rem;">הניחו אצבע על ספרה 1, והמתינו להוראה הקולית!</h2>
         <div style="margin-top: 3rem; font-size: 2rem; font-weight: bold; color: var(--primary);" id="calibrationCounter">
-            ממתין ללחיצות... <span id="pingCount">0</span>/100
+            ממתין ללחיצות... <span id="pingCount">0</span> לחצו בהצלחה
         </div>
     </div>
 
@@ -329,6 +330,7 @@
                 badge.innerText = 'המענה סגור 🔒';
                 badge.style.background = 'var(--secondary)';
                 badge.style.boxShadow = '0 0 20px rgba(255, 0, 85, 0.4)';
+                badge.style.color = 'white';
             } else {
                 badge.innerText = 'המענה פתוח! 🔥';
                 badge.style.background = '#00FF66';
@@ -384,7 +386,7 @@
             document.getElementById('qSubText').innerText = 'תודה לכל המשתתפים!';
         });
 
-        // אזור הקליברציה
+        // אזור הקליברציה (רדאר)
         socket.on('startCalibration', () => {
             document.getElementById('calibrationScreen').style.display = 'flex';
             document.getElementById('pingCount').innerText = '0';
@@ -396,6 +398,73 @@
 
         socket.on('endCalibration', () => {
             document.getElementById('calibrationScreen').style.display = 'none';
+        });
+
+        // ==========================================
+        // 🎨 מערכת האפקטים הטהורה (עוקף נטפרי!)
+        // ==========================================
+        socket.on('setBg', (bgType) => {
+            const body = document.body;
+            if (bgType === 'studio') {
+                body.style.background = '#0B0E14';
+                body.style.backgroundImage = 'radial-gradient(circle at 15% 50%, rgba(112, 0, 255, 0.15), transparent 25%), radial-gradient(circle at 85% 30%, rgba(0, 240, 255, 0.15), transparent 25%)';
+            } else if (bgType === 'matrix') {
+                body.style.background = '#000000';
+                body.style.backgroundImage = 'linear-gradient(rgba(0, 255, 0, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 0, 0.1) 1px, transparent 1px)';
+                body.style.backgroundSize = '20px 20px';
+            } else if (bgType === 'space') {
+                body.style.background = '#020014';
+                body.style.backgroundImage = 'radial-gradient(circle at 50% 50%, rgba(255, 0, 85, 0.2), transparent 50%)';
+            } else if (bgType === 'fire') {
+                body.style.background = '#1a0000';
+                body.style.backgroundImage = 'linear-gradient(0deg, #ff3300 0%, transparent 40%)';
+            }
+        });
+
+        socket.on('playEffect', (effectType) => {
+            if (effectType === 'shake') {
+                document.body.style.transform = 'translate(10px, 10px)';
+                setTimeout(() => document.body.style.transform = 'translate(-10px, -10px)', 50);
+                setTimeout(() => document.body.style.transform = 'translate(10px, -10px)', 100);
+                setTimeout(() => document.body.style.transform = 'translate(-10px, 10px)', 150);
+                setTimeout(() => document.body.style.transform = 'translate(0, 0)', 200);
+            } 
+            else if (effectType === 'flicker') {
+                let count = 0;
+                let interval = setInterval(() => {
+                    document.body.style.filter = count % 2 === 0 ? 'invert(1)' : 'invert(0)';
+                    count++;
+                    if(count > 6) { clearInterval(interval); document.body.style.filter = 'none'; }
+                }, 100);
+            }
+            else if (effectType === 'confetti') {
+                for(let i=0; i<50; i++) {
+                    let conf = document.createElement('div');
+                    conf.style.position = 'fixed';
+                    conf.style.width = '10px'; conf.style.height = '10px';
+                    conf.style.backgroundColor = ['#FF3366', '#33CCFF', '#FFCC00', '#00FF66'][Math.floor(Math.random()*4)];
+                    conf.style.left = Math.random() * 100 + 'vw';
+                    conf.style.top = '-10px';
+                    conf.style.zIndex = '9999';
+                    conf.style.transition = 'all 2s ease-in';
+                    document.body.appendChild(conf);
+                    
+                    setTimeout(() => {
+                        conf.style.top = '100vh';
+                        conf.style.transform = `rotate(${Math.random()*360}deg)`;
+                    }, 10);
+                    setTimeout(() => conf.remove(), 2000);
+                }
+            }
+            else if (effectType === 'spotlight') {
+                let spot = document.createElement('div');
+                spot.style.position = 'fixed';
+                spot.style.top = '0'; spot.style.left = '0'; spot.style.width = '100vw'; spot.style.height = '100vh';
+                spot.style.background = 'radial-gradient(circle at 20% 50%, transparent 10%, rgba(0,0,0,0.9) 30%)';
+                spot.style.zIndex = '50';
+                document.body.appendChild(spot);
+                setTimeout(() => spot.remove(), 3000);
+            }
         });
     </script>
 </body>
