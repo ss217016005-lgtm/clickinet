@@ -4,7 +4,10 @@ const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 const fs = require('fs'); 
 
-// שכבת הגנה למניעת קריסה מקבצים ריקים
+// הגדרות חשובות כדי שהשרת ידע לקרוא את הקבלות ממשולם
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+
 let phonebook = {};
 try {
     if (fs.existsSync('phonebook.json')) {
@@ -18,7 +21,7 @@ let questions = [];
 let currentQuestion = -1;
 let gameActive = false;
 let answersLocked = true; 
-let gameSettings = { gameName: "קליקינט", phoneNumber: "077-2296674" };
+let gameSettings = { gameName: "קליקינט", phoneNumber: "077-2296674", isPremium: false };
 
 let savedGames = {};
 try {
@@ -31,11 +34,33 @@ try {
 app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
 app.get('/admin', (req, res) => res.sendFile(__dirname + '/admin.html'));
 
+// ==========================================
+// 💰 מערכת התשלומים - חיבור אוטומטי למשולם
+// ==========================================
+app.post('/api/webhook/meshulam', (req, res) => {
+    console.log("💰 התקבל איתות ממשולם:", req.body);
+
+    // משולם שולחים 'status=1' כשהתשלום באשראי עבר בהצלחה
+    if (req.body.status === '1' || req.body.status === 1) {
+        gameSettings.isPremium = true;
+        io.emit('updateSettings', gameSettings);
+        console.log("✅ תשלום אושר! מערכת הפרימיום נפתחה אוטומטית!");
+    }
+
+    // חייבים לענות למשולם "הכל טוב" כדי שלא ישלחו את הבקשה שוב ושוב
+    res.status(200).send("OK");
+});
+// ==========================================
+
 app.get('/api/answer', (req, res) => {
     const phone = req.query.ApiPhone || "unknown";
     const userChoice = req.query.val_1; 
 
     if (!activePlayers[phone]) {
+        if (!gameSettings.isPremium && Object.keys(activePlayers).length >= 10) {
+            return res.send("id_list_message=t-המשחק החינמי מוגבל לעשרה שחקנים. מנהל המשחק נדרש לשדרג לפרימיום&go_to_folder=hangup");
+        }
+
         activePlayers[phone] = { name: phonebook[phone] || "שחקן חדש", score: 0, lastAnswered: -1, currentChoice: null };
         io.emit('updatePlayers', activePlayers);
         io.emit('updateLeaderboard', activePlayers);
@@ -135,6 +160,5 @@ io.on('connection', (socket) => {
     });
 });
 
-// הגדרה קריטית לשרת של Render כדי שלא יקרוס
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V12.2 is ONLINE ==="));
+http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V13.1 (Meshulam Ready) is ONLINE ==="));
