@@ -2,58 +2,84 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>מערכת ניהול על | Clickinet</title>
+    <title>מנהל על - Clickinet</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #fff; text-align: center; padding: 50px; }
-        h1 { color: #eab308; font-size: 3rem; text-shadow: 0 0 20px rgba(234, 179, 8, 0.5); }
-        .panel { background: #1e293b; padding: 30px; border-radius: 15px; border: 1px solid #334155; max-width: 800px; margin: 0 auto; margin-bottom: 20px;}
-        input, select { padding: 10px; font-size: 1.2rem; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: #fff; margin: 10px; }
-        button { background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 1.2rem; font-weight: bold; }
-        button:hover { filter: brightness(1.2); }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #0b0f19; color: #f8fafc; margin: 0; padding: 20px; }
+        .login-box { text-align: center; margin-top: 100px; }
+        input { padding: 10px; font-size: 1.2rem; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: white; margin: 5px; }
+        button { padding: 10px 20px; font-size: 1.1rem; border-radius: 8px; border: none; background: #38bdf8; color: black; cursor: pointer; font-weight: bold; margin: 5px; }
+        #dashboard { display: none; max-width: 1000px; margin: 0 auto; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .panel { background: #1e293b; padding: 20px; border-radius: 12px; border: 1px solid #334155; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
         th, td { border: 1px solid #334155; padding: 10px; text-align: center; }
-        th { background: #38bdf8; color: #000; }
-        .btn-delete { background: #ef4444; font-size: 0.9rem; padding: 5px 10px; }
-        #loginScreen { position: fixed; top:0; left:0; width:100%; height:100%; background: #0f172a; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100;}
+        th { background: #0f172a; color: #38bdf8; }
+        .btn-danger { background: #ef4444; color: white; padding: 5px 10px; font-size: 0.9rem; }
+        .live-room { background: #0f172a; border: 1px solid #10b981; padding: 10px; margin-bottom: 10px; border-radius: 8px; }
+        .live-active { color: #10b981; font-weight: bold; }
+        .live-idle { color: #94a3b8; }
+        .form-group { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; margin-bottom: 15px; }
     </style>
 </head>
 <body>
 
-    <div id="loginScreen">
-        <h1>👑 כספת מנהל מערכת</h1>
-        <input type="password" id="adminPass" placeholder="סיסמה...">
-        <button onclick="tryLogin()">היכנס למערכת</button>
+    <div id="loginArea" class="login-box">
+        <h1 style="color: #38bdf8;">כספת מנהל על 🔐</h1>
+        <input type="password" id="superPass" placeholder="סיסמת מנהל...">
+        <button onclick="superLogin()">היכנס</button>
     </div>
 
-    <div id="dashboard" style="display: none;">
-        <h1>👑 כספת הקודים - אהל יהודה</h1>
+    <div id="dashboard">
+        <h1 style="text-align: center; color: #38bdf8;">מערכת ניהול מנויים וניטור 🌐</h1>
         
-        <div class="panel">
-            <h2>יצירת קוד בודד</h2>
-            <input type="text" id="newPin" placeholder="הקלד קוד (למשל 770)">
-            <select id="pinType">
-                <option value="free">חינמי (מוגבל 10 שחקנים)</option>
-                <option value="premium">פרימיום (ללא הגבלת שחקנים)</option>
-            </select>
-            <button onclick="createPin()">ייצר קוד בודד</button>
+        <div class="grid">
+            <div class="panel">
+                <h2 style="margin-top:0; color:#10b981;">➕ יצירת קוד מפיק (PIN)</h2>
+                
+                <div class="form-group">
+                    <label>ליצירת קוד יחיד - מלא רק את 'קוד התחלה':</label><br>
+                    <input type="number" id="pinStart" placeholder="קוד התחלה (לדוגמה: 1000)" style="width: calc(100% - 25px);"><br>
+                    <input type="number" id="pinEnd" placeholder="קוד סיום (השאר ריק לקוד יחיד)" style="width: calc(100% - 25px);">
+                </div>
+
+                <div class="form-group">
+                    <label>סוג המנוי:</label><br>
+                    <select id="pinType" style="padding: 10px; width: 100%; font-size: 1.1rem; border-radius: 8px; background: #1e293b; color: white;">
+                        <option value="regular">רגיל (חינם - עד 10 שחקנים)</option>
+                        <option value="premium">פרימיום (ללא הגבלה)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>תאריך תפוגה (ברירת מחדל: עוד יומיים):</label><br>
+                    <input type="date" id="expireDate" style="width: calc(100% - 25px);">
+                </div>
+
+                <button style="width: 100%; background: #10b981; color: white;" onclick="createPins()">ייצר קודים עכשיו</button>
+            </div>
+
+            <div class="panel">
+                <h2 style="margin-top:0; color:#f59e0b;">👁️ האח הגדול - חדרים פעילים</h2>
+                <button onclick="fetchLiveStats()" style="width: 100%; background: #f59e0b; color: black; margin-bottom: 15px;">🔄 רענן נתונים עכשיו</button>
+                <div id="liveStatsArea" style="max-height: 400px; overflow-y: auto;">
+                    <p style="text-align:center; color:#94a3b8;">לחץ על רענן כדי למשוך נתונים</p>
+                </div>
+            </div>
         </div>
 
-        <div class="panel" style="border-color: #f59e0b;">
-            <h2 style="color: #f59e0b;">יצירת מסת קודים (Bulk)</h2>
-            <p style="font-size: 0.9rem; color: #94a3b8;">לדוגמה: ממספר 1000 עד 1070</p>
-            <input type="number" id="pinStart" placeholder="ממספר..." style="width: 150px;">
-            <input type="number" id="pinEnd" placeholder="עד מספר..." style="width: 150px;">
-            <select id="bulkPinType">
-                <option value="free">חינמי (מוגבל)</option>
-                <option value="premium">פרימיום (פתוח)</option>
-            </select>
-            <button style="background: #f59e0b;" onclick="createBulk()">ייצר קבוצה!</button>
-        </div>
-
-        <div class="panel">
-            <h2>קודים פעילים במערכת</h2>
+        <div class="panel" style="margin-top: 20px;">
+            <h2 style="margin-top:0;">📋 רשימת קודים (PIN) קיימים</h2>
             <table id="pinsTable">
-                <thead><tr><th>קוד (PIN)</th><th>סוג</th><th>משחקים נותרו</th><th>תאריך יצירה</th><th>פעולות</th></tr></thead>
+                <thead>
+                    <tr>
+                        <th>קוד (PIN)</th>
+                        <th>סוג מנוי</th>
+                        <th>משחקים נותרו</th>
+                        <th>תאריך יצירה</th>
+                        <th>פג תוקף ב-</th>
+                        <th>פעולות</th>
+                    </tr>
+                </thead>
                 <tbody id="pinsBody"></tbody>
             </table>
         </div>
@@ -63,56 +89,103 @@
     <script>
         const socket = io();
 
-        function tryLogin() {
-            const pass = document.getElementById('adminPass').value;
-            socket.emit('superLogin', pass);
+        // הגדרת תאריך ברירת מחדל ליומיים קדימה כשהמסך עולה
+        window.onload = () => {
+            let d = new Date();
+            d.setDate(d.getDate() + 2); // מוסיף יומיים
+            document.getElementById('expireDate').valueAsDate = d;
+        };
+
+        function superLogin() {
+            socket.emit('superLogin', document.getElementById('superPass').value);
         }
 
         socket.on('superError', () => alert('סיסמה שגויה!'));
+        
         socket.on('superData', (pins) => {
-            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('loginArea').style.display = 'none';
             document.getElementById('dashboard').style.display = 'block';
             
             const tbody = document.getElementById('pinsBody');
             tbody.innerHTML = '';
             for (let pin in pins) {
-                let typeStr = pins[pin].type === 'premium' ? '👑 פרימיום' : '🆓 חינמי';
+                let p = pins[pin];
+                let typeStr = p.type === 'premium' ? '💎 פרימיום' : 'רגיל';
+                let expDateStr = p.expiresAt ? new Date(p.expiresAt).toLocaleDateString('he-IL') : 'ללא תוקף';
+                
+                // צביעת התוקף באדום אם עבר הזמן
+                let isExpired = p.expiresAt && Date.now() > p.expiresAt;
+                let expStyle = isExpired ? 'color: #ef4444; font-weight: bold;' : '';
+
                 tbody.innerHTML += `
                     <tr>
-                        <td style="font-weight: bold; font-size: 1.2rem; color: #38bdf8;">${pin}</td>
+                        <td style="font-weight: bold; font-size: 1.2rem;">${pin}</td>
                         <td>${typeStr}</td>
-                        <td style="color: ${pins[pin].gamesLeft > 0 ? '#10b981' : '#ef4444'}; font-weight: bold;">${pins[pin].gamesLeft}</td>
-                        <td>${pins[pin].created}</td>
-                        <td><button class="btn-delete" onclick="deletePin('${pin}')">מחק</button></td>
+                        <td>${p.gamesLeft}</td>
+                        <td>${p.created || '---'}</td>
+                        <td style="${expStyle}">${expDateStr} ${isExpired ? '(פג)' : ''}</td>
+                        <td><button class="btn-danger" onclick="deletePin('${pin}')">מחק</button></td>
                     </tr>
                 `;
             }
         });
 
-        function createPin() {
-            const pin = document.getElementById('newPin').value;
-            const type = document.getElementById('pinType').value;
-            if(!pin) return alert('חובה להקליד קוד!');
-            socket.emit('createPin', { pin, type });
-            document.getElementById('newPin').value = '';
-        }
-
-        function createBulk() {
+        function createPins() {
             const start = document.getElementById('pinStart').value;
             const end = document.getElementById('pinEnd').value;
-            const type = document.getElementById('bulkPinType').value;
-            if(!start || !end || parseInt(start) >= parseInt(end)) return alert('טווח מספרים לא תקין!');
-            if(confirm(`לייצר קודים מ-${start} עד ${end}?`)) {
-                socket.emit('createBulkPins', { start, end, type });
-                document.getElementById('pinStart').value = ''; document.getElementById('pinEnd').value = '';
-            }
+            const type = document.getElementById('pinType').value;
+            const expireDate = document.getElementById('expireDate').value;
+            
+            if (!start) return alert('חובה להזין לפחות קוד התחלה!');
+            
+            // המרת התאריך לפורמט זמן מדויק (Timestamp)
+            let expiresAt = new Date(expireDate).getTime();
+            // מוסיפים 23 שעות ו-59 דקות כדי שהתוקף יפוג בסוף אותו יום
+            expiresAt += (23 * 60 * 60 * 1000) + (59 * 60 * 1000); 
+
+            socket.emit('createBulkPins', { start, end, type, expiresAt });
+            
+            document.getElementById('pinStart').value = '';
+            document.getElementById('pinEnd').value = '';
+            alert('הקודים נוצרו בהצלחה!');
         }
 
         function deletePin(pin) {
-            if(confirm(`בטוח שברצונך למחוק את קוד ${pin}?`)) {
-                socket.emit('deletePin', pin);
-            }
+            if(confirm('למחוק את קוד ' + pin + ' לתמיד?')) socket.emit('deletePin', pin);
         }
+
+        // --- פונקציות האח הגדול ---
+        function fetchLiveStats() {
+            socket.emit('fetchLiveStats');
+        }
+
+        socket.on('liveStatsData', (stats) => {
+            const area = document.getElementById('liveStatsArea');
+            area.innerHTML = '';
+            let count = 0;
+            
+            for (let r in stats) {
+                count++;
+                let s = stats[r];
+                let statusClass = s.isActive ? 'live-active' : 'live-idle';
+                let statusText = s.isActive ? '▶️ משחק פעיל כעת' : '⏸️ חדר המתנה';
+                
+                area.innerHTML += `
+                    <div class="live-room">
+                        <div style="font-size: 1.2rem; margin-bottom: 5px;">
+                            חדר: <strong style="color: #38bdf8;">${r}</strong> 
+                            <span class="${statusClass}" style="float: left; font-size: 0.9rem;">${statusText}</span>
+                        </div>
+                        <div>👥 משתתפים מחוברים: <strong>${s.players}</strong></div>
+                        <div>📝 מצב שאלות: <strong>שאלה ${s.currentQ} מתוך ${s.qCount}</strong></div>
+                    </div>
+                `;
+            }
+            
+            if (count === 0) {
+                area.innerHTML = '<p style="text-align:center; color:#94a3b8;">אין חדרים עם פעילות כרגע.</p>';
+            }
+        });
     </script>
 </body>
 </html>
