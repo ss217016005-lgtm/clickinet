@@ -40,7 +40,7 @@ app.post('/api/webhook/meshulam', (req, res) => {
     res.status(200).send("OK");
 });
 
-// 📞 מנוע התקשורת הסופי: שעה של שקט, בשלוחה אחת, בלי ניתוקים!
+// 📞 מנוע התקשורת הסופי: לולאת פינג-פונג שעוקפת את הניתוקים של ימות המשיח!
 app.get('/api/answer', (req, res) => {
     const phone = req.query.ApiPhone || "unknown";
     
@@ -48,17 +48,16 @@ app.get('/api/answer', (req, res) => {
     let roomId = phoneToRoom[phone];
 
     if (!roomId) {
-        // אם המערכת חזרה אלינו עם המשתנה של החדר
         if (req.query.val_room !== undefined) {
             if (req.query.val_room === '') {
-                // הוא שתק ולא הקיש קוד חדר. נבקש שוב.
+                // הוא שתק ולא הקיש קוד חדר. נבקש שוב, והפעם חייב ספרה 1 לפחות (min=1)
                 return res.send("read=t-לא הוקש קוד. אנא הקישו קוד משחק וסיום בסולמית=val_room,no,10,1,15,No,No");
             }
             roomId = req.query.val_room;
             phoneToRoom[phone] = roomId; // שומרים אותו בזיכרון!
         } else {
             // שיחה חדשה לגמרי!
-            return res.send("read=t-ברוכים הבאים לקליקינט. אנא הקישו קוד משחק וסיום בסולמית=val_room,no,10,1,15,No,No");
+            return res.send("read=t-ברוכים הבאים. נא להקיש קוד משחק וסיום בסולמית=val_room,no,10,1,15,No,No");
         }
     }
 
@@ -79,7 +78,7 @@ app.get('/api/answer', (req, res) => {
         }
     }
     
-    // יצירת שם משתנה רנדומלי כדי שימות המשיח לא ימחזרו תשובות
+    // יצירת שם משתנה רנדומלי כדי למנוע כפילויות
     const nextVar = "val_" + Math.floor(Math.random() * 90000 + 1000);
 
     // 3. רישום הילד למסך
@@ -96,7 +95,8 @@ app.get('/api/answer', (req, res) => {
         if (room.calibrationState === 'active') {
             let userPing = Date.now() - room.calibrationStartTime; room.activePlayers[phone].ping = userPing; 
             io.to(roomId).emit('calibrationProgress', { count: Object.values(room.activePlayers).filter(p => p.ping > 0).length });
-            return res.send(`read=t-בדיקת המהירות נקלטה בהצלחה=${nextVar},no,1,1,3600,No,No`);
+            // min=0 כדי שאם יעברו 15 שניות הוא לא ינתק, אלא יחזור אלינו שוב
+            return res.send(`read=t-נקלט=${nextVar},no,1,0,15,No,No`);
         }
         
         if (room.gameActive && !room.answersLocked && room.currentQuestion >= 0) {
@@ -110,18 +110,23 @@ app.get('/api/answer', (req, res) => {
                 }
                 io.to(roomId).emit('updateLeaderboard', room.activePlayers);
             }
-            return res.send(`read=t-תשובתך נקלטה=${nextVar},no,1,1,3600,No,No`);
+            return res.send(`read=t-נקלט=${nextVar},no,1,0,15,No,No`);
         }
         
         // אם לחץ סתם כשאי אפשר לענות
-        return res.send(`read=t-נקלט=${nextVar},no,1,1,3600,No,No`);
+        return res.send(`read=t-נקלט=${nextVar},no,1,0,15,No,No`);
     }
     
-    // 5. כניסה ראשונית או המתנה (השקט הארוך של השעה!)
-    if (isTimeout) {
-        return res.send(`read=t-אנחנו עדיין כאן=${nextVar},no,1,1,3600,No,No`);
+    // 5. הלולאה הנצחית - min=0 אומר שגם אם לא הקיש כלום, נחזור לשרת!
+    if (room.calibrationState === 'prepared') {
+        return res.send(`read=t-היכונו=${nextVar},no,1,0,15,No,No`);
+    } else if (room.calibrationState === 'active') {
+        return res.send(`read=t-הקש 1=${nextVar},no,1,0,15,No,No`);
+    } else if (!room.answersLocked && room.gameActive) {
+        return res.send(`read=t-הקש תשובה=${nextVar},no,1,0,15,No,No`);
     } else {
-        return res.send(`read=t-מחובר בהצלחה. המתינו לשאלה=${nextVar},no,1,1,3600,No,No`);
+        // כאן הילד מחכה. ימות המשיח יגידו "ממתין", יחכו 15 שניות, ויחזרו לפה שוב, לנצח!
+        return res.send(`read=t-ממתין=${nextVar},no,1,0,15,No,No`);
     }
 });
 
@@ -163,4 +168,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V28.0 (1 Hour Silent Loop) is ONLINE ==="));
+http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V28.1 (Yemot Ping-Pong Anti Drop) is ONLINE ==="));
