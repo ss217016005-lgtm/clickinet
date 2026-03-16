@@ -7,18 +7,19 @@ const fs = require('fs');
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-let db = { phonebooks: {}, savedGames: {} };
+// 🗄️ מסד נתונים הכולל את מאגר הקודים (PINs)
+let db = { phonebooks: {}, savedGames: {}, pins: {} };
 try { if (fs.existsSync('database.json')) db = JSON.parse(fs.readFileSync('database.json', 'utf8')); } catch(e) {}
 function saveDB() { try { fs.writeFileSync('database.json', JSON.stringify(db)); } catch(e){} }
 
 let rooms = {};
-let phoneToRoom = {}; // 🧠 שומר איזה ילד נמצא באיזה קוד חדר
+let phoneToRoom = {}; 
 
 function getRoom(roomId) {
     if (!rooms[roomId]) {
         rooms[roomId] = {
             activePlayers: {}, questions: [], currentQuestion: -1, gameActive: false, answersLocked: true,
-            gameSettings: { gameName: "קליקינט", phoneNumber: "077-000-0000", isPremium: false },
+            gameSettings: { gameName: "קליקינט", phoneNumber: "077-000-0000", isPremium: db.pins[roomId]?.type === 'premium' },
             calibrationState: 'off', calibrationStartTime: 0, questionStartTime: 0, timerTimeout: null
         };
         if (!db.phonebooks[roomId]) db.phonebooks[roomId] = {};
@@ -30,57 +31,51 @@ function getRoom(roomId) {
 
 app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
 app.get('/admin', (req, res) => res.sendFile(__dirname + '/admin.html'));
+app.get('/super', (req, res) => res.sendFile(__dirname + '/superadmin.html')); // 👑 מסך מנהל העל!
 
-app.post('/api/webhook/meshulam', (req, res) => {
-    let roomId = req.body.custom1 || "default"; 
-    let room = getRoom(roomId);
-    if (req.body.status === '1' || req.body.status === 1) { 
-        room.gameSettings.isPremium = true; io.to(roomId).emit('updateSettings', room.gameSettings); 
-    }
-    res.status(200).send("OK");
-});
-
-// 📞 מנוע התקשורת - נקי, פשוט, ולא מנתק לעולם
+// 📞 מנוע התקשורת - בודק אם ה-PIN חוקי!
 app.get('/api/answer', (req, res) => {
     const phone = req.query.ApiPhone || "unknown";
-    
-    // 1. האם הילד כבר רשום לחדר מסוים?
     let roomId = phoneToRoom[phone];
 
     if (!roomId) {
-        // הילד רק נכנס לשלוחה 1 עכשיו. נבקש ממנו קוד משחק:
-        if (req.query.val_room && req.query.val_room !== '') {
-            // הילד הקיש קוד חדר! (למשל 770)
-            roomId = req.query.val_room;
-            phoneToRoom[phone] = roomId; // השרת זוכר אותו לנצח
+        if (req.query.val_1 && req.query.val_1 !== '') {
+            roomId = req.query.val_1;
             
+            // 🛑 האם הקוד הזה קיים במאגר של אהל יהודה?
+            if (!db.pins[roomId]) {
+                return res.send("id_list_message=t-קוד המשחק אינו קיים במערכת. להתראות&go_to_folder=hangup");
+            }
+            if (db.pins[roomId].gamesLeft <= 0) {
+                return res.send("id_list_message=t-קוד המשחק סיים את מכסת המשחקים שלו&go_to_folder=hangup");
+            }
+
+            phoneToRoom[phone] = roomId; 
             const room = getRoom(roomId);
+            
             if (!room.activePlayers[phone]) {
+                if (!room.gameSettings.isPremium && Object.keys(room.activePlayers).length >= 10) {
+                    return res.send("id_list_message=t-המשחק החינמי מלא. פנה למפיק&go_to_folder=hangup"); 
+                }
                 room.activePlayers[phone] = { name: db.phonebooks[roomId][phone] || "שחקן חדש", score: 0, lastAnswered: -1, ping: 0 };
                 io.to(roomId).emit('updateLeaderboard', room.activePlayers);
             }
-            // מודיעים לו שהצליח, ומיד זורקים אותו ללולאת ההמתנה (עם משתנה שנקרא val_ans)
-            return res.send("read=t-מחובר בהצלחה. המתן לשאלה=val_ans,no,1,0,10,No,No");
+            return res.send("read=t-מחובר בהצלחה. המתן=val_ans,no,1,1,60,No,No");
         } else {
-            // שואלים אותו איזה חדר הוא רוצה (שומרים במשתנה val_room)
-            return res.send("read=t-נא להקיש קוד משחק וסיום בסולמית=val_room,no,10,1,15,No,No");
+            return res.send("read=t-נא להקיש קוד משחק וסיום בסולמית=val_1,no,10,1,15,No,No");
         }
     }
 
-    // --- מכאן והלאה: הילד כבר מחובר לחדר ספציפי וימות המשיח בלולאה ---
     const room = getRoom(roomId);
-    let val = req.query.val_ans || ""; // התשובה שלו (או ריק אם הוא סתם חיכה בשקט)
+    let val = req.query.val_ans || ""; 
 
-    // 2. הילד לחץ על מקש עכשיו!
     if (val !== "") {
-        // אם אנחנו במבחן רדאר
         if (room.calibrationState === 'active') {
             room.activePlayers[phone].ping = Date.now() - room.calibrationStartTime; 
             io.to(roomId).emit('calibrationProgress', { count: Object.values(room.activePlayers).filter(p => p.ping > 0).length });
-            return res.send("read=t-נקלט. המתן=val_ans,no,1,0,10,No,No");
+            return res.send("read=t-נקלט. המתן=val_ans,no,1,1,60,No,No");
         }
         
-        // אם יש שאלה פעילה
         if (room.gameActive && !room.answersLocked && room.currentQuestion >= 0) {
             let q = room.questions[room.currentQuestion];
             if (room.activePlayers[phone].lastAnswered !== room.currentQuestion) {
@@ -92,32 +87,72 @@ app.get('/api/answer', (req, res) => {
                 }
                 io.to(roomId).emit('updateLeaderboard', room.activePlayers);
             }
-            return res.send("read=t-תשובתך נקלטה. המתן=val_ans,no,1,0,10,No,No");
+            return res.send("read=t-תשובתך נקלטה=val_ans,no,1,1,60,No,No");
         }
-        
-        // לחץ על כפתור סתם בזמן שאין שאלה
-        return res.send("read=t-נקלט=val_ans,no,1,0,10,No,No");
+        return res.send("read=t-נקלט=val_ans,no,1,1,60,No,No");
     }
 
-    // 3. הילד לא לחץ על כלום, ימות המשיח חזרו אלינו אחרי 10 שניות (val ריק)
-    if (room.calibrationState === 'prepared') {
-        return res.send("read=t-היכונו=val_ans,no,1,0,10,No,No");
-    } else if (room.calibrationState === 'active') {
-        return res.send("read=t-הקש 1 עכשיו=val_ans,no,1,1,10,No,No"); // חובה ללחוץ 1
-    } else if (room.gameActive && !room.answersLocked) {
-        return res.send("read=t-הקש את תשובתך=val_ans,no,1,1,15,No,No"); // חובה ללחוץ תשובה
-    } else {
-        // המצב הרגיל: אין שאלה. פשוט אומרים "ממתין" לעוד 10 שניות!
-        return res.send("read=t-ממתין=val_ans,no,1,0,10,No,No");
-    }
+    if (room.calibrationState === 'prepared') return res.send("read=t-היכונו=val_ans,no,1,1,60,No,No");
+    else if (room.calibrationState === 'active') return res.send("read=t-הקש 1=val_ans,no,1,1,60,No,No");
+    else if (room.gameActive && !room.answersLocked) return res.send("read=t-הקש את תשובתך=val_ans,no,1,1,60,No,No");
+    else return res.send("read=t-ממתין=val_ans,no,1,1,60,No,No");
 });
 
 io.on('connection', (socket) => {
+    
+    // --- 👑 פקודות מנהל העל (Super Admin) ---
+    socket.on('superLogin', (pass) => {
+        if (pass === "12345") { // 🔑 סיסמת מנהל העל שלך!
+            socket.emit('superData', db.pins);
+        } else {
+            socket.emit('superError');
+        }
+    });
+
+    socket.on('createPin', (data) => {
+        db.pins[data.pin] = { type: data.type, gamesLeft: 3, created: new Date().toLocaleDateString('he-IL') };
+        saveDB();
+        io.emit('superData', db.pins); // מרענן את המסך של מנהל העל
+    });
+
+    socket.on('deletePin', (pin) => {
+        delete db.pins[pin];
+        saveDB();
+        io.emit('superData', db.pins);
+    });
+
+    // --- 🎛️ פקודות המפיקים (Admin) ---
     socket.on('joinRoom', (roomId) => {
+        if (!db.pins[roomId]) {
+            socket.emit('loginResponse', { success: false, error: 'קוד משחק שגוי או שאינו קיים במערכת!' });
+            return;
+        }
+        if (db.pins[roomId].gamesLeft <= 0) {
+            socket.emit('loginResponse', { success: false, error: 'נגמרה מכסת המשחקים לקוד זה!' });
+            return;
+        }
+
         socket.join(roomId); socket.roomId = roomId; const room = getRoom(roomId);
+        
+        socket.emit('loginResponse', { success: true, gamesLeft: db.pins[roomId].gamesLeft });
         socket.emit('updateSettings', room.gameSettings); socket.emit('updateLeaderboard', room.activePlayers);
         socket.emit('lockState', room.answersLocked); socket.emit('updateQuestions', room.questions);
         socket.emit('updateSavedGames', Object.keys(db.savedGames[roomId] || {}));
+    });
+
+    socket.on('startGame', () => { 
+        if(!socket.roomId) return; let room = rooms[socket.roomId]; if(room.questions.length === 0) return; 
+        
+        // 📉 מורידים משחק אחד מהמכסה!
+        if (db.pins[socket.roomId] && db.pins[socket.roomId].gamesLeft > 0) {
+            db.pins[socket.roomId].gamesLeft--;
+            saveDB();
+            io.to(socket.roomId).emit('updateGamesLeft', db.pins[socket.roomId].gamesLeft);
+        }
+
+        room.gameActive = true; room.currentQuestion = 0; room.answersLocked = true; 
+        for(let p in room.activePlayers) { room.activePlayers[p].score = 0; room.activePlayers[p].currentChoice = null; room.activePlayers[p].lastAnswered = -1; } 
+        io.to(socket.roomId).emit('newQuestion', room.questions[room.currentQuestion]); io.to(socket.roomId).emit('lockState', true); io.to(socket.roomId).emit('updateLeaderboard', room.activePlayers); 
     });
 
     socket.on('saveSettings', s => { if(!socket.roomId) return; rooms[socket.roomId].gameSettings = s; io.to(socket.roomId).emit('updateSettings', s); });
@@ -140,8 +175,6 @@ io.on('connection', (socket) => {
 
     socket.on('startTimer', sec => { if(!socket.roomId) return; let room = rooms[socket.roomId]; room.answersLocked = false; room.questionStartTime = Date.now(); io.to(socket.roomId).emit('lockState', false); io.to(socket.roomId).emit('startCountdown', sec); if(room.timerTimeout) clearTimeout(room.timerTimeout); room.timerTimeout = setTimeout(() => { room.answersLocked = true; io.to(socket.roomId).emit('lockState', true); io.to(socket.roomId).emit('playEffect', 'shake'); }, sec * 1000); });
 
-    socket.on('startGame', () => { if(!socket.roomId) return; let room = rooms[socket.roomId]; if(room.questions.length === 0) return; room.gameActive = true; room.currentQuestion = 0; room.answersLocked = true; for(let p in room.activePlayers) { room.activePlayers[p].score = 0; room.activePlayers[p].currentChoice = null; room.activePlayers[p].lastAnswered = -1; } io.to(socket.roomId).emit('newQuestion', room.questions[room.currentQuestion]); io.to(socket.roomId).emit('lockState', true); io.to(socket.roomId).emit('updateLeaderboard', room.activePlayers); });
-
     socket.on('nextQuestion', () => { if(!socket.roomId) return; let room = rooms[socket.roomId]; room.currentQuestion++; if (room.currentQuestion < room.questions.length) { room.answersLocked = true; for(let p in room.activePlayers) room.activePlayers[p].currentChoice = null; io.to(socket.roomId).emit('newQuestion', room.questions[room.currentQuestion]); io.to(socket.roomId).emit('lockState', true); } else { room.gameActive = false; room.answersLocked = true; io.to(socket.roomId).emit('gameOver'); } });
 
     socket.on('showVictoryScreen', () => { if(!socket.roomId) return; let room = rooms[socket.roomId]; room.gameActive = false; room.answersLocked = true; io.to(socket.roomId).emit('lockState', true); const topPlayers = Object.values(room.activePlayers).sort((a,b) => b.score - a.score).slice(0, 3); io.to(socket.roomId).emit('victoryPodium', topPlayers); });
@@ -150,4 +183,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V30.0 (Clean Loop Architecture) is ONLINE ==="));
+http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V31.0 (Super Admin + PIN Engine) is ONLINE ==="));
