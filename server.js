@@ -7,8 +7,13 @@ const fs = require('fs');
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+// טעינת זיכרון מקומי
 let phonebook = {};
 try { if (fs.existsSync('phonebook.json')) phonebook = JSON.parse(fs.readFileSync('phonebook.json', 'utf8')); } catch(e) {}
+
+// 🗂️ טעינת בנק המשחקים השמורים
+let savedGames = {};
+try { if (fs.existsSync('games.json')) savedGames = JSON.parse(fs.readFileSync('games.json', 'utf8')); } catch(e) {}
 
 let activePlayers = {}; 
 let questions = []; 
@@ -30,20 +35,13 @@ app.post('/api/webhook/meshulam', (req, res) => {
     res.status(200).send("OK");
 });
 
-// 📞 מנוע התקשורת החכם והנצחי! (Bypass Yemot HaMashiach Caching)
 app.get('/api/answer', (req, res) => {
     const phone = req.query.ApiPhone || "unknown";
     
-    // חיפוש חכם של התשובה (מזהה כל משתנה שמתחיל ב-val_)
     let userChoice = null;
     for (let key in req.query) {
-        if (key.startsWith('val_') && req.query[key] !== '') {
-            userChoice = req.query[key];
-            break;
-        }
+        if (key.startsWith('val_') && req.query[key] !== '') { userChoice = req.query[key]; break; }
     }
-
-    // יצירת מזהה משתנה רנדומלי כדי שימות המשיח בחיים לא ידלגו עליו
     const nextVar = "val_" + Math.floor(Math.random() * 100000);
 
     if (!activePlayers[phone]) {
@@ -92,6 +90,8 @@ io.on('connection', (socket) => {
     socket.emit('updateSettings', gameSettings);
     socket.emit('updateLeaderboard', activePlayers);
     socket.emit('lockState', answersLocked);
+    socket.emit('updateQuestions', questions);
+    socket.emit('updateSavedGames', Object.keys(savedGames)); // שולח לניהול את רשימת המשחקים
 
     socket.on('saveSettings', s => { gameSettings = s; io.emit('updateSettings', s); });
     socket.on('triggerEffect', type => { io.emit('playEffect', type); });
@@ -114,7 +114,29 @@ io.on('connection', (socket) => {
         io.emit('updateLeaderboard', activePlayers);
     });
 
+    // 🗂️ פקודות בנק השאלות
     socket.on('addSingleQuestion', q => { questions.push(q); io.emit('updateQuestions', questions); });
+    socket.on('clearQuestions', () => { questions = []; io.emit('updateQuestions', questions); });
+    
+    socket.on('saveGameToBank', name => {
+        savedGames[name] = [...questions];
+        try { fs.writeFileSync('games.json', JSON.stringify(savedGames)); } catch(e){}
+        io.emit('updateSavedGames', Object.keys(savedGames));
+    });
+
+    socket.on('loadGameFromBank', name => {
+        if (savedGames[name]) {
+            questions = [...savedGames[name]];
+            io.emit('updateQuestions', questions);
+        }
+    });
+
+    socket.on('deleteGameFromBank', name => {
+        delete savedGames[name];
+        try { fs.writeFileSync('games.json', JSON.stringify(savedGames)); } catch(e){}
+        io.emit('updateSavedGames', Object.keys(savedGames));
+    });
+
     socket.on('toggleLock', lock => { answersLocked = lock; if(lock && timerTimeout) clearTimeout(timerTimeout); io.emit('lockState', answersLocked); });
 
     socket.on('startTimer', sec => {
@@ -142,9 +164,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('showVictoryScreen', () => {
-        gameActive = false;
-        answersLocked = true;
-        io.emit('lockState', true);
+        gameActive = false; answersLocked = true; io.emit('lockState', true);
         const topPlayers = Object.values(activePlayers).sort((a,b) => b.score - a.score).slice(0, 3);
         io.emit('victoryPodium', topPlayers);
     });
@@ -153,4 +173,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V18.0 (Anti-Hangup Bypass) is ONLINE ==="));
+http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V19.0 (Question Bank) is ONLINE ==="));
