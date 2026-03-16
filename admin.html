@@ -31,7 +31,6 @@
     </style>
 </head>
 <body>
-
     <div id="loginOverlay">
         <div id="loginBox">
             <h1 style="font-size: 3rem; margin-top: 0;">התחברות מפיק</h1>
@@ -54,7 +53,12 @@
                 <h2>🎮 ניהול משחק</h2>
                 <div class="status-box">סטטוס מענה: <span id="lockStatusDisplay" style="color:#ef4444;">סגור 🔒</span></div>
                 <button class="btn-full btn-success" onclick="startGame()">▶️ התחל משחק / אפס ניקוד</button>
-                <button class="btn-full" onclick="nextQuestion()">⏭️ שאלה הבאה (מוצפנת)</button>
+                
+                <div style="display: flex; gap: 10px; margin-bottom: 5px;">
+                    <button class="btn-full" style="background: #64748b;" onclick="prevQuestion()">⏮️ שאלה קודמת</button>
+                    <button class="btn-full" onclick="nextQuestion()">⏭️ שאלה הבאה</button>
+                </div>
+
                 <button class="btn-success" onclick="toggleLock(false)">🔓 פתח ידנית</button>
                 <button class="btn-danger" onclick="toggleLock(true)">🔒 סגור ידנית</button>
                 <div class="timer-controls">
@@ -108,7 +112,6 @@
             <div class="panel">
                 <h2>💰 חבילת המנוי שלך</h2>
                 <button class="btn-full" id="premiumBtn" style="background: #ef4444;" disabled>💎 פרימיום: כבוי</button>
-                <p style="text-align:center; font-size: 0.9rem; color: #94a3b8;">לקבלת פרימיום פנה למנהל המערכת</p>
                 <hr style="border-color: #334155; margin: 20px 0;">
                 <h3 style="margin:0 0 10px 0; color: #14b8a6;">⏱️ מבחן מהירות (רדאר)</h3>
                 <button class="btn-full btn-radar" onclick="prepareCalibration()">1. הכן קהל (הצג מסך)</button>
@@ -145,9 +148,7 @@
                 document.getElementById('mainDashboard').style.display = 'block';
                 document.getElementById('displayRoomId').innerText = myRoomId;
                 document.getElementById('displayGamesLeft').innerText = res.gamesLeft;
-            } else {
-                alert(res.error);
-            }
+            } else { alert(res.error); }
         });
 
         socket.on('updateGamesLeft', count => { document.getElementById('displayGamesLeft').innerText = count; });
@@ -187,6 +188,7 @@
         function saveName(phone) { const newName = document.getElementById('name_' + phone).value; if (newName.trim() !== '') { socket.emit('updatePlayerName', { phone: phone, newName: newName }); const btn = document.querySelector(`#name_${phone}`).nextElementSibling; btn.innerText = '✔️'; setTimeout(() => btn.innerText = '💾', 2000); } }
         function startGame() { socket.emit('startGame'); }
         function nextQuestion() { socket.emit('nextQuestion'); }
+        function prevQuestion() { socket.emit('prevQuestion'); } 
         function toggleLock(state) { socket.emit('toggleLock', state); }
         function clearPlayers() { if(confirm('לנתק כולם?')) socket.emit('clearPlayers'); }
         function sendEffect(type) { socket.emit('triggerEffect', type); }
@@ -202,40 +204,27 @@
             if(q.q && q.ans) { socket.emit('addSingleQuestion', q); alert('נוסף למחסנית הפעילה!'); document.getElementById('qText').value = ''; } else { alert('חסר מידע.'); } 
         }
 
-        // פונקציית האקסל החדשה!
         function uploadExcel() {
             const file = document.getElementById('excelFile').files[0];
             if (!file) return alert('נא לבחור קובץ אקסל קודם!');
-            
             const reader = new FileReader();
             reader.onload = function(e) {
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, {type: 'array'});
                 const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
                 const rows = XLSX.utils.sheet_to_json(firstSheet, {header: 1});
-
                 let newQuestions = [];
                 for (let i = 1; i < rows.length; i++) { 
                     let r = rows[i];
                     if (r.length >= 6 && r[0] && r[5]) {
-                        newQuestions.push({
-                            q: String(r[0]), 
-                            a1: String(r[1] || ''), 
-                            a2: String(r[2] || ''), 
-                            a3: String(r[3] || ''), 
-                            a4: String(r[4] || ''), 
-                            ans: String(r[5])
-                        });
+                        newQuestions.push({ q: String(r[0]), a1: String(r[1] || ''), a2: String(r[2] || ''), a3: String(r[3] || ''), a4: String(r[4] || ''), ans: String(r[5]) });
                     }
                 }
-                
                 if (newQuestions.length > 0) {
                     socket.emit('addBulkQuestions', newQuestions);
                     alert('הועלו ' + newQuestions.length + ' שאלות בהצלחה למחסנית!');
                     document.getElementById('excelFile').value = '';
-                } else {
-                    alert('לא נמצאו שאלות תקינות בקובץ. ודא שהאקסל מסודר לפי העמודות.');
-                }
+                } else { alert('לא נמצאו שאלות תקינות בקובץ.'); }
             };
             reader.readAsArrayBuffer(file);
         }
