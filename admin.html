@@ -5,29 +5,21 @@
     <title>Clickinet | חדר בקרה Pro</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; }
-        
-        /* 🔒 מסך התחברות לחדר */
         #loginOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0b0f19; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         #loginBox { background: #1e293b; padding: 40px; border-radius: 20px; text-align: center; border: 2px solid #38bdf8; box-shadow: 0 0 30px rgba(56, 189, 248, 0.3); }
         .login-input { width: 300px; padding: 15px; font-size: 1.5rem; text-align: center; margin-bottom: 20px; border-radius: 10px; border: none; }
         .login-btn { background: #10b981; color: white; border: none; padding: 15px 40px; font-size: 1.5rem; border-radius: 10px; cursor: pointer; font-weight: bold; }
-        .login-btn:hover { background: #059669; }
-
         #mainDashboard { display: none; } 
-
         h1 { text-align: center; color: #38bdf8; text-shadow: 0 0 10px rgba(56, 189, 248, 0.5); margin-bottom: 5px;}
         .room-indicator { text-align: center; color: #10b981; font-size: 1.2rem; font-weight: bold; margin-bottom: 20px;}
-        
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; max-width: 1400px; margin: 0 auto; }
         .panel { background: #1e293b; padding: 20px; border-radius: 15px; border: 1px solid #334155; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); }
         h2 { border-bottom: 2px solid #38bdf8; padding-bottom: 10px; margin-top: 0; font-size: 1.5rem; }
         button { background: #2563eb; color: white; border: none; padding: 12px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; margin: 5px; transition: all 0.2s; font-size: 1rem; width: calc(50% - 14px); }
-        button:hover { filter: brightness(1.2); transform: translateY(-2px); }
         .btn-full { width: calc(100% - 10px); }
         .btn-danger { background: #ef4444; } .btn-success { background: #10b981; } .btn-effect { background: #8b5cf6; } .btn-bg { background: #f59e0b; color: #000; }
-        .btn-radar { background: #14b8a6; color: #fff; } .btn-radar-go { background: #ef4444; font-size: 1.3rem; animation: pulse 1s infinite;}
+        .btn-radar { background: #14b8a6; color: #fff; } .btn-radar-go { background: #ef4444; font-size: 1.3rem; }
         .btn-victory { background: linear-gradient(90deg, #fbbf24, #f59e0b); color: #000; font-size: 1.3rem; border: 2px solid #fff; box-shadow: 0 0 15px rgba(251, 191, 36, 0.5); }
-        @keyframes pulse { 0% {box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);} 70% {box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);} 100% {box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);} }
         input, select { width: calc(100% - 22px); padding: 10px; margin: 5px 0 15px 0; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: #fff; }
         .status-box { background: #000; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 1.2rem; color: #10b981; text-align: center; margin-bottom: 15px;}
         .timer-controls { display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px solid #f97316; margin-top: 10px;}
@@ -35,7 +27,6 @@
         .player-edit-row { display: flex; gap: 10px; align-items: center; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-bottom: 8px; border-right: 3px solid #38bdf8; }
         .player-edit-row input { margin: 0; padding: 8px; flex-grow: 1; font-size: 1rem; }
         .player-phone { font-family: monospace; color: #94a3b8; font-size: 1.1rem; width: 110px; }
-        .stats-box { background: #0f172a; border: 1px solid #14b8a6; padding: 10px; border-radius: 8px; margin-top: 10px; font-size: 0.9rem; color: #5eead4; display: none; }
     </style>
 </head>
 <body>
@@ -43,8 +34,8 @@
     <div id="loginOverlay">
         <div id="loginBox">
             <h1 style="font-size: 3rem; margin-top: 0;">התחברות מפיק</h1>
-            <p style="color: #94a3b8; font-size: 1.2rem; margin-bottom: 30px;">הכנס את קוד המשחק שלך (PIN)<br>לדוגמה: 1234</p>
-            <input type="text" id="roomIdInput" class="login-input" placeholder="קוד משחק...">
+            <p style="color: #94a3b8; font-size: 1.2rem; margin-bottom: 30px;">הכנס את הקוד שקיבלת ממנהל המערכת</p>
+            <input type="text" id="roomIdInput" class="login-input" placeholder="קוד מפיק...">
             <br>
             <button class="login-btn" onclick="joinRoom()">היכנס לחדר הבקרה</button>
         </div>
@@ -52,7 +43,10 @@
 
     <div id="mainDashboard">
         <h1>🎛️ חדר בקרה - Clickinet Pro</h1>
-        <div class="room-indicator">מחובר לחדר משחק: <span id="displayRoomId" style="color:#fff; font-size: 1.5rem;">---</span></div>
+        <div class="room-indicator">
+            קוד משחק: <span id="displayRoomId" style="color:#fff; margin-right: 15px;">---</span> | 
+            <span style="color: #eab308; margin-right: 15px;">משחקים שנותרו: <span id="displayGamesLeft">3</span></span>
+        </div>
         
         <div class="grid">
             <div class="panel">
@@ -86,7 +80,7 @@
             <div class="panel">
                 <h2>🗂️ בנק משחקים (שמירה/טעינה)</h2>
                 <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                    <input type="text" id="newGameName" placeholder="תן שם למשחק (לדוגמה: פורים)">
+                    <input type="text" id="newGameName" placeholder="תן שם למשחק">
                     <button class="btn-full btn-success" onclick="saveToBank()">💾 שמור מחסנית לבנק</button>
                 </div>
                 <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px;">
@@ -104,14 +98,14 @@
             </div>
 
             <div class="panel">
-                <h2>💰 כסף וטכנולוגיה</h2>
-                <button class="btn-full" onclick="togglePremium()" id="premiumBtn" style="background: #ef4444;">💎 פרימיום: כבוי</button>
+                <h2>💰 חבילת המנוי שלך</h2>
+                <button class="btn-full" id="premiumBtn" style="background: #ef4444;" disabled>💎 פרימיום: כבוי</button>
+                <p style="text-align:center; font-size: 0.9rem; color: #94a3b8;">לקבלת פרימיום פנה למנהל המערכת</p>
                 <hr style="border-color: #334155; margin: 20px 0;">
                 <h3 style="margin:0 0 10px 0; color: #14b8a6;">⏱️ מבחן מהירות (רדאר)</h3>
                 <button class="btn-full btn-radar" onclick="prepareCalibration()">1. הכן קהל (הצג מסך)</button>
                 <button class="btn-full btn-radar-go" onclick="startCalibration()" id="btnGo" style="display:none;">2. הזנק מבחן! (GO)</button>
                 <button class="btn-full btn-danger" onclick="stopCalibration()">3. סיים והצג סטטיסטיקות</button>
-                <div class="stats-box" id="adminStats"></div>
             </div>
 
             <div class="panel">
@@ -129,22 +123,31 @@
     <script>
         const socket = io();
         let myRoomId = "";
-        let currentSettings = {};
 
         function joinRoom() {
             const input = document.getElementById('roomIdInput').value.trim();
-            if (!input) return alert("חובה להזין קוד משחק!");
+            if (!input) return alert("חובה להזין קוד מפיק!");
             myRoomId = input;
             socket.emit('joinRoom', myRoomId);
-            document.getElementById('loginOverlay').style.display = 'none';
-            document.getElementById('mainDashboard').style.display = 'block';
-            document.getElementById('displayRoomId').innerText = myRoomId;
         }
 
+        socket.on('loginResponse', (res) => {
+            if (res.success) {
+                document.getElementById('loginOverlay').style.display = 'none';
+                document.getElementById('mainDashboard').style.display = 'block';
+                document.getElementById('displayRoomId').innerText = myRoomId;
+                document.getElementById('displayGamesLeft').innerText = res.gamesLeft;
+            } else {
+                alert(res.error);
+            }
+        });
+
+        socket.on('updateGamesLeft', count => { document.getElementById('displayGamesLeft').innerText = count; });
+
         socket.on('updateSettings', s => { 
-            currentSettings = s; const pBtn = document.getElementById('premiumBtn');
+            const pBtn = document.getElementById('premiumBtn');
             if(s.isPremium) { pBtn.innerText = '💎 פרימיום: מופעל!'; pBtn.style.background = '#eab308'; pBtn.style.color = '#000'; } 
-            else { pBtn.innerText = '💎 פרימיום: כבוי'; pBtn.style.background = '#ef4444'; pBtn.style.color = '#fff'; }
+            else { pBtn.innerText = '💎 פרימיום: כבוי (עד 10 משתתפים)'; pBtn.style.background = '#ef4444'; pBtn.style.color = '#fff'; }
         });
         
         socket.on('lockState', isLocked => {
@@ -155,8 +158,7 @@
         socket.on('updateQuestions', qs => { document.getElementById('qCount').innerText = qs.length; });
         
         socket.on('updateSavedGames', games => {
-            const select = document.getElementById('savedGamesList');
-            select.innerHTML = '<option value="">-- בחר משחק לטעינה --</option>';
+            const select = document.getElementById('savedGamesList'); select.innerHTML = '<option value="">-- בחר משחק לטעינה --</option>';
             games.forEach(g => { select.innerHTML += `<option value="${g}">${g}</option>`; });
         });
 
@@ -169,18 +171,12 @@
                 adminList.innerHTML += `<div class="player-edit-row"><span class="player-phone">${phone}</span><input type="text" id="name_${phone}" value="${displayValue}" placeholder="שם..."><button style="background:#10b981;width:auto;padding:8px;margin:0;" onclick="saveName('${phone}')">💾</button></div>`;
             }
         });
-        
-        socket.on('endCalibration', stats => {
-            const box = document.getElementById('adminStats'); box.style.display = 'block';
-            box.innerHTML = `<b>📊 תוצאות רדאר:</b><br>נבדקו: ${stats.count} שחקנים<br>מהיר ביותר: ${stats.min}ms<br>איטי ביותר: ${stats.max}ms<br>ממוצע: ${stats.avg}ms`;
-        });
 
         function saveToBank() { const name = document.getElementById('newGameName').value; const qCount = parseInt(document.getElementById('qCount').innerText); if (!name) return alert('נא להקליד שם למשחק!'); if (qCount === 0) return alert('המחסנית ריקה!'); socket.emit('saveGameToBank', name); document.getElementById('newGameName').value = ''; alert('נשמר לבנק!'); }
         function loadFromBank() { const name = document.getElementById('savedGamesList').value; if (!name) return alert('נא לבחור משחק!'); if(confirm(`לטעון את ${name}?`)) socket.emit('loadGameFromBank', name); }
         function deleteFromBank() { const name = document.getElementById('savedGamesList').value; if (!name) return alert('נא לבחור משחק למחיקה!'); if(confirm(`למחוק את ${name} לתמיד?`)) socket.emit('deleteGameFromBank', name); }
         function clearCurrentQuestions() { if(confirm('למחוק את כל השאלות מהמחסנית הפעילה כעת?')) socket.emit('clearQuestions'); }
         function saveName(phone) { const newName = document.getElementById('name_' + phone).value; if (newName.trim() !== '') { socket.emit('updatePlayerName', { phone: phone, newName: newName }); const btn = document.querySelector(`#name_${phone}`).nextElementSibling; btn.innerText = '✔️'; setTimeout(() => btn.innerText = '💾', 2000); } }
-        function togglePremium() { currentSettings.isPremium = !currentSettings.isPremium; socket.emit('saveSettings', currentSettings); }
         function startGame() { socket.emit('startGame'); }
         function nextQuestion() { socket.emit('nextQuestion'); }
         function toggleLock(state) { socket.emit('toggleLock', state); }
@@ -188,7 +184,7 @@
         function sendEffect(type) { socket.emit('triggerEffect', type); }
         function sendBackground(bg) { socket.emit('changeBackground', bg); }
         function triggerVictory() { if(confirm('לסיים ולהציג פודיום?')) socket.emit('showVictoryScreen'); }
-        function prepareCalibration() { socket.emit('prepareCalibration'); document.getElementById('btnGo').style.display = 'block'; document.getElementById('adminStats').style.display = 'none'; }
+        function prepareCalibration() { socket.emit('prepareCalibration'); document.getElementById('btnGo').style.display = 'block'; }
         function startCalibration() { socket.emit('startCalibration'); document.getElementById('btnGo').style.display = 'none'; }
         function stopCalibration() { socket.emit('endCalibration'); }
         function startTimer() { let sec = document.getElementById('timerInput').value || 15; socket.emit('startTimer', parseInt(sec)); }
