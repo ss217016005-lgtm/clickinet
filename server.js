@@ -37,11 +37,10 @@ app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
 app.get('/admin', (req, res) => res.sendFile(__dirname + '/admin.html'));
 app.get('/super', (req, res) => res.sendFile(__dirname + '/superadmin.html')); 
 
-// === הראוט של ימות המשיח (משולב עם אלגוריתם הניקוד של יהודה!) ===
 app.all('/api/answer', (req, res) => {
     res.set('Content-Type', 'text/plain; charset=utf-8');
     try {
-        const exactHitTime = Date.now(); // לכידת הזמן המדויק
+        const exactHitTime = Date.now(); 
         const input = { ...req.query, ...req.body };
         console.log("📞 בקשה מימות המשיח:", JSON.stringify(input));
 
@@ -53,11 +52,15 @@ app.all('/api/answer', (req, res) => {
         let roomId = db.phoneToRoom[phone];
         let val = input.val_1; 
 
-        // --- 1. שחקן לא מחובר לחדר ---
         if (!roomId) {
             if (val !== undefined && val !== '') {
                 if (val === '1' && !db.pins['1']) return res.send("read=t-נא להקיש קוד משחק וסולמית=val_1,no,10,1,15,no,no");
                 if (!db.pins[val]) return res.send(`read=t-קוד שגוי נא לנסות שוב=val_1,no,10,1,15,no,no`);
+                
+                // 🛑 חסימת תאריך תפוגה מול ימות המשיח
+                if (db.pins[val].expiresAt && exactHitTime > db.pins[val].expiresAt) {
+                    return res.send(`id_list_message=t-תוקף הקוד פג&go_to_folder=hangup`);
+                }
                 if (db.pins[val].gamesLeft <= 0) return res.send(`id_list_message=t-הקוד סיים את המכסה&go_to_folder=hangup`);
 
                 db.phoneToRoom[phone] = val;
@@ -69,11 +72,9 @@ app.all('/api/answer', (req, res) => {
             }
         }
 
-        // --- 2. שחקן מחובר לחדר ---
         const room = getRoom(roomId);
         let player = room.activePlayers[phone];
         
-        // יצירת השחקן עם מונה רצף ההצלחות (streak)
         if (!player) {
             room.activePlayers[phone] = { name: db.phonebooks[roomId][phone] || "שחקן חדש", score: 0, lastAnswered: -1, ping: 0, streak: 0 };
             player = room.activePlayers[phone];
@@ -94,48 +95,34 @@ app.all('/api/answer', (req, res) => {
                 return res.send(`id_list_message=t-נקלט&go_to_folder=${folderPath}`);
             }
             
-            // המענה פתוח והמשחק פעיל
             if (room.gameActive && !room.answersLocked && room.currentQuestion >= 0) {
                 let q = room.questions[room.currentQuestion];
-                
                 if (player.lastAnswered !== room.currentQuestion) {
                     player.lastAnswered = room.currentQuestion;
                     player.currentChoice = val;
-                    
-                    // --- אלגוריתם הניקוד המשוכלל ---
                     if (q.ans && val === String(q.ans)) {
                         let netTime = Math.max(100, (exactHitTime - room.questionStartTime) - (player.ping || 0)); 
                         let speedBonus = Math.max(0, 100 - Math.floor(netTime / 1000));
-                        
-                        player.streak = (player.streak || 0) + 1; // העלאת הרצף
-                        let streakBonus = (player.streak > 1) ? (player.streak * 15) : 0; // בונוס רצף
-                        
-                        player.score += (100 + speedBonus + streakBonus); // הוספת כל הנקודות
+                        player.streak = (player.streak || 0) + 1; 
+                        let streakBonus = (player.streak > 1) ? (player.streak * 15) : 0; 
+                        player.score += (100 + speedBonus + streakBonus); 
                     } else {
-                        player.streak = 0; // שריפת הרצף בטעות
+                        player.streak = 0; 
                     }
-                    
                     io.to(roomId).emit('updateLeaderboard', room.activePlayers);
                 }
                 return res.send(`id_list_message=t-תשובה נקלטה&go_to_folder=${folderPath}`);
             }
-            
-            // אם המענה סגור
-            if (room.answersLocked) {
-                return res.send(`id_list_message=t-המענה סגור כעת&go_to_folder=${folderPath}`);
-            }
-            
+            if (room.answersLocked) return res.send(`id_list_message=t-המענה סגור כעת&go_to_folder=${folderPath}`);
             return res.send(`id_list_message=t-נקלט&go_to_folder=${folderPath}`);
         }
 
-        // --- 3. לולאת המתנה ---
         if (room.calibrationState === 'prepared') return res.send("read=t-היכונו=val_1,no,1,1,10,no,no");
         if (room.calibrationState === 'active') return res.send("read=t-הקש 1 עכשיו=val_1,no,1,1,10,no,no");
         if (room.gameActive && !room.answersLocked) {
             if (player.lastAnswered === room.currentQuestion) return res.send("read=t-ממתין=val_1,no,1,1,10,no,no");
             return res.send("read=t-הקש תשובה=val_1,no,1,1,15,no,no");
         }
-        
         return res.send("read=t-ממתין=val_1,no,1,1,10,no,no");
 
     } catch(err) {
@@ -149,17 +136,51 @@ io.on('connection', (socket) => {
         if (pass === "Ahal2026!") socket.emit('superData', db.pins);
         else socket.emit('superError');
     });
+    
+    // 💡 יצירת קוד עם תאריך תפוגה (והתאמה לקוד יחיד)
     socket.on('createBulkPins', (data) => {
-        for(let i = parseInt(data.start); i <= parseInt(data.end); i++) {
-            db.pins[i.toString()] = { type: data.type, gamesLeft: 3, created: new Date().toLocaleDateString('he-IL') };
+        let start = parseInt(data.start);
+        let end = data.end ? parseInt(data.end) : start; // אם לא הכניסו סיום, זה רק קוד אחד!
+        
+        for(let i = start; i <= end; i++) {
+            db.pins[i.toString()] = { 
+                type: data.type, 
+                gamesLeft: 3, 
+                created: new Date().toLocaleDateString('he-IL'),
+                expiresAt: data.expiresAt // שמירת תאריך התפוגה
+            };
         }
         saveDB(); io.emit('superData', db.pins); 
     });
+    
     socket.on('deletePin', (pin) => { delete db.pins[pin]; saveDB(); io.emit('superData', db.pins); });
+
+    // 🕵️‍♂️ פקודה חדשה ל"אח הגדול" - שאיבת נתוני לייב מהחדרים!
+    socket.on('fetchLiveStats', () => {
+        let stats = {};
+        for (let r in rooms) {
+            let activeCount = Object.keys(rooms[r].activePlayers).length;
+            if (activeCount > 0 || rooms[r].gameActive) {
+                stats[r] = {
+                    players: activeCount,
+                    isActive: rooms[r].gameActive,
+                    qCount: rooms[r].questions.length,
+                    currentQ: rooms[r].currentQuestion + 1
+                };
+            }
+        }
+        socket.emit('liveStatsData', stats);
+    });
 
     socket.on('joinRoom', (roomId) => {
         if (!db.pins[roomId]) return socket.emit('loginResponse', { success: false, error: 'קוד לא קיים!' });
+        
+        // 🛑 חסימת תאריך תפוגה בכניסה למסך הבקרה
+        if (db.pins[roomId].expiresAt && Date.now() > db.pins[roomId].expiresAt) {
+            return socket.emit('loginResponse', { success: false, error: 'הקוד פג תוקף! פנה למנהל המערכת.' });
+        }
         if (db.pins[roomId].gamesLeft <= 0) return socket.emit('loginResponse', { success: false, error: 'נגמרה מכסת המשחקים!' });
+        
         socket.join(roomId); socket.roomId = roomId; const room = getRoom(roomId);
         socket.emit('loginResponse', { success: true, gamesLeft: db.pins[roomId].gamesLeft });
         socket.emit('updateSettings', room.gameSettings); socket.emit('updateLeaderboard', room.activePlayers);
@@ -200,4 +221,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V49.0 (Excel + Streak + PrevBtn) is ONLINE ==="));
+http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V50.0 (SuperAdmin God Mode + Expiration) is ONLINE ==="));
