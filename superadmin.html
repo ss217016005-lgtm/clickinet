@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>מערכת ניהול על | Clickinet</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #fff; text-align: center; padding: 50px; }
+        h1 { color: #eab308; font-size: 3rem; text-shadow: 0 0 20px rgba(234, 179, 8, 0.5); }
+        .panel { background: #1e293b; padding: 30px; border-radius: 15px; border: 1px solid #334155; max-width: 800px; margin: 0 auto; }
+        input, select { padding: 10px; font-size: 1.2rem; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: #fff; margin: 10px; }
+        button { background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 1.2rem; font-weight: bold; }
+        button:hover { filter: brightness(1.2); }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #334155; padding: 10px; text-align: center; }
+        th { background: #38bdf8; color: #000; }
+        .btn-delete { background: #ef4444; font-size: 0.9rem; padding: 5px 10px; }
+        #loginScreen { position: fixed; top:0; left:0; width:100%; height:100%; background: #0f172a; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100;}
+    </style>
+</head>
+<body>
+
+    <div id="loginScreen">
+        <h1>👑 כניסת מנהל מערכת</h1>
+        <input type="password" id="adminPass" placeholder="סיסמה...">
+        <button onclick="tryLogin()">היכנס</button>
+    </div>
+
+    <div id="dashboard" style="display: none;">
+        <h1>👑 כספת הקודים - אהל יהודה</h1>
+        
+        <div class="panel">
+            <h2>יצירת קוד משחק חדש (PIN)</h2>
+            <input type="text" id="newPin" placeholder="הקלד קוד (למשל 1234)">
+            <select id="pinType">
+                <option value="free">חינמי (מוגבל 10 שחקנים)</option>
+                <option value="premium">פרימיום (ללא הגבלת שחקנים)</option>
+            </select>
+            <button onclick="createPin()">ייצר קוד!</button>
+            <p style="color: #94a3b8;">* כל קוד מקבל אוטומטית 3 משחקים.</p>
+        </div>
+
+        <div class="panel" style="margin-top: 30px;">
+            <h2>קודים פעילים במערכת</h2>
+            <table id="pinsTable">
+                <thead><tr><th>קוד (PIN)</th><th>סוג</th><th>משחקים נותרו</th><th>תאריך יצירה</th><th>פעולות</th></tr></thead>
+                <tbody id="pinsBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        function tryLogin() {
+            const pass = document.getElementById('adminPass').value;
+            socket.emit('superLogin', pass);
+        }
+
+        socket.on('superError', () => alert('סיסמה שגויה!'));
+        socket.on('superData', (pins) => {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+            
+            const tbody = document.getElementById('pinsBody');
+            tbody.innerHTML = '';
+            for (let pin in pins) {
+                let typeStr = pins[pin].type === 'premium' ? '👑 פרימיום' : '🆓 חינמי';
+                tbody.innerHTML += `
+                    <tr>
+                        <td style="font-weight: bold; font-size: 1.2rem; color: #38bdf8;">${pin}</td>
+                        <td>${typeStr}</td>
+                        <td style="color: ${pins[pin].gamesLeft > 0 ? '#10b981' : '#ef4444'}; font-weight: bold;">${pins[pin].gamesLeft}</td>
+                        <td>${pins[pin].created}</td>
+                        <td><button class="btn-delete" onclick="deletePin('${pin}')">מחק קוד</button></td>
+                    </tr>
+                `;
+            }
+        });
+
+        function createPin() {
+            const pin = document.getElementById('newPin').value;
+            const type = document.getElementById('pinType').value;
+            if(!pin) return alert('חובה להקליד קוד!');
+            socket.emit('createPin', { pin, type });
+            document.getElementById('newPin').value = '';
+        }
+
+        function deletePin(pin) {
+            if(confirm(`בטוח שברצונך למחוק את קוד ${pin}?`)) {
+                socket.emit('deletePin', pin);
+            }
+        }
+    </script>
+</body>
+</html>
