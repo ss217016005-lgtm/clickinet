@@ -7,7 +7,7 @@ const fs = require('fs');
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// 🗄️ מסד נתונים יציב (שומר הכל בקובץ כדי שלא יימחק בריסטרט)
+// 🗄️ מסד נתונים יציב - שומר הכל בקובץ כדי שלא יימחק כשהשרת מתעדכן
 let db = { phonebooks: {}, savedGames: {}, pins: {}, phoneToRoom: {} };
 try { 
     if (fs.existsSync('database.json')) {
@@ -38,7 +38,7 @@ app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
 app.get('/admin', (req, res) => res.sendFile(__dirname + '/admin.html'));
 app.get('/super', (req, res) => res.sendFile(__dirname + '/superadmin.html')); 
 
-// 📞 מנוע התקשורת של ימות המשיח - מהדורת "הפלדה"
+// 📞 מנוע התקשורת של ימות המשיח - מהדורת "הפלדה" (חסין ניתוקים)
 app.get('/api/answer', (req, res) => {
     res.set('Content-Type', 'text/plain; charset=utf-8');
     try {
@@ -49,7 +49,7 @@ app.get('/api/answer', (req, res) => {
         let roomId = db.phoneToRoom[phone];
         let val1 = req.query.val_1;
 
-        // 1. הילד עוד לא מחובר לחדר
+        // 1. שלב הכניסה - הילד עוד לא מחובר לחדר
         if (!roomId) {
             if (val1 && val1 !== '') {
                 if (!db.pins[val1]) return res.send(`id_list_message=t-קוד המשחק שגוי&go_to_folder=hangup`);
@@ -57,14 +57,14 @@ app.get('/api/answer', (req, res) => {
 
                 db.phoneToRoom[phone] = val1;
                 saveDB();
-                getRoom(val1); // מאתחל חדר
+                getRoom(val1); 
                 return res.send(`id_list_message=t-מחובר בהצלחה&go_to_folder=${folderPath}`);
             } else {
                 return res.send("read=t-ברוכים הבאים. הקישו קוד משחק וסולמית=val_1,no,10,1,20,No,No");
             }
         }
 
-        // 2. הילד מחובר - לוגיקת משחק (שימוש ב-val_ans כדי לא להתערב ב-PIN)
+        // 2. שלב המשחק - הילד מחובר ומחכה בלולאה
         const room = getRoom(roomId);
         let player = room.activePlayers[phone];
         if (!player) {
@@ -75,7 +75,6 @@ app.get('/api/answer', (req, res) => {
 
         let userAns = req.query.val_ans;
 
-        // הילד לחץ על תשובה!
         if (userAns && userAns !== '') {
             if (room.calibrationState === 'active') {
                 player.ping = Date.now() - room.calibrationStartTime;
@@ -97,7 +96,7 @@ app.get('/api/answer', (req, res) => {
             return res.send(`id_list_message=t-&go_to_folder=${folderPath}`);
         }
 
-        // 3. לולאת ההמתנה - כאן הקסם! (min=0 ו-20 שניות)
+        // 3. לולאת ההמתנה (הסוד נגד ניתוקים: min=0)
         if (room.calibrationState === 'prepared') return res.send("read=t-היכונו למבחן=val_ans,no,1,1,10,No,No");
         if (room.calibrationState === 'active') return res.send("read=t-הקש 1 עכשיו=val_ans,no,1,1,10,No,No");
         if (room.gameActive && !room.answersLocked) {
@@ -105,7 +104,6 @@ app.get('/api/answer', (req, res) => {
             return res.send("read=t-הקש תשובה=val_ans,no,1,1,15,No,No");
         }
         
-        // המתנה רגילה - שים לב ל-0 בסוף! זה מונע ניתוק!
         return res.send("read=t-ממתין=val_ans,no,1,0,20,No,No");
 
     } catch(err) {
@@ -114,11 +112,13 @@ app.get('/api/answer', (req, res) => {
 });
 
 io.on('connection', (socket) => {
+    // 👑 כניסת מנהל על (הכספת)
     socket.on('superLogin', (pass) => {
         if (pass === "Ahal2026!") socket.emit('superData', db.pins);
         else socket.emit('superError');
     });
 
+    // 🚀 יצירת הרבה קודים בבת אחת
     socket.on('createBulkPins', (data) => {
         for(let i = parseInt(data.start); i <= parseInt(data.end); i++) {
             db.pins[i.toString()] = { type: data.type, gamesLeft: 3, created: new Date().toLocaleDateString('he-IL') };
@@ -130,7 +130,7 @@ io.on('connection', (socket) => {
 
     socket.on('joinRoom', (roomId) => {
         if (!db.pins[roomId]) return socket.emit('loginResponse', { success: false, error: 'קוד לא קיים!' });
-        if (db.pins[roomId].gamesLeft <= 0) return socket.emit('loginResponse', { success: false, error: 'אין משחקים!' });
+        if (db.pins[roomId].gamesLeft <= 0) return socket.emit('loginResponse', { success: false, error: 'נגמרה מכסת המשחקים!' });
         socket.join(roomId); socket.roomId = roomId; const room = getRoom(roomId);
         socket.emit('loginResponse', { success: true, gamesLeft: db.pins[roomId].gamesLeft });
         socket.emit('updateSettings', room.gameSettings); socket.emit('updateLeaderboard', room.activePlayers);
@@ -142,11 +142,10 @@ io.on('connection', (socket) => {
         if(!socket.roomId) return; let room = rooms[socket.roomId]; if(room.questions.length === 0) return; 
         db.pins[socket.roomId].gamesLeft--; saveDB(); io.to(socket.roomId).emit('updateGamesLeft', db.pins[socket.roomId].gamesLeft);
         room.gameActive = true; room.currentQuestion = 0; room.answersLocked = true; 
-        for(let p in room.activePlayers) { room.activePlayers[p].score = 0; room.activePlayers[p].lastAnswered = -1; } 
+        for(let p in room.activePlayers) { room.activePlayers[p].score = 0; room.activePlayers[p].currentChoice = null; room.activePlayers[p].lastAnswered = -1; } 
         io.to(socket.roomId).emit('newQuestion', room.questions[room.currentQuestion]); io.to(socket.roomId).emit('lockState', true); io.to(socket.roomId).emit('updateLeaderboard', room.activePlayers); 
     });
 
-    // --- שאר הפקודות (סוקטים) נשארו כמו קודם ---
     socket.on('saveSettings', s => { if(socket.roomId) { rooms[socket.roomId].gameSettings = s; io.to(socket.roomId).emit('updateSettings', s); } });
     socket.on('triggerEffect', type => { if(socket.roomId) io.to(socket.roomId).emit('playEffect', type); });
     socket.on('changeBackground', bg => { if(socket.roomId) io.to(socket.roomId).emit('setBg', bg); });
