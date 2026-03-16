@@ -2,7 +2,6 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Clickinet | חדר בקרה Pro</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; }
@@ -10,42 +9,24 @@
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; max-width: 1400px; margin: 0 auto; }
         .panel { background: #1e293b; padding: 20px; border-radius: 15px; border: 1px solid #334155; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); }
         h2 { border-bottom: 2px solid #38bdf8; padding-bottom: 10px; margin-top: 0; font-size: 1.5rem; }
-        
-        button { 
-            background: #2563eb; color: white; border: none; padding: 12px 15px; border-radius: 8px; 
-            cursor: pointer; font-weight: bold; margin: 5px; transition: all 0.2s; font-size: 1rem; width: calc(50% - 14px);
-        }
+        button { background: #2563eb; color: white; border: none; padding: 12px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; margin: 5px; transition: all 0.2s; font-size: 1rem; width: calc(50% - 14px); }
         button:hover { filter: brightness(1.2); transform: translateY(-2px); }
-        button:active { transform: translateY(0); }
-        
         .btn-full { width: calc(100% - 10px); }
-        .btn-danger { background: #ef4444; }
-        .btn-success { background: #10b981; }
-        .btn-effect { background: #8b5cf6; }
-        .btn-bg { background: #f59e0b; color: #000; }
-        .btn-radar { background: #14b8a6; color: #fff; border: 2px solid #0d9488; }
-        .btn-timer { background: #f97316; color: #fff; font-size: 1.2rem; }
-        .btn-save { background: #10b981; width: auto; padding: 8px 15px; margin: 0; font-size: 1.2rem; }
-        
-        input, select { 
-            width: calc(100% - 22px); padding: 10px; margin: 5px 0 15px 0; 
-            border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: #fff; 
-        }
-        
+        .btn-danger { background: #ef4444; } .btn-success { background: #10b981; } .btn-effect { background: #8b5cf6; } .btn-bg { background: #f59e0b; color: #000; }
+        .btn-radar { background: #14b8a6; color: #fff; } .btn-radar-go { background: #ef4444; font-size: 1.3rem; animation: pulse 1s infinite;}
+        @keyframes pulse { 0% {box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);} 70% {box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);} 100% {box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);} }
+        input, select { width: calc(100% - 22px); padding: 10px; margin: 5px 0 15px 0; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: #fff; }
         .status-box { background: #000; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 1.2rem; color: #10b981; text-align: center; margin-bottom: 15px;}
         .timer-controls { display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px solid #f97316; margin-top: 10px;}
         .timer-controls input { width: 60px; text-align: center; margin: 0; font-size: 1.2rem; font-weight: bold;}
-        
-        /* עיצוב רשימת השחקנים */
         .player-edit-row { display: flex; gap: 10px; align-items: center; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-bottom: 8px; border-right: 3px solid #38bdf8; }
         .player-edit-row input { margin: 0; padding: 8px; flex-grow: 1; font-size: 1rem; }
         .player-phone { font-family: monospace; color: #94a3b8; font-size: 1.1rem; width: 110px; }
+        .stats-box { background: #0f172a; border: 1px solid #14b8a6; padding: 10px; border-radius: 8px; margin-top: 10px; font-size: 0.9rem; color: #5eead4; display: none; }
     </style>
 </head>
 <body>
-
     <h1>🎛️ חדר בקרה - Clickinet Pro</h1>
-
     <div class="grid">
         <div class="panel">
             <h2>🎮 ניהול משחק</h2>
@@ -54,54 +35,46 @@
             <button class="btn-full" onclick="nextQuestion()">⏭️ שאלה הבאה (מוצפנת)</button>
             <button class="btn-success" onclick="toggleLock(false)">🔓 פתח ידנית</button>
             <button class="btn-danger" onclick="toggleLock(true)">🔒 סגור ידנית</button>
-            
             <div class="timer-controls">
-                <span>שניות:</span>
-                <input type="number" id="timerInput" value="15" min="3" max="120">
-                <button class="btn-full btn-timer" onclick="startTimer()" style="margin:0;">⏱️ פתח מענה עם שעון!</button>
+                <span>שניות:</span><input type="number" id="timerInput" value="15" min="3" max="120">
+                <button class="btn-full" style="background:#f97316; margin:0;" onclick="startTimer()">⏱️ פתח עם שעון!</button>
             </div>
-
             <button class="btn-full btn-danger" style="margin-top:20px;" onclick="clearPlayers()">🗑️ נתק שחקנים</button>
         </div>
 
         <div class="panel">
             <h2>👥 זיהוי שחקנים (ספר טלפונים)</h2>
-            <p style="font-size: 0.9rem; color: #94a3b8; margin-top: 0;">הכנס שם ליד המספר ולחץ על הדיסקט לשמירה.</p>
-            <div id="adminPlayersList" style="max-height: 300px; overflow-y: auto; padding-right: 5px;">
-                <div style="text-align: center; color: #475569; margin-top: 20px;">ממתין לשיחות נכנסות...</div>
-            </div>
+            <div id="adminPlayersList" style="max-height: 300px; overflow-y: auto; padding-right: 5px;"></div>
         </div>
 
         <div class="panel">
             <h2>💰 כסף וטכנולוגיה</h2>
-            <button class="btn-full" onclick="togglePremium()" id="premiumBtn" style="background: #ef4444; font-size: 1.2rem;">💎 פרימיום: כבוי (מוגבל ל-10)</button>
+            <button class="btn-full" onclick="togglePremium()" id="premiumBtn" style="background: #ef4444;">💎 פרימיום: כבוי</button>
             <hr style="border-color: #334155; margin: 20px 0;">
-            <h3 style="margin:0 0 10px 0; color: #14b8a6;">⏱️ מבחן רשת (רדאר)</h3>
-            <button class="btn-full btn-radar" onclick="startCalibration()">📡 הפעל למסך!</button>
-            <button class="btn-full btn-danger" onclick="stopCalibration()">🛑 סיים מבחן</button>
+            <h3 style="margin:0 0 10px 0; color: #14b8a6;">⏱️ מבחן מהירות (רדאר)</h3>
+            <button class="btn-full btn-radar" onclick="prepareCalibration()">1. הכן קהל למבחן (הצג מסך)</button>
+            <button class="btn-full btn-radar-go" onclick="startCalibration()" id="btnGo" style="display:none;">2. הזנק מבחן! (GO)</button>
+            <button class="btn-full btn-danger" onclick="stopCalibration()">3. סיים והצג סטטיסטיקות</button>
+            <div class="stats-box" id="adminStats"></div>
         </div>
 
         <div class="panel">
             <h2>🎬 תפאורה ואפקטים</h2>
-            <button class="btn-bg" onclick="sendBackground('studio')">🎙️ אולפן כהה</button>
-            <button class="btn-bg" onclick="sendBackground('matrix')">💻 מאטריקס</button>
-            <button class="btn-bg" onclick="sendBackground('space')">🌌 חלל עמוק</button>
-            <button class="btn-bg" onclick="sendBackground('fire')">🔥 זירת אש</button>
+            <button class="btn-bg" onclick="sendBackground('studio')">🎙️ אולפן</button> <button class="btn-bg" onclick="sendBackground('matrix')">💻 מאטריקס</button>
+            <button class="btn-bg" onclick="sendBackground('space')">🌌 חלל</button> <button class="btn-bg" onclick="sendBackground('fire')">🔥 אש</button>
             <hr style="border-color: #334155; margin: 15px 0;">
-            <button class="btn-effect" onclick="sendEffect('confetti')">🎉 קונפטי</button>
-            <button class="btn-effect" onclick="sendEffect('flicker')">🚨 פליקר מתח</button>
-            <button class="btn-effect" onclick="sendEffect('shake')">🌩️ רעידת מסך</button>
-            <button class="btn-effect" onclick="sendEffect('spotlight')">🔦 זרקור מנצח</button>
+            <button class="btn-effect" onclick="sendEffect('confetti')">🎉 קונפטי</button> <button class="btn-effect" onclick="sendEffect('flicker')">🚨 פליקר</button>
+            <button class="btn-effect" onclick="sendEffect('shake')">🌩️ רעידה</button> <button class="btn-effect" onclick="sendEffect('spotlight')">🔦 זרקור</button>
         </div>
 
         <div class="panel">
             <h2>📝 הזנת שאלות</h2>
-            <input type="text" id="qText" placeholder="כתוב שאלה...">
+            <input type="text" id="qText" placeholder="שאלה...">
             <div style="display:flex; gap:10px;"><input type="text" id="a1" placeholder="תשובה 1"><input type="text" id="a2" placeholder="תשובה 2"></div>
             <div style="display:flex; gap:10px;"><input type="text" id="a3" placeholder="תשובה 3"><input type="text" id="a4" placeholder="תשובה 4"></div>
-            <input type="number" id="correct" placeholder="תשובה נכונה (1-4)" min="1" max="4">
+            <input type="number" id="correct" placeholder="נכונה (1-4)" min="1" max="4">
             <button class="btn-full btn-success" onclick="addQuestion()">➕ הוסף למאגר</button>
-            <p style="text-align: center;">במאגר: <span id="qCount" style="font-weight:bold; color:#38bdf8;">0</span></p>
+            <p style="text-align: center;">במאגר: <span id="qCount" style="color:#38bdf8; font-weight:bold;">0</span></p>
         </div>
     </div>
 
@@ -109,81 +82,49 @@
     <script>
         const socket = io();
         let currentSettings = {};
-
         socket.on('updateSettings', s => { 
             currentSettings = s; 
             const pBtn = document.getElementById('premiumBtn');
-            if(s.isPremium) {
-                pBtn.innerText = '💎 פרימיום: מופעל!'; pBtn.style.background = '#eab308'; pBtn.style.color = '#000';
-            } else {
-                pBtn.innerText = '💎 פרימיום: כבוי'; pBtn.style.background = '#ef4444'; pBtn.style.color = '#fff';
-            }
+            if(s.isPremium) { pBtn.innerText = '💎 פרימיום: מופעל!'; pBtn.style.background = '#eab308'; pBtn.style.color = '#000'; } 
+            else { pBtn.innerText = '💎 פרימיום: כבוי'; pBtn.style.background = '#ef4444'; pBtn.style.color = '#fff'; }
         });
-
         socket.on('lockState', isLocked => {
             const display = document.getElementById('lockStatusDisplay');
-            if(isLocked) { display.innerText = 'סגור 🔒'; display.style.color = '#ef4444'; } 
-            else { display.innerText = 'פתוח להצבעות! 🔥'; display.style.color = '#10b981'; }
+            if(isLocked) { display.innerText = 'סגור 🔒'; display.style.color = '#ef4444'; } else { display.innerText = 'פתוח להצבעות! 🔥'; display.style.color = '#10b981'; }
         });
-
         socket.on('updateQuestions', qs => { document.getElementById('qCount').innerText = qs.length; });
-
-        // 👥 קבלת רשימת השחקנים מהשרת והצגתם בניהול!
         socket.on('updateLeaderboard', players => {
             const adminList = document.getElementById('adminPlayersList');
-            if(Object.keys(players).length === 0) {
-                adminList.innerHTML = '<div style="text-align: center; color: #475569; margin-top: 20px;">ממתין לשיחות נכנסות...</div>';
-                return;
-            }
-            
+            if(Object.keys(players).length === 0) { adminList.innerHTML = '<div style="text-align: center; color: #475569; margin-top: 20px;">ממתין...</div>'; return; }
             adminList.innerHTML = '';
             for (let phone in players) {
                 let p = players[phone];
-                // אם השם הוא עדיין "שחקן חדש", נשאיר את התיבה ריקה כדי שיהיה קל לכתוב
                 let displayValue = (p.name === 'שחקן חדש') ? '' : p.name;
-                
-                adminList.innerHTML += `
-                    <div class="player-edit-row">
-                        <span class="player-phone">${phone}</span>
-                        <input type="text" id="name_${phone}" value="${displayValue}" placeholder="הכנס שם...">
-                        <button class="btn-save" onclick="saveName('${phone}')">💾</button>
-                    </div>
-                `;
+                adminList.innerHTML += `<div class="player-edit-row"><span class="player-phone">${phone}</span><input type="text" id="name_${phone}" value="${displayValue}" placeholder="שם..."><button style="background:#10b981;width:auto;padding:8px;margin:0;" onclick="saveName('${phone}')">💾</button></div>`;
             }
         });
+        socket.on('endCalibration', stats => {
+            const box = document.getElementById('adminStats');
+            box.style.display = 'block';
+            box.innerHTML = `<b>📊 תוצאות רדאר:</b><br>נבדקו: ${stats.count} שחקנים<br>זמן תגובה מהיר ביותר: ${stats.min}ms<br>איטי ביותר: ${stats.max}ms<br>ממוצע: ${stats.avg}ms`;
+        });
 
-        // 💾 שליחת השם החדש לשרת
-        function saveName(phone) {
-            const newName = document.getElementById('name_' + phone).value;
-            if (newName.trim() !== '') {
-                socket.emit('updatePlayerName', { phone: phone, newName: newName });
-                // כפתור חזותי שמראה שהצליח
-                const btn = document.querySelector(`#name_${phone}`).nextElementSibling;
-                btn.innerText = '✔️';
-                setTimeout(() => btn.innerText = '💾', 2000);
-            }
-        }
-
+        function saveName(phone) { const newName = document.getElementById('name_' + phone).value; if (newName.trim() !== '') { socket.emit('updatePlayerName', { phone: phone, newName: newName }); const btn = document.querySelector(`#name_${phone}`).nextElementSibling; btn.innerText = '✔️'; setTimeout(() => btn.innerText = '💾', 2000); } }
         function togglePremium() { currentSettings.isPremium = !currentSettings.isPremium; socket.emit('saveSettings', currentSettings); }
         function startGame() { socket.emit('startGame'); }
         function nextQuestion() { socket.emit('nextQuestion'); }
         function toggleLock(state) { socket.emit('toggleLock', state); }
-        function clearPlayers() { if(confirm('לנתק את כולם? השמות יימחקו מלוח התצוגה, אך יישמרו בזיכרון המערכת.')) socket.emit('clearPlayers'); }
+        function clearPlayers() { if(confirm('לנתק כולם?')) socket.emit('clearPlayers'); }
         function sendEffect(type) { socket.emit('triggerEffect', type); }
         function sendBackground(bg) { socket.emit('changeBackground', bg); }
-        function startCalibration() { socket.emit('startCalibration'); }
+        
+        // פקודות רדאר חדשות!
+        function prepareCalibration() { socket.emit('prepareCalibration'); document.getElementById('btnGo').style.display = 'block'; document.getElementById('adminStats').style.display = 'none'; }
+        function startCalibration() { socket.emit('startCalibration'); document.getElementById('btnGo').style.display = 'none'; }
         function stopCalibration() { socket.emit('endCalibration'); }
 
-        function startTimer() {
-            let sec = document.getElementById('timerInput').value || 15;
-            socket.emit('startTimer', parseInt(sec));
-        }
-
-        function addQuestion() {
-            const q = { q: document.getElementById('qText').value, a1: document.getElementById('a1').value, a2: document.getElementById('a2').value, a3: document.getElementById('a3').value, a4: document.getElementById('a4').value, ans: document.getElementById('correct').value };
-            if(q.q && q.ans) { socket.emit('addSingleQuestion', q); alert('נוסף בהצלחה!'); document.getElementById('qText').value = ''; } 
-            else { alert('חובה למלא שאלה ותשובה נכונה.'); }
-        }
+        function startTimer() { let sec = document.getElementById('timerInput').value || 15; socket.emit('startTimer', parseInt(sec)); }
+        function addQuestion() { const q = { q: document.getElementById('qText').value, a1: document.getElementById('a1').value, a2: document.getElementById('a2').value, a3: document.getElementById('a3').value, a4: document.getElementById('a4').value, ans: document.getElementById('correct').value }; if(q.q && q.ans) { socket.emit('addSingleQuestion', q); alert('נוסף!'); document.getElementById('qText').value = ''; } else { alert('חסר מידע.'); } }
     </script>
 </body>
 </html>
