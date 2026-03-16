@@ -37,44 +37,47 @@ app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
 app.get('/admin', (req, res) => res.sendFile(__dirname + '/admin.html'));
 app.get('/super', (req, res) => res.sendFile(__dirname + '/superadmin.html')); 
 
-// 🛡️ שאיבת הכל - app.all קולט גם GET וגם POST!
+// 🛡️ מנוע התקשורת V46 - תחביר ימות המשיח מושלם!
 app.all('/api/answer', (req, res) => {
     res.set('Content-Type', 'text/plain; charset=utf-8');
     try {
-        // מאחדים את הנתונים, לא משנה איך ימות המשיח שלחו אותם
         const input = { ...req.query, ...req.body };
-        console.log("📞 בקשה נכנסת מימות המשיח: ", JSON.stringify(input));
+        console.log("📞 בקשה מימות המשיח:", JSON.stringify(input));
 
         const phone = input.ApiPhone || "unknown";
-        let ext = input.ApiExtension || "1";
+        let ext = input.ApiExtension || "";
         let folderPath = ext.startsWith('/') ? ext : '/' + ext; 
-        if (folderPath === '/') folderPath = '/1';
+        if (folderPath === '/') folderPath = '/'; // נשארים בשלוחה הראשית!
 
         let roomId = db.phoneToRoom[phone];
-        let val2 = input.val_2; // קוד משחק
-        let val3 = input.val_3; // תשובות במשחק
+        let val = input.val_1; // חזרנו ל-val_1 הסטנדרטי
 
         // --- 1. הילד עוד לא מחובר ---
         if (!roomId) {
-            if (val2 !== undefined && val2 !== '') {
-                if (!db.pins[val2]) {
-                    console.log("❌ קוד שגוי:", val2);
-                    return res.send(`id_list_message=t-קוד המשחק אינו קיים&go_to_folder=hangup`);
+            if (val !== undefined && val !== '') {
+                // התעלמות מלחצן 1 אם לחצו כדי להיכנס לשלוחה בטעות
+                if (val === '1' && !db.pins['1']) {
+                    return res.send("read=t-נא להקיש קוד משחק וסולמית=val_1,no,10,1,15,no,no");
                 }
-                if (db.pins[val2].gamesLeft <= 0) {
-                    console.log("❌ נגמרה מכסה לקוד:", val2);
+
+                if (!db.pins[val]) {
+                    console.log("❌ קוד שגוי:", val);
+                    return res.send(`read=t-קוד שגוי נא לנסות שוב=val_1,no,10,1,15,no,no`);
+                }
+                if (db.pins[val].gamesLeft <= 0) {
                     return res.send(`id_list_message=t-הקוד סיים את המכסה&go_to_folder=hangup`);
                 }
 
-                console.log("✅ מחובר לחדר:", val2);
-                db.phoneToRoom[phone] = val2;
+                console.log("✅ מחובר לחדר:", val);
+                db.phoneToRoom[phone] = val;
                 saveDB();
-                getRoom(val2);
+                getRoom(val);
                 
                 return res.send(`id_list_message=t-מחובר בהצלחה&go_to_folder=${folderPath}`);
             } else {
-                console.log("⏳ מבקש קוד משחק מהמשתמש...");
-                return res.send("read=t-ברוכים הבאים. הקישו קוד משחק וסיום בסולמית=val_2,no,10,1,15,No,No");
+                console.log("⏳ מבקש קוד משחק...");
+                // בלי נקודות, no קטן!
+                return res.send("read=t-ברוכים הבאים הקישו קוד משחק וסולמית=val_1,no,10,1,15,no,no");
             }
         }
 
@@ -87,15 +90,13 @@ app.all('/api/answer', (req, res) => {
             io.to(roomId).emit('updateLeaderboard', room.activePlayers);
         }
 
-        // "מכונת הכביסה"
-        if (val3 === '') {
+        if (val === '') {
             console.log("🔄 ריסטרט שקט");
             return res.send(`go_to_folder=${folderPath}`);
         }
         
-        // הילד לחץ על תשובה!
-        if (val3 && val3 !== '') {
-            console.log("🎯 שחקן לחץ:", val3);
+        if (val && val !== '') {
+            console.log("🎯 לחץ:", val);
             if (room.calibrationState === 'active') {
                 player.ping = Date.now() - room.calibrationStartTime;
                 io.to(roomId).emit('calibrationProgress', { count: Object.values(room.activePlayers).filter(p => p.ping > 0).length });
@@ -105,7 +106,7 @@ app.all('/api/answer', (req, res) => {
                 let q = room.questions[room.currentQuestion];
                 if (player.lastAnswered !== room.currentQuestion) {
                     player.lastAnswered = room.currentQuestion;
-                    if (q.ans && val3 === String(q.ans)) {
+                    if (q.ans && val === String(q.ans)) {
                         let netTime = Math.max(100, (Date.now() - room.questionStartTime) - (player.ping || 0)); 
                         player.score += Math.max(10, 1000 - Math.floor(netTime / 10));
                     }
@@ -116,19 +117,19 @@ app.all('/api/answer', (req, res) => {
             return res.send(`id_list_message=t-נקלט&go_to_folder=${folderPath}`);
         }
 
-        // --- 3. הילד נכנס נקי לשלוחה ---
-        if (room.calibrationState === 'prepared') return res.send("read=t-היכונו=val_3,no,1,1,10,No,No");
-        if (room.calibrationState === 'active') return res.send("read=t-הקש 1 עכשיו=val_3,no,1,1,10,No,No");
+        // --- 3. לולאת המתנה ---
+        if (room.calibrationState === 'prepared') return res.send("read=t-היכונו=val_1,no,1,1,10,no,no");
+        if (room.calibrationState === 'active') return res.send("read=t-הקש 1 עכשיו=val_1,no,1,1,10,no,no");
         if (room.gameActive && !room.answersLocked) {
-            if (player.lastAnswered === room.currentQuestion) return res.send("read=t-ממתין=val_3,no,1,1,10,No,No");
-            return res.send("read=t-הקש תשובה=val_3,no,1,1,15,No,No");
+            if (player.lastAnswered === room.currentQuestion) return res.send("read=t-ממתין=val_1,no,1,1,10,no,no");
+            return res.send("read=t-הקש תשובה=val_1,no,1,1,15,no,no");
         }
         
-        console.log("⏳ משמיע ממתין...");
-        return res.send("read=t-ממתין=val_3,no,1,1,10,No,No");
+        console.log("⏳ ממתין...");
+        return res.send("read=t-ממתין=val_1,no,1,1,10,no,no");
 
     } catch(err) {
-        console.error("❌ שגיאה בקוד:", err);
+        console.error("❌ שגיאה:", err);
         res.send("id_list_message=t-שגיאה&go_to_folder=hangup");
     }
 });
@@ -184,4 +185,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V45.0 (Omni-Catcher GET/POST Engine) is ONLINE ==="));
+http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V46.0 (Yemot Syntax Perfection) is ONLINE ==="));
