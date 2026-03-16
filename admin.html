@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Clickinet | חדר בקרה Pro</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; }
         #loginOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0b0f19; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
@@ -75,6 +76,13 @@
                 <button class="btn-full btn-success" onclick="addQuestion()">➕ הוסף למחסנית</button>
                 <p style="text-align: center; margin-bottom: 5px;">שאלות במחסנית הפעילה: <span id="qCount" style="color:#38bdf8; font-weight:bold; font-size: 1.2rem;">0</span></p>
                 <button class="btn-full btn-danger" style="background: transparent; border: 1px solid #ef4444; color: #ef4444;" onclick="clearCurrentQuestions()">מחק מחסנית נוכחית</button>
+                
+                <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; margin-top: 15px; border: 1px dashed #38bdf8;">
+                    <h3 style="margin-top:0; color: #38bdf8;">📁 טעינה מאקסל</h3>
+                    <p style="font-size: 0.9rem; margin-bottom: 10px;">עמודות באקסל (משמאל לימין): שאלה | תשובה 1 | תשובה 2 | תשובה 3 | תשובה 4 | מספר נכונה (1-4)</p>
+                    <input type="file" id="excelFile" accept=".xlsx, .xls, .csv" style="width: 90%;">
+                    <button class="btn-full" style="background: #38bdf8; color: #000;" onclick="uploadExcel()">⬆️ העלה קובץ שאלות</button>
+                </div>
             </div>
 
             <div class="panel">
@@ -192,6 +200,44 @@
         function addQuestion() { 
             const q = { q: document.getElementById('qText').value, a1: document.getElementById('a1').value, a2: document.getElementById('a2').value, a3: document.getElementById('a3').value, a4: document.getElementById('a4').value, ans: document.getElementById('correct').value }; 
             if(q.q && q.ans) { socket.emit('addSingleQuestion', q); alert('נוסף למחסנית הפעילה!'); document.getElementById('qText').value = ''; } else { alert('חסר מידע.'); } 
+        }
+
+        // פונקציית האקסל החדשה!
+        function uploadExcel() {
+            const file = document.getElementById('excelFile').files[0];
+            if (!file) return alert('נא לבחור קובץ אקסל קודם!');
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(firstSheet, {header: 1});
+
+                let newQuestions = [];
+                for (let i = 1; i < rows.length; i++) { 
+                    let r = rows[i];
+                    if (r.length >= 6 && r[0] && r[5]) {
+                        newQuestions.push({
+                            q: String(r[0]), 
+                            a1: String(r[1] || ''), 
+                            a2: String(r[2] || ''), 
+                            a3: String(r[3] || ''), 
+                            a4: String(r[4] || ''), 
+                            ans: String(r[5])
+                        });
+                    }
+                }
+                
+                if (newQuestions.length > 0) {
+                    socket.emit('addBulkQuestions', newQuestions);
+                    alert('הועלו ' + newQuestions.length + ' שאלות בהצלחה למחסנית!');
+                    document.getElementById('excelFile').value = '';
+                } else {
+                    alert('לא נמצאו שאלות תקינות בקובץ. ודא שהאקסל מסודר לפי העמודות.');
+                }
+            };
+            reader.readAsArrayBuffer(file);
         }
     </script>
 </body>
