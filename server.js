@@ -39,23 +39,19 @@ app.post('/api/webhook/meshulam', (req, res) => {
     res.status(200).send("OK");
 });
 
-// 📞 מנוע התקשורת - מזהה חדר לפי "קוד משחק" שהילד הקליד בימות המשיח
+// 📞 מנוע התקשורת החכם - הופך את ימות המשיח לחיבור לייב נצחי!
 app.get('/api/answer', (req, res) => {
     const phone = req.query.ApiPhone || "unknown";
     
-    // 🔑 פה הקסם: אנחנו מחפשים את קוד החדר שהילד הקיש (val_room)
-    // אם הוא לא הקיש, נכניס אותו לחדר ברירת מחדל "1000"
-    const roomId = req.query.val_room || "1000"; 
-    const room = getRoom(roomId);
-    
-    let userChoice = null;
-    for (let key in req.query) {
-        if (key.startsWith('val_') && key !== 'val_room' && req.query[key] !== '') { 
-            userChoice = req.query[key]; break; 
-        }
+    // 1. הילד הרגע חייג? מבקשים ממנו קוד חדר!
+    if (!req.query.val_room) {
+        return res.send("read=t-ברוכים הבאים למערכת קליקינט. אנא הקישו את קוד המשחק וסיום בסולמית=val_room,no,1,1,15,No,No");
     }
-    const nextVar = "val_" + Math.floor(Math.random() * 100000);
+    
+    const roomId = req.query.val_room;
+    const room = getRoom(roomId);
 
+    // 2. בדיקת הגבלת שחקנים חינמית
     if (!room.activePlayers[phone]) {
         if (!room.gameSettings.isPremium && Object.keys(room.activePlayers).length >= 10) {
             return res.send("id_list_message=t-המשחק מוגבל לעשרה שחקנים. פנה למנהל&go_to_folder=hangup"); 
@@ -64,34 +60,44 @@ app.get('/api/answer', (req, res) => {
         io.to(roomId).emit('updateLeaderboard', room.activePlayers);
     }
 
-    if (userChoice) {
-        if (room.calibrationState === 'active') {
-            let userPing = Date.now() - room.calibrationStartTime; room.activePlayers[phone].ping = userPing; 
-            io.to(roomId).emit('calibrationProgress', { count: Object.values(room.activePlayers).filter(p => p.ping > 0).length });
-            return res.send(`read=t-בדיקת המהירות נקלטה בהצלחה. אנא המתינו=${nextVar},no,1,1,60,No,No`);
-        } else if (room.calibrationState === 'prepared') {
-            return res.send(`read=t-הקשתם מוקדם מדי. המתינו להוראת ההזנקה=${nextVar},no,1,1,60,No,No`);
-        }
+    // 3. יצירת שמות משתנים ייחודיים כדי למנוע כפילויות בימות המשיח
+    const currentQVar = "val_ans_" + room.currentQuestion;
 
-        if (room.answersLocked) return res.send(`read=t-המענה סגור כעת, נא להמתין=${nextVar},no,1,1,60,No,No`);
-        
-        if (room.gameActive && room.currentQuestion >= 0 && room.currentQuestion < room.questions.length) {
-            let q = room.questions[room.currentQuestion];
-            if (room.activePlayers[phone].lastAnswered !== room.currentQuestion) {
-                room.activePlayers[phone].lastAnswered = room.currentQuestion;
-                room.activePlayers[phone].currentChoice = userChoice;
-                if (q.ans && userChoice === String(q.ans)) {
-                    let netTime = Math.max(100, (Date.now() - room.questionStartTime) - (room.activePlayers[phone].ping || 0)); 
-                    room.activePlayers[phone].score += Math.max(10, 1000 - Math.floor(netTime / 10));
-                }
-                io.to(roomId).emit('updateLeaderboard', room.activePlayers);
-            }
-        }
-        return res.send(`read=t-תשובתך נקלטה. אנא המתינו לשאלה הבאה=${nextVar},no,1,1,60,No,No`);
+    // 4. האם אנחנו באמצע מבחן מהירות (רדאר)?
+    if (room.calibrationState === 'active' && req.query.val_calib) {
+        let userPing = Date.now() - room.calibrationStartTime;
+        room.activePlayers[phone].ping = userPing; 
+        io.to(roomId).emit('calibrationProgress', { count: Object.values(room.activePlayers).filter(p => p.ping > 0).length });
+        return res.send(`read=t-בדיקת המהירות נקלטה. אנא המתינו=val_wait,no,1,1,10,No,No`);
     }
-    
-    if (room.answersLocked && room.calibrationState === 'off') { res.send(`read=t-המענה סגור כעת. הישארו על הקו=${nextVar},no,1,1,60,No,No`); } 
-    else { res.send(`read=t-הקש את תשובתך=${nextVar},no,1,1,60,No,No`); }
+
+    // 5. האם אנחנו באמצע שאלה אמיתית?
+    if (req.query[currentQVar] && room.gameActive && !room.answersLocked && room.currentQuestion >= 0) {
+        const userChoice = req.query[currentQVar];
+        let q = room.questions[room.currentQuestion];
+        if (room.activePlayers[phone].lastAnswered !== room.currentQuestion) {
+            room.activePlayers[phone].lastAnswered = room.currentQuestion;
+            room.activePlayers[phone].currentChoice = userChoice;
+            if (q.ans && userChoice === String(q.ans)) {
+                let netTime = Math.max(100, (Date.now() - room.questionStartTime) - (room.activePlayers[phone].ping || 0)); 
+                room.activePlayers[phone].score += Math.max(10, 1000 - Math.floor(netTime / 10));
+            }
+            io.to(roomId).emit('updateLeaderboard', room.activePlayers);
+        }
+        return res.send(`read=t-תשובתך נקלטה. נא להמתין=val_wait,no,1,1,10,No,No`);
+    }
+
+    // 6. ניתוב שחקן שלא לחץ על כלום - שומרים אותו על הקו בלולאה!
+    if (room.calibrationState === 'prepared') {
+        return res.send(`read=t-היכונו למבחן המהירות. אל תקישו עד להוראה=val_wait,no,1,1,10,No,No`);
+    } else if (room.calibrationState === 'active') {
+        return res.send(`read=t-הקש 1 עכשיו=val_calib,no,1,1,10,No,No`);
+    } else if (!room.answersLocked && room.gameActive) {
+        return res.send(`read=t-הקש את תשובתך=${currentQVar},no,1,1,10,No,No`);
+    } else {
+        // המשחק סגור, הילד ממתין לשאלה הבאה. ניתן לו 10 שניות של שקט. ימות יחזרו אלינו ושוב ניתן 10 שניות!
+        return res.send(`read=t-נא להמתין=val_wait,no,1,1,10,No,No`);
+    }
 });
 
 io.on('connection', (socket) => {
@@ -132,4 +138,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V21.0 (PIN Rooms) is ONLINE ==="));
+http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V23.0 (Anti-Hangup Loop & Rooms) is ONLINE ==="));
