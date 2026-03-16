@@ -7,7 +7,7 @@
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; }
         h1 { text-align: center; color: #38bdf8; text-shadow: 0 0 10px rgba(56, 189, 248, 0.5); }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; max-width: 1400px; margin: 0 auto; }
         .panel { background: #1e293b; padding: 20px; border-radius: 15px; border: 1px solid #334155; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); }
         h2 { border-bottom: 2px solid #38bdf8; padding-bottom: 10px; margin-top: 0; font-size: 1.5rem; }
         
@@ -25,6 +25,7 @@
         .btn-bg { background: #f59e0b; color: #000; }
         .btn-radar { background: #14b8a6; color: #fff; border: 2px solid #0d9488; }
         .btn-timer { background: #f97316; color: #fff; font-size: 1.2rem; }
+        .btn-save { background: #10b981; width: auto; padding: 8px 15px; margin: 0; font-size: 1.2rem; }
         
         input, select { 
             width: calc(100% - 22px); padding: 10px; margin: 5px 0 15px 0; 
@@ -34,6 +35,11 @@
         .status-box { background: #000; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 1.2rem; color: #10b981; text-align: center; margin-bottom: 15px;}
         .timer-controls { display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px solid #f97316; margin-top: 10px;}
         .timer-controls input { width: 60px; text-align: center; margin: 0; font-size: 1.2rem; font-weight: bold;}
+        
+        /* עיצוב רשימת השחקנים */
+        .player-edit-row { display: flex; gap: 10px; align-items: center; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-bottom: 8px; border-right: 3px solid #38bdf8; }
+        .player-edit-row input { margin: 0; padding: 8px; flex-grow: 1; font-size: 1rem; }
+        .player-phone { font-family: monospace; color: #94a3b8; font-size: 1.1rem; width: 110px; }
     </style>
 </head>
 <body>
@@ -56,6 +62,14 @@
             </div>
 
             <button class="btn-full btn-danger" style="margin-top:20px;" onclick="clearPlayers()">🗑️ נתק שחקנים</button>
+        </div>
+
+        <div class="panel">
+            <h2>👥 זיהוי שחקנים (ספר טלפונים)</h2>
+            <p style="font-size: 0.9rem; color: #94a3b8; margin-top: 0;">הכנס שם ליד המספר ולחץ על הדיסקט לשמירה.</p>
+            <div id="adminPlayersList" style="max-height: 300px; overflow-y: auto; padding-right: 5px;">
+                <div style="text-align: center; color: #475569; margin-top: 20px;">ממתין לשיחות נכנסות...</div>
+            </div>
         </div>
 
         <div class="panel">
@@ -114,17 +128,52 @@
 
         socket.on('updateQuestions', qs => { document.getElementById('qCount').innerText = qs.length; });
 
+        // 👥 קבלת רשימת השחקנים מהשרת והצגתם בניהול!
+        socket.on('updateLeaderboard', players => {
+            const adminList = document.getElementById('adminPlayersList');
+            if(Object.keys(players).length === 0) {
+                adminList.innerHTML = '<div style="text-align: center; color: #475569; margin-top: 20px;">ממתין לשיחות נכנסות...</div>';
+                return;
+            }
+            
+            adminList.innerHTML = '';
+            for (let phone in players) {
+                let p = players[phone];
+                // אם השם הוא עדיין "שחקן חדש", נשאיר את התיבה ריקה כדי שיהיה קל לכתוב
+                let displayValue = (p.name === 'שחקן חדש') ? '' : p.name;
+                
+                adminList.innerHTML += `
+                    <div class="player-edit-row">
+                        <span class="player-phone">${phone}</span>
+                        <input type="text" id="name_${phone}" value="${displayValue}" placeholder="הכנס שם...">
+                        <button class="btn-save" onclick="saveName('${phone}')">💾</button>
+                    </div>
+                `;
+            }
+        });
+
+        // 💾 שליחת השם החדש לשרת
+        function saveName(phone) {
+            const newName = document.getElementById('name_' + phone).value;
+            if (newName.trim() !== '') {
+                socket.emit('updatePlayerName', { phone: phone, newName: newName });
+                // כפתור חזותי שמראה שהצליח
+                const btn = document.querySelector(`#name_${phone}`).nextElementSibling;
+                btn.innerText = '✔️';
+                setTimeout(() => btn.innerText = '💾', 2000);
+            }
+        }
+
         function togglePremium() { currentSettings.isPremium = !currentSettings.isPremium; socket.emit('saveSettings', currentSettings); }
         function startGame() { socket.emit('startGame'); }
         function nextQuestion() { socket.emit('nextQuestion'); }
         function toggleLock(state) { socket.emit('toggleLock', state); }
-        function clearPlayers() { if(confirm('לנתק את כולם?')) socket.emit('clearPlayers'); }
+        function clearPlayers() { if(confirm('לנתק את כולם? השמות יימחקו מלוח התצוגה, אך יישמרו בזיכרון המערכת.')) socket.emit('clearPlayers'); }
         function sendEffect(type) { socket.emit('triggerEffect', type); }
         function sendBackground(bg) { socket.emit('changeBackground', bg); }
         function startCalibration() { socket.emit('startCalibration'); }
         function stopCalibration() { socket.emit('endCalibration'); }
 
-        // הפעלת השעון החדש
         function startTimer() {
             let sec = document.getElementById('timerInput').value || 15;
             socket.emit('startTimer', parseInt(sec));
