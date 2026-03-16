@@ -30,14 +30,25 @@ app.post('/api/webhook/meshulam', (req, res) => {
     res.status(200).send("OK");
 });
 
-// 📞 מנוע התקשורת החדש - אין ניתוקים! הקו נשאר פתוח.
+// 📞 מנוע התקשורת החכם והנצחי! (Bypass Yemot HaMashiach Caching)
 app.get('/api/answer', (req, res) => {
     const phone = req.query.ApiPhone || "unknown";
-    const userChoice = req.query.val_1; 
+    
+    // חיפוש חכם של התשובה (מזהה כל משתנה שמתחיל ב-val_)
+    let userChoice = null;
+    for (let key in req.query) {
+        if (key.startsWith('val_') && req.query[key] !== '') {
+            userChoice = req.query[key];
+            break;
+        }
+    }
+
+    // יצירת מזהה משתנה רנדומלי כדי שימות המשיח בחיים לא ידלגו עליו
+    const nextVar = "val_" + Math.floor(Math.random() * 100000);
 
     if (!activePlayers[phone]) {
         if (!gameSettings.isPremium && Object.keys(activePlayers).length >= 10) {
-            return res.send("id_list_message=t-המשחק מוגבל לעשרה שחקנים. פנה למנהל&go_to_folder=hangup"); // רק פה ננתק אם אין מנוי
+            return res.send("id_list_message=t-המשחק מוגבל לעשרה שחקנים. פנה למנהל&go_to_folder=hangup"); 
         }
         activePlayers[phone] = { name: phonebook[phone] || "שחקן חדש", score: 0, lastAnswered: -1, currentChoice: null, ping: 0 };
         io.emit('updateLeaderboard', activePlayers);
@@ -48,12 +59,12 @@ app.get('/api/answer', (req, res) => {
             let userPing = Date.now() - calibrationStartTime;
             activePlayers[phone].ping = userPing; 
             io.emit('calibrationProgress', { count: Object.values(activePlayers).filter(p => p.ping > 0).length });
-            return res.send("read=t-בדיקת המהירות נקלטה בהצלחה. אנא המתינו לשאלה הבאה=val_1,no,1,1,60,No,No");
+            return res.send(`read=t-בדיקת המהירות נקלטה בהצלחה. אנא המתינו=${nextVar},no,1,1,60,No,No`);
         } else if (calibrationState === 'prepared') {
-            return res.send("read=t-הקשתם מוקדם מדי. המתינו להוראת ההזנקה=val_1,no,1,1,60,No,No");
+            return res.send(`read=t-הקשתם מוקדם מדי. המתינו להוראת ההזנקה=${nextVar},no,1,1,60,No,No`);
         }
 
-        if (answersLocked) return res.send("read=t-המענה סגור כעת, נא להמתין=val_1,no,1,1,60,No,No");
+        if (answersLocked) return res.send(`read=t-המענה סגור כעת, נא להמתין=${nextVar},no,1,1,60,No,No`);
         
         if (gameActive && currentQuestion >= 0 && currentQuestion < questions.length) {
             let q = questions[currentQuestion];
@@ -67,13 +78,13 @@ app.get('/api/answer', (req, res) => {
                 io.emit('updateLeaderboard', activePlayers);
             }
         }
-        return res.send("read=t-תשובתך נקלטה. אנא המתינו לשאלה הבאה=val_1,no,1,1,60,No,No");
+        return res.send(`read=t-תשובתך נקלטה. אנא המתינו לשאלה הבאה=${nextVar},no,1,1,60,No,No`);
     }
     
     if (answersLocked && calibrationState === 'off') {
-        res.send("read=t-המענה סגור כעת. הישארו על הקו=val_1,no,1,1,60,No,No");
+        res.send(`read=t-המענה סגור כעת. הישארו על הקו=${nextVar},no,1,1,60,No,No`);
     } else {
-        res.send("read=t-הקש את תשובתך=val_1,no,1,1,60,No,No");
+        res.send(`read=t-הקש את תשובתך=${nextVar},no,1,1,60,No,No`);
     }
 });
 
@@ -130,12 +141,10 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 🏆 פקודת סיום משחק ופודיום!
     socket.on('showVictoryScreen', () => {
         gameActive = false;
         answersLocked = true;
         io.emit('lockState', true);
-        // שולחים למסך את 3 המנצחים הגדולים
         const topPlayers = Object.values(activePlayers).sort((a,b) => b.score - a.score).slice(0, 3);
         io.emit('victoryPodium', topPlayers);
     });
@@ -144,4 +153,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V17.0 (Never Hangup & Podium) is ONLINE ==="));
+http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V18.0 (Anti-Hangup Bypass) is ONLINE ==="));
