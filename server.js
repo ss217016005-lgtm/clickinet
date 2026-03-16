@@ -39,13 +39,13 @@ app.post('/api/webhook/meshulam', (req, res) => {
     res.status(200).send("OK");
 });
 
-// 📞 מנוע התקשורת הסופי והמתוקן
+// 📞 המנוע החכם של ימות המשיח - מתוקן לחלוטין!
 app.get('/api/answer', (req, res) => {
     const phone = req.query.ApiPhone || "unknown";
     
-    // 🔑 התיקון הקריטי! max_digits שונה מ-1 ל-10 (אפשר להקיש קוד חדר ארוך!)
+    // 🔑 התיקון הגדול! max=10, min=1. עכשיו ימות המשיח לא יקרסו!
     if (!req.query.val_room) {
-        return res.send("read=t-ברוכים הבאים. אנא הקישו את קוד המשחק וסיום בסולמית=val_room,no,1,10,15,No,No");
+        return res.send("read=t-ברוכים הבאים למערכת קליקינט. אנא הקישו את קוד המשחק וסיום בסולמית=val_room,no,10,1,15,No,No");
     }
     
     const roomId = req.query.val_room;
@@ -58,6 +58,7 @@ app.get('/api/answer', (req, res) => {
         }
     }
     
+    // משתנה רנדומלי טהור שמונע מימות המשיח למחזר הקשות
     const nextVar = "val_" + Math.floor(Math.random() * 100000);
 
     if (!room.activePlayers[phone]) {
@@ -68,16 +69,18 @@ app.get('/api/answer', (req, res) => {
         io.to(roomId).emit('updateLeaderboard', room.activePlayers);
     }
 
+    // 💡 מה קורה אם הילד לחץ על משהו הרגע?
     if (userChoice) {
         if (room.calibrationState === 'active') {
             let userPing = Date.now() - room.calibrationStartTime; room.activePlayers[phone].ping = userPing; 
             io.to(roomId).emit('calibrationProgress', { count: Object.values(room.activePlayers).filter(p => p.ping > 0).length });
-            return res.send(`read=t-בדיקת המהירות נקלטה בהצלחה. נא להמתין=${nextVar},no,1,1,10,No,No`);
+            // min=0 כדי שיוכל להמתין על הקו בלי ללחוץ!
+            return res.send(`read=t-בדיקת המהירות נקלטה בהצלחה. נא להמתין=${nextVar},no,1,0,10,No,No`);
         } else if (room.calibrationState === 'prepared') {
-            return res.send(`read=t-הקשתם מוקדם מדי. המתינו להוראת ההזנקה=${nextVar},no,1,1,10,No,No`);
+            return res.send(`read=t-הקשתם מוקדם מדי. המתינו להוראת ההזנקה=${nextVar},no,1,0,10,No,No`);
         }
 
-        if (room.answersLocked) return res.send(`read=t-המענה סגור כעת, נא להמתין=${nextVar},no,1,1,10,No,No`);
+        if (room.answersLocked) return res.send(`read=t-המענה סגור כעת, נא להמתין=${nextVar},no,1,0,10,No,No`);
         
         if (room.gameActive && room.currentQuestion >= 0 && room.currentQuestion < room.questions.length) {
             let q = room.questions[room.currentQuestion];
@@ -91,17 +94,19 @@ app.get('/api/answer', (req, res) => {
                 io.to(roomId).emit('updateLeaderboard', room.activePlayers);
             }
         }
-        return res.send(`read=t-תשובתך נקלטה. נא להמתין=${nextVar},no,1,1,10,No,No`);
+        return res.send(`read=t-תשובתך נקלטה. נא להמתין=${nextVar},no,1,0,10,No,No`);
     }
     
+    // 💡 מה קורה אם הילד רק ממתין על הקו (לולאת פעימות לב)?
     if (room.calibrationState === 'prepared') {
-        return res.send(`read=t-היכונו למבחן המהירות. אל תקישו עד להוראה=${nextVar},no,1,1,10,No,No`);
+        return res.send(`read=t-היכונו למבחן המהירות. אל תקישו עד להוראה=${nextVar},no,1,0,10,No,No`);
     } else if (room.calibrationState === 'active') {
-        return res.send(`read=t-הקש 1 עכשיו=${nextVar},no,1,1,10,No,No`);
+        return res.send(`read=t-הקש 1 עכשיו=${nextVar},no,1,1,10,No,No`); // פה min=1 כי אנחנו מחכים ללחיצה
     } else if (!room.answersLocked && room.gameActive) {
-        return res.send(`read=t-הקש את תשובתך=${nextVar},no,1,1,10,No,No`);
+        return res.send(`read=t-הקש את תשובתך=${nextVar},no,1,1,15,No,No`); // פה min=1 כי זו שאלה
     } else {
-        return res.send(`read=t-נא להמתין=${nextVar},no,1,1,10,No,No`);
+        // מצב המתנה רגיל - min=0 !
+        return res.send(`read=t-נא להמתין=${nextVar},no,1,0,10,No,No`);
     }
 });
 
@@ -143,4 +148,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V25.1 (PIN Fix) is ONLINE ==="));
+http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V26.0 (Zero Hangup Fix) is ONLINE ==="));
