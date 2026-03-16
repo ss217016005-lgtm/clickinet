@@ -12,7 +12,7 @@ try { if (fs.existsSync('database.json')) db = JSON.parse(fs.readFileSync('datab
 function saveDB() { try { fs.writeFileSync('database.json', JSON.stringify(db)); } catch(e){} }
 
 let rooms = {};
-let phoneToRoom = {}; // 🧠 הזיכרון ששומר כל ילד בחדר הנכון
+let phoneToRoom = {}; // 🧠 שומר איזה ילד נמצא באיזה קוד חדר
 
 function getRoom(roomId) {
     if (!rooms[roomId]) {
@@ -40,84 +40,75 @@ app.post('/api/webhook/meshulam', (req, res) => {
     res.status(200).send("OK");
 });
 
-// 📞 מנוע התקשורת הסופי: מזהה שלוחות ונועל את הילד בלולאה נצחית!
+// 📞 מנוע התקשורת - נקי, פשוט, ולא מנתק לעולם
 app.get('/api/answer', (req, res) => {
-    try {
-        const phone = req.query.ApiPhone || "unknown";
-        
-        // קוראים מימות המשיח באיזו שלוחה המשתמש נמצא כדי לזרוק אותו חזרה אליה (מונע ניתוקים!)
-        let ext = req.query.ApiExtension || "1";
-        if (!ext.startsWith('/')) ext = '/' + ext; 
+    const phone = req.query.ApiPhone || "unknown";
+    
+    // 1. האם הילד כבר רשום לחדר מסוים?
+    let roomId = phoneToRoom[phone];
 
-        let roomId = phoneToRoom[phone];
-        let val = req.query.val_1 || "";
-
-        // 1. שחקן חדש שעוד לא הקליד קוד חדר
-        if (!roomId) {
-            if (val === "") {
-                // מבקשים קוד חדר (אפשר להקיש עד 10 ספרות)
-                return res.send("read=t-ברוכים הבאים. נא להקיש קוד משחק וסיום בסולמית=val_1,no,10,1,15,no,no");
-            } else {
-                // הילד הקיש קוד חדר! נרשום אותו בזיכרון
-                roomId = val;
-                phoneToRoom[phone] = roomId;
-                
-                const room = getRoom(roomId);
-                if (!room.activePlayers[phone]) {
-                    if (!room.gameSettings.isPremium && Object.keys(room.activePlayers).length >= 10) {
-                        return res.send("id_list_message=t-המשחק מוגבל לעשרה שחקנים. פנה למנהל&go_to_folder=hangup"); 
-                    }
-                    room.activePlayers[phone] = { name: db.phonebooks[roomId][phone] || "שחקן חדש", score: 0, lastAnswered: -1, currentChoice: null, ping: 0 };
-                    io.to(roomId).emit('updateLeaderboard', room.activePlayers);
-                }
-                // זורקים אותו חזרה לתחילת השלוחה, אבל הפעם השרת יזכור אותו!
-                return res.send(`id_list_message=t-מחובר בהצלחה&go_to_folder=${ext}`);
-            }
-        }
-
-        const room = getRoom(roomId);
-
-        // 2. שחקן שכבר בחדר ולחץ על משהו (val_1 מלא)
-        if (val !== "") {
-            if (room.calibrationState === 'active') {
-                room.activePlayers[phone].ping = Date.now() - room.calibrationStartTime; 
-                io.to(roomId).emit('calibrationProgress', { count: Object.values(room.activePlayers).filter(p => p.ping > 0).length });
-                return res.send(`id_list_message=t-נקלט&go_to_folder=${ext}`);
-            }
+    if (!roomId) {
+        // הילד רק נכנס לשלוחה 1 עכשיו. נבקש ממנו קוד משחק:
+        if (req.query.val_room && req.query.val_room !== '') {
+            // הילד הקיש קוד חדר! (למשל 770)
+            roomId = req.query.val_room;
+            phoneToRoom[phone] = roomId; // השרת זוכר אותו לנצח
             
-            if (room.gameActive && !room.answersLocked && room.currentQuestion >= 0) {
-                let q = room.questions[room.currentQuestion];
-                if (room.activePlayers[phone].lastAnswered !== room.currentQuestion) {
-                    room.activePlayers[phone].lastAnswered = room.currentQuestion;
-                    room.activePlayers[phone].currentChoice = val;
-                    if (q.ans && val === String(q.ans)) {
-                        let netTime = Math.max(100, (Date.now() - room.questionStartTime) - (room.activePlayers[phone].ping || 0)); 
-                        room.activePlayers[phone].score += Math.max(10, 1000 - Math.floor(netTime / 10));
-                    }
-                    io.to(roomId).emit('updateLeaderboard', room.activePlayers);
-                }
-                return res.send(`id_list_message=t-תשובתך נקלטה&go_to_folder=${ext}`);
+            const room = getRoom(roomId);
+            if (!room.activePlayers[phone]) {
+                room.activePlayers[phone] = { name: db.phonebooks[roomId][phone] || "שחקן חדש", score: 0, lastAnswered: -1, ping: 0 };
+                io.to(roomId).emit('updateLeaderboard', room.activePlayers);
             }
-            
-            // אם סתם לחץ כשאי אפשר, פשוט נחזיר אותו לשלוחה
-            return res.send(`id_list_message=t-&go_to_folder=${ext}`);
-        }
-
-        // 3. שחקן בחדר שלא לחץ על כלום, פשוט ממתין (val_1 ריק)
-        if (room.calibrationState === 'prepared') {
-            return res.send("read=t-היכונו למבחן=val_1,no,1,1,10,no,no");
-        } else if (room.calibrationState === 'active') {
-            return res.send("read=t-הקש 1 עכשיו=val_1,no,1,1,10,no,no");
-        } else if (room.gameActive && !room.answersLocked) {
-            return res.send("read=t-הקש את תשובתך=val_1,no,1,1,15,no,no");
+            // מודיעים לו שהצליח, ומיד זורקים אותו ללולאת ההמתנה (עם משתנה שנקרא val_ans)
+            return res.send("read=t-מחובר בהצלחה. המתן לשאלה=val_ans,no,1,0,10,No,No");
         } else {
-            // ממתין לשאלה הבאה. עושים השהייה של 10 שניות. 
-            // אם הוא לא לוחץ, ימות המשיח יחזרו לשרת שלנו שוב ושוב באוטומט!
-            return res.send("read=t-ממתין=val_1,no,1,1,10,no,no");
+            // שואלים אותו איזה חדר הוא רוצה (שומרים במשתנה val_room)
+            return res.send("read=t-נא להקיש קוד משחק וסיום בסולמית=val_room,no,10,1,15,No,No");
         }
-    } catch(err) {
-        console.error(err);
-        res.send("id_list_message=t-שגיאת מערכת&go_to_folder=hangup");
+    }
+
+    // --- מכאן והלאה: הילד כבר מחובר לחדר ספציפי וימות המשיח בלולאה ---
+    const room = getRoom(roomId);
+    let val = req.query.val_ans || ""; // התשובה שלו (או ריק אם הוא סתם חיכה בשקט)
+
+    // 2. הילד לחץ על מקש עכשיו!
+    if (val !== "") {
+        // אם אנחנו במבחן רדאר
+        if (room.calibrationState === 'active') {
+            room.activePlayers[phone].ping = Date.now() - room.calibrationStartTime; 
+            io.to(roomId).emit('calibrationProgress', { count: Object.values(room.activePlayers).filter(p => p.ping > 0).length });
+            return res.send("read=t-נקלט. המתן=val_ans,no,1,0,10,No,No");
+        }
+        
+        // אם יש שאלה פעילה
+        if (room.gameActive && !room.answersLocked && room.currentQuestion >= 0) {
+            let q = room.questions[room.currentQuestion];
+            if (room.activePlayers[phone].lastAnswered !== room.currentQuestion) {
+                room.activePlayers[phone].lastAnswered = room.currentQuestion;
+                room.activePlayers[phone].currentChoice = val;
+                if (q.ans && val === String(q.ans)) {
+                    let netTime = Math.max(100, (Date.now() - room.questionStartTime) - (room.activePlayers[phone].ping || 0)); 
+                    room.activePlayers[phone].score += Math.max(10, 1000 - Math.floor(netTime / 10));
+                }
+                io.to(roomId).emit('updateLeaderboard', room.activePlayers);
+            }
+            return res.send("read=t-תשובתך נקלטה. המתן=val_ans,no,1,0,10,No,No");
+        }
+        
+        // לחץ על כפתור סתם בזמן שאין שאלה
+        return res.send("read=t-נקלט=val_ans,no,1,0,10,No,No");
+    }
+
+    // 3. הילד לא לחץ על כלום, ימות המשיח חזרו אלינו אחרי 10 שניות (val ריק)
+    if (room.calibrationState === 'prepared') {
+        return res.send("read=t-היכונו=val_ans,no,1,0,10,No,No");
+    } else if (room.calibrationState === 'active') {
+        return res.send("read=t-הקש 1 עכשיו=val_ans,no,1,1,10,No,No"); // חובה ללחוץ 1
+    } else if (room.gameActive && !room.answersLocked) {
+        return res.send("read=t-הקש את תשובתך=val_ans,no,1,1,15,No,No"); // חובה ללחוץ תשובה
+    } else {
+        // המצב הרגיל: אין שאלה. פשוט אומרים "ממתין" לעוד 10 שניות!
+        return res.send("read=t-ממתין=val_ans,no,1,0,10,No,No");
     }
 });
 
@@ -159,4 +150,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V29.0 (Ext-Loop Master) is ONLINE ==="));
+http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V30.0 (Clean Loop Architecture) is ONLINE ==="));
