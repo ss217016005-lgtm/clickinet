@@ -5,7 +5,19 @@
     <title>Clickinet | חדר בקרה Pro</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; }
-        h1 { text-align: center; color: #38bdf8; text-shadow: 0 0 10px rgba(56, 189, 248, 0.5); }
+        
+        /* 🔒 מסך התחברות לחדר */
+        #loginOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0b0f19; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        #loginBox { background: #1e293b; padding: 40px; border-radius: 20px; text-align: center; border: 2px solid #38bdf8; box-shadow: 0 0 30px rgba(56, 189, 248, 0.3); }
+        .login-input { width: 300px; padding: 15px; font-size: 1.5rem; text-align: center; margin-bottom: 20px; border-radius: 10px; border: none; }
+        .login-btn { background: #10b981; color: white; border: none; padding: 15px 40px; font-size: 1.5rem; border-radius: 10px; cursor: pointer; font-weight: bold; }
+        .login-btn:hover { background: #059669; }
+
+        #mainDashboard { display: none; } 
+
+        h1 { text-align: center; color: #38bdf8; text-shadow: 0 0 10px rgba(56, 189, 248, 0.5); margin-bottom: 5px;}
+        .room-indicator { text-align: center; color: #10b981; font-size: 1.2rem; font-weight: bold; margin-bottom: 20px;}
+        
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; max-width: 1400px; margin: 0 auto; }
         .panel { background: #1e293b; padding: 20px; border-radius: 15px; border: 1px solid #334155; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); }
         h2 { border-bottom: 2px solid #38bdf8; padding-bottom: 10px; margin-top: 0; font-size: 1.5rem; }
@@ -27,87 +39,108 @@
     </style>
 </head>
 <body>
-    <h1>🎛️ חדר בקרה - Clickinet Pro</h1>
-    <div class="grid">
-        <div class="panel">
-            <h2>🎮 ניהול משחק</h2>
-            <div class="status-box">סטטוס מענה: <span id="lockStatusDisplay" style="color:#ef4444;">סגור 🔒</span></div>
-            <button class="btn-full btn-success" onclick="startGame()">▶️ התחל משחק / אפס ניקוד</button>
-            <button class="btn-full" onclick="nextQuestion()">⏭️ שאלה הבאה (מוצפנת)</button>
-            <button class="btn-success" onclick="toggleLock(false)">🔓 פתח ידנית</button>
-            <button class="btn-danger" onclick="toggleLock(true)">🔒 סגור ידנית</button>
-            <div class="timer-controls">
-                <span>שניות:</span><input type="number" id="timerInput" value="15" min="3" max="120">
-                <button class="btn-full" style="background:#f97316; margin:0;" onclick="startTimer()">⏱️ פתח עם שעון!</button>
-            </div>
-            
-            <hr style="border-color: #334155; margin: 20px 0;">
-            <button class="btn-full btn-victory" onclick="triggerVictory()">🏆 סיום וטקס מנצחים!</button>
-            <button class="btn-full btn-danger" style="margin-top:20px;" onclick="clearPlayers()">🗑️ נתק שחקנים</button>
-        </div>
 
-        <div class="panel">
-            <h2>📝 הזנת שאלות למחסנית</h2>
-            <input type="text" id="qText" placeholder="שאלה...">
-            <div style="display:flex; gap:10px;"><input type="text" id="a1" placeholder="תשובה 1"><input type="text" id="a2" placeholder="תשובה 2"></div>
-            <div style="display:flex; gap:10px;"><input type="text" id="a3" placeholder="תשובה 3"><input type="text" id="a4" placeholder="תשובה 4"></div>
-            <input type="number" id="correct" placeholder="נכונה (1-4)" min="1" max="4">
-            <button class="btn-full btn-success" onclick="addQuestion()">➕ הוסף למחסנית</button>
-            <p style="text-align: center; margin-bottom: 5px;">שאלות במחסנית הפעילה: <span id="qCount" style="color:#38bdf8; font-weight:bold; font-size: 1.2rem;">0</span></p>
-            <button class="btn-full btn-danger" style="background: transparent; border: 1px solid #ef4444; color: #ef4444;" onclick="clearCurrentQuestions()">מחק מחסנית נוכחית</button>
+    <div id="loginOverlay">
+        <div id="loginBox">
+            <h1 style="font-size: 3rem; margin-top: 0;">התחברות מפיק</h1>
+            <p style="color: #94a3b8; font-size: 1.2rem; margin-bottom: 30px;">הכנס את קוד המשחק שלך (PIN)<br>לדוגמה: 1234</p>
+            <input type="text" id="roomIdInput" class="login-input" placeholder="קוד משחק...">
+            <br>
+            <button class="login-btn" onclick="joinRoom()">היכנס לחדר הבקרה</button>
         </div>
+    </div>
 
-        <div class="panel">
-            <h2>🗂️ בנק משחקים (שמירה/טעינה)</h2>
-            <p style="font-size: 0.9rem; color: #94a3b8; margin-top: 0;">שמור את המחסנית הנוכחית כמשחק חדש, או טען משחק ששמרת בעבר.</p>
-            
-            <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                <input type="text" id="newGameName" placeholder="תן שם למשחק (לדוגמה: פורים תשפ)">
-                <button class="btn-full btn-success" onclick="saveToBank()">💾 שמור מחסנית לבנק</button>
+    <div id="mainDashboard">
+        <h1>🎛️ חדר בקרה - Clickinet Pro</h1>
+        <div class="room-indicator">מחובר לחדר משחק: <span id="displayRoomId" style="color:#fff; font-size: 1.5rem;">---</span></div>
+        
+        <div class="grid">
+            <div class="panel">
+                <h2>🎮 ניהול משחק</h2>
+                <div class="status-box">סטטוס מענה: <span id="lockStatusDisplay" style="color:#ef4444;">סגור 🔒</span></div>
+                <button class="btn-full btn-success" onclick="startGame()">▶️ התחל משחק / אפס ניקוד</button>
+                <button class="btn-full" onclick="nextQuestion()">⏭️ שאלה הבאה (מוצפנת)</button>
+                <button class="btn-success" onclick="toggleLock(false)">🔓 פתח ידנית</button>
+                <button class="btn-danger" onclick="toggleLock(true)">🔒 סגור ידנית</button>
+                <div class="timer-controls">
+                    <span>שניות:</span><input type="number" id="timerInput" value="15" min="3" max="120">
+                    <button class="btn-full" style="background:#f97316; margin:0;" onclick="startTimer()">⏱️ פתח עם שעון!</button>
+                </div>
+                
+                <hr style="border-color: #334155; margin: 20px 0;">
+                <button class="btn-full btn-victory" onclick="triggerVictory()">🏆 סיום וטקס מנצחים!</button>
+                <button class="btn-full btn-danger" style="margin-top:20px;" onclick="clearPlayers()">🗑️ נתק שחקנים</button>
             </div>
-            
-            <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px;">
-                <select id="savedGamesList">
-                    <option value="">-- בחר משחק לטעינה --</option>
-                </select>
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn-full" style="background: #38bdf8; color: #000;" onclick="loadFromBank()">📂 טען למחסנית</button>
-                    <button class="btn-full btn-danger" onclick="deleteFromBank()">🗑️ מחק מהבנק</button>
+
+            <div class="panel">
+                <h2>📝 הזנת שאלות למחסנית</h2>
+                <input type="text" id="qText" placeholder="שאלה...">
+                <div style="display:flex; gap:10px;"><input type="text" id="a1" placeholder="תשובה 1"><input type="text" id="a2" placeholder="תשובה 2"></div>
+                <div style="display:flex; gap:10px;"><input type="text" id="a3" placeholder="תשובה 3"><input type="text" id="a4" placeholder="תשובה 4"></div>
+                <input type="number" id="correct" placeholder="נכונה (1-4)" min="1" max="4">
+                <button class="btn-full btn-success" onclick="addQuestion()">➕ הוסף למחסנית</button>
+                <p style="text-align: center; margin-bottom: 5px;">שאלות במחסנית הפעילה: <span id="qCount" style="color:#38bdf8; font-weight:bold; font-size: 1.2rem;">0</span></p>
+                <button class="btn-full btn-danger" style="background: transparent; border: 1px solid #ef4444; color: #ef4444;" onclick="clearCurrentQuestions()">מחק מחסנית נוכחית</button>
+            </div>
+
+            <div class="panel">
+                <h2>🗂️ בנק משחקים (שמירה/טעינה)</h2>
+                <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <input type="text" id="newGameName" placeholder="תן שם למשחק (לדוגמה: פורים)">
+                    <button class="btn-full btn-success" onclick="saveToBank()">💾 שמור מחסנית לבנק</button>
+                </div>
+                <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px;">
+                    <select id="savedGamesList"><option value="">-- בחר משחק לטעינה --</option></select>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn-full" style="background: #38bdf8; color: #000;" onclick="loadFromBank()">📂 טען למחסנית</button>
+                        <button class="btn-full btn-danger" onclick="deleteFromBank()">🗑️ מחק מהבנק</button>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div class="panel">
-            <h2>👥 זיהוי שחקנים (ספר טלפונים)</h2>
-            <div id="adminPlayersList" style="max-height: 250px; overflow-y: auto; padding-right: 5px;"></div>
-        </div>
+            <div class="panel">
+                <h2>👥 זיהוי שחקנים (ספר טלפונים)</h2>
+                <div id="adminPlayersList" style="max-height: 250px; overflow-y: auto; padding-right: 5px;"></div>
+            </div>
 
-        <div class="panel">
-            <h2>💰 כסף וטכנולוגיה</h2>
-            <button class="btn-full" onclick="togglePremium()" id="premiumBtn" style="background: #ef4444;">💎 פרימיום: כבוי</button>
-            <hr style="border-color: #334155; margin: 20px 0;">
-            <h3 style="margin:0 0 10px 0; color: #14b8a6;">⏱️ מבחן מהירות (רדאר)</h3>
-            <button class="btn-full btn-radar" onclick="prepareCalibration()">1. הכן קהל (הצג מסך)</button>
-            <button class="btn-full btn-radar-go" onclick="startCalibration()" id="btnGo" style="display:none;">2. הזנק מבחן! (GO)</button>
-            <button class="btn-full btn-danger" onclick="stopCalibration()">3. סיים והצג סטטיסטיקות</button>
-            <div class="stats-box" id="adminStats"></div>
-        </div>
+            <div class="panel">
+                <h2>💰 כסף וטכנולוגיה</h2>
+                <button class="btn-full" onclick="togglePremium()" id="premiumBtn" style="background: #ef4444;">💎 פרימיום: כבוי</button>
+                <hr style="border-color: #334155; margin: 20px 0;">
+                <h3 style="margin:0 0 10px 0; color: #14b8a6;">⏱️ מבחן מהירות (רדאר)</h3>
+                <button class="btn-full btn-radar" onclick="prepareCalibration()">1. הכן קהל (הצג מסך)</button>
+                <button class="btn-full btn-radar-go" onclick="startCalibration()" id="btnGo" style="display:none;">2. הזנק מבחן! (GO)</button>
+                <button class="btn-full btn-danger" onclick="stopCalibration()">3. סיים והצג סטטיסטיקות</button>
+                <div class="stats-box" id="adminStats"></div>
+            </div>
 
-        <div class="panel">
-            <h2>🎬 תפאורה ואפקטים</h2>
-            <button class="btn-bg" onclick="sendBackground('studio')">🎙️ אולפן</button> <button class="btn-bg" onclick="sendBackground('matrix')">💻 מאטריקס</button>
-            <button class="btn-bg" onclick="sendBackground('space')">🌌 חלל</button> <button class="btn-bg" onclick="sendBackground('fire')">🔥 אש</button>
-            <hr style="border-color: #334155; margin: 15px 0;">
-            <button class="btn-effect" onclick="sendEffect('confetti')">🎉 קונפטי</button> <button class="btn-effect" onclick="sendEffect('flicker')">🚨 פליקר</button>
-            <button class="btn-effect" onclick="sendEffect('shake')">🌩️ רעידה</button> <button class="btn-effect" onclick="sendEffect('spotlight')">🔦 זרקור</button>
+            <div class="panel">
+                <h2>🎬 תפאורה ואפקטים</h2>
+                <button class="btn-bg" onclick="sendBackground('studio')">🎙️ אולפן</button> <button class="btn-bg" onclick="sendBackground('matrix')">💻 מאטריקס</button>
+                <button class="btn-bg" onclick="sendBackground('space')">🌌 חלל</button> <button class="btn-bg" onclick="sendBackground('fire')">🔥 אש</button>
+                <hr style="border-color: #334155; margin: 15px 0;">
+                <button class="btn-effect" onclick="sendEffect('confetti')">🎉 קונפטי</button> <button class="btn-effect" onclick="sendEffect('flicker')">🚨 פליקר</button>
+                <button class="btn-effect" onclick="sendEffect('shake')">🌩️ רעידה</button> <button class="btn-effect" onclick="sendEffect('spotlight')">🔦 זרקור</button>
+            </div>
         </div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
+        let myRoomId = "";
         let currentSettings = {};
-        
+
+        function joinRoom() {
+            const input = document.getElementById('roomIdInput').value.trim();
+            if (!input) return alert("חובה להזין קוד משחק!");
+            myRoomId = input;
+            socket.emit('joinRoom', myRoomId);
+            document.getElementById('loginOverlay').style.display = 'none';
+            document.getElementById('mainDashboard').style.display = 'block';
+            document.getElementById('displayRoomId').innerText = myRoomId;
+        }
+
         socket.on('updateSettings', s => { 
             currentSettings = s; const pBtn = document.getElementById('premiumBtn');
             if(s.isPremium) { pBtn.innerText = '💎 פרימיום: מופעל!'; pBtn.style.background = '#eab308'; pBtn.style.color = '#000'; } 
@@ -121,13 +154,10 @@
         
         socket.on('updateQuestions', qs => { document.getElementById('qCount').innerText = qs.length; });
         
-        // 🗂️ קבלת רשימת המשחקים השמורים ועדכון התפריט
         socket.on('updateSavedGames', games => {
             const select = document.getElementById('savedGamesList');
             select.innerHTML = '<option value="">-- בחר משחק לטעינה --</option>';
-            games.forEach(g => {
-                select.innerHTML += `<option value="${g}">${g}</option>`;
-            });
+            games.forEach(g => { select.innerHTML += `<option value="${g}">${g}</option>`; });
         });
 
         socket.on('updateLeaderboard', players => {
@@ -145,35 +175,10 @@
             box.innerHTML = `<b>📊 תוצאות רדאר:</b><br>נבדקו: ${stats.count} שחקנים<br>מהיר ביותר: ${stats.min}ms<br>איטי ביותר: ${stats.max}ms<br>ממוצע: ${stats.avg}ms`;
         });
 
-        // פונקציות בנק השאלות 🗂️
-        function saveToBank() {
-            const name = document.getElementById('newGameName').value;
-            const qCount = parseInt(document.getElementById('qCount').innerText);
-            if (!name) return alert('נא להקליד שם למשחק!');
-            if (qCount === 0) return alert('המחסנית ריקה! הוסף שאלות קודם.');
-            socket.emit('saveGameToBank', name);
-            document.getElementById('newGameName').value = '';
-            alert('המשחק נשמר בהצלחה לבנק!');
-        }
-
-        function loadFromBank() {
-            const name = document.getElementById('savedGamesList').value;
-            if (!name) return alert('נא לבחור משחק מהרשימה!');
-            if(confirm(`לטעון את ${name} למחסנית? (זה יחליף את השאלות הקיימות)`)) {
-                socket.emit('loadGameFromBank', name);
-            }
-        }
-
-        function deleteFromBank() {
-            const name = document.getElementById('savedGamesList').value;
-            if (!name) return alert('נא לבחור משחק למחיקה!');
-            if(confirm(`בטוח שברצונך למחוק את המשחק "${name}" לתמיד?`)) {
-                socket.emit('deleteGameFromBank', name);
-            }
-        }
-
+        function saveToBank() { const name = document.getElementById('newGameName').value; const qCount = parseInt(document.getElementById('qCount').innerText); if (!name) return alert('נא להקליד שם למשחק!'); if (qCount === 0) return alert('המחסנית ריקה!'); socket.emit('saveGameToBank', name); document.getElementById('newGameName').value = ''; alert('נשמר לבנק!'); }
+        function loadFromBank() { const name = document.getElementById('savedGamesList').value; if (!name) return alert('נא לבחור משחק!'); if(confirm(`לטעון את ${name}?`)) socket.emit('loadGameFromBank', name); }
+        function deleteFromBank() { const name = document.getElementById('savedGamesList').value; if (!name) return alert('נא לבחור משחק למחיקה!'); if(confirm(`למחוק את ${name} לתמיד?`)) socket.emit('deleteGameFromBank', name); }
         function clearCurrentQuestions() { if(confirm('למחוק את כל השאלות מהמחסנית הפעילה כעת?')) socket.emit('clearQuestions'); }
-
         function saveName(phone) { const newName = document.getElementById('name_' + phone).value; if (newName.trim() !== '') { socket.emit('updatePlayerName', { phone: phone, newName: newName }); const btn = document.querySelector(`#name_${phone}`).nextElementSibling; btn.innerText = '✔️'; setTimeout(() => btn.innerText = '💾', 2000); } }
         function togglePremium() { currentSettings.isPremium = !currentSettings.isPremium; socket.emit('saveSettings', currentSettings); }
         function startGame() { socket.emit('startGame'); }
@@ -182,7 +187,7 @@
         function clearPlayers() { if(confirm('לנתק כולם?')) socket.emit('clearPlayers'); }
         function sendEffect(type) { socket.emit('triggerEffect', type); }
         function sendBackground(bg) { socket.emit('changeBackground', bg); }
-        function triggerVictory() { if(confirm('לסיים את המשחק ולהציג את הפודיום?')) socket.emit('showVictoryScreen'); }
+        function triggerVictory() { if(confirm('לסיים ולהציג פודיום?')) socket.emit('showVictoryScreen'); }
         function prepareCalibration() { socket.emit('prepareCalibration'); document.getElementById('btnGo').style.display = 'block'; document.getElementById('adminStats').style.display = 'none'; }
         function startCalibration() { socket.emit('startCalibration'); document.getElementById('btnGo').style.display = 'none'; }
         function stopCalibration() { socket.emit('endCalibration'); }
@@ -190,7 +195,7 @@
         
         function addQuestion() { 
             const q = { q: document.getElementById('qText').value, a1: document.getElementById('a1').value, a2: document.getElementById('a2').value, a3: document.getElementById('a3').value, a4: document.getElementById('a4').value, ans: document.getElementById('correct').value }; 
-            if(q.q && q.ans) { socket.emit('addSingleQuestion', q); alert('נוסף למחסנית הפעילה!'); document.getElementById('qText').value = ''; } else { alert('חסר מידע. חובה למלא שאלה ותשובה נכונה.'); } 
+            if(q.q && q.ans) { socket.emit('addSingleQuestion', q); alert('נוסף למחסנית הפעילה!'); document.getElementById('qText').value = ''; } else { alert('חסר מידע.'); } 
         }
     </script>
 </body>
