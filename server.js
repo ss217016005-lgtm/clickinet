@@ -17,7 +17,6 @@ let gameActive = false;
 let answersLocked = true; 
 let gameSettings = { gameName: "קליקינט", phoneNumber: "077-2296674", isPremium: false };
 
-// 📡 מצבי הרדאר החדשים: 'off' | 'prepared' | 'active'
 let calibrationState = 'off';
 let calibrationStartTime = 0;
 let questionStartTime = 0;
@@ -27,38 +26,34 @@ app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
 app.get('/admin', (req, res) => res.sendFile(__dirname + '/admin.html'));
 
 app.post('/api/webhook/meshulam', (req, res) => {
-    if (req.body.status === '1' || req.body.status === 1) {
-        gameSettings.isPremium = true; io.emit('updateSettings', gameSettings);
-    }
+    if (req.body.status === '1' || req.body.status === 1) { gameSettings.isPremium = true; io.emit('updateSettings', gameSettings); }
     res.status(200).send("OK");
 });
 
+// 📞 מנוע התקשורת החדש - אין ניתוקים! הקו נשאר פתוח.
 app.get('/api/answer', (req, res) => {
     const phone = req.query.ApiPhone || "unknown";
     const userChoice = req.query.val_1; 
 
     if (!activePlayers[phone]) {
         if (!gameSettings.isPremium && Object.keys(activePlayers).length >= 10) {
-            return res.send("id_list_message=t-המשחק מוגבל לעשרה שחקנים. פנה למנהל&go_to_folder=hangup");
+            return res.send("id_list_message=t-המשחק מוגבל לעשרה שחקנים. פנה למנהל&go_to_folder=hangup"); // רק פה ננתק אם אין מנוי
         }
         activePlayers[phone] = { name: phonebook[phone] || "שחקן חדש", score: 0, lastAnswered: -1, currentChoice: null, ping: 0 };
         io.emit('updateLeaderboard', activePlayers);
     }
 
     if (userChoice) {
-        // 📡 בדיקת רדאר משודרגת - לא מנתקים את השיחה!
         if (calibrationState === 'active') {
             let userPing = Date.now() - calibrationStartTime;
             activePlayers[phone].ping = userPing; 
-            let calibratedCount = Object.values(activePlayers).filter(p => p.ping > 0).length;
-            io.emit('calibrationProgress', { count: calibratedCount });
-            // פקודת Read שומרת אותם על הקו!
-            return res.send("read=t-בדיקת המהירות נקלטה בהצלחה. אנא המתינו לשאלה הבאה=val_1,no,1,1,15,No,No");
+            io.emit('calibrationProgress', { count: Object.values(activePlayers).filter(p => p.ping > 0).length });
+            return res.send("read=t-בדיקת המהירות נקלטה בהצלחה. אנא המתינו לשאלה הבאה=val_1,no,1,1,60,No,No");
         } else if (calibrationState === 'prepared') {
-            return res.send("read=t-הקשתם מוקדם מדי. המתינו להוראת ההזנקה=val_1,no,1,1,10,No,No");
+            return res.send("read=t-הקשתם מוקדם מדי. המתינו להוראת ההזנקה=val_1,no,1,1,60,No,No");
         }
 
-        if (answersLocked) return res.send("id_list_message=t-המענה סגור כעת&go_to_folder=hangup");
+        if (answersLocked) return res.send("read=t-המענה סגור כעת, נא להמתין=val_1,no,1,1,60,No,No");
         
         if (gameActive && currentQuestion >= 0 && currentQuestion < questions.length) {
             let q = questions[currentQuestion];
@@ -72,13 +67,13 @@ app.get('/api/answer', (req, res) => {
                 io.emit('updateLeaderboard', activePlayers);
             }
         }
-        return res.send("id_list_message=t-תשובתך נקלטה&go_to_folder=hangup");
+        return res.send("read=t-תשובתך נקלטה. אנא המתינו לשאלה הבאה=val_1,no,1,1,60,No,No");
     }
     
     if (answersLocked && calibrationState === 'off') {
-        res.send("id_list_message=t-המענה סגור כעת, נא להביט במסך&go_to_folder=hangup");
+        res.send("read=t-המענה סגור כעת. הישארו על הקו=val_1,no,1,1,60,No,No");
     } else {
-        res.send("read=t-הקש את תשובתך=val_1,no,1,1,10,No,No");
+        res.send("read=t-הקש את תשובתך=val_1,no,1,1,60,No,No");
     }
 });
 
@@ -91,30 +86,13 @@ io.on('connection', (socket) => {
     socket.on('triggerEffect', type => { io.emit('playEffect', type); });
     socket.on('changeBackground', bg => { io.emit('setBg', bg); });
 
-    // 📡 פקודות רדאר חדשות
-    socket.on('prepareCalibration', () => { 
-        calibrationState = 'prepared'; 
-        // מאפסים פינגים ישנים
-        for(let p in activePlayers) activePlayers[p].ping = 0;
-        io.emit('prepareCalibration'); 
-    });
-    
-    socket.on('startCalibration', () => { 
-        calibrationState = 'active'; 
-        calibrationStartTime = Date.now(); 
-        io.emit('startCalibration'); 
-    });
-    
+    socket.on('prepareCalibration', () => { calibrationState = 'prepared'; for(let p in activePlayers) activePlayers[p].ping = 0; io.emit('prepareCalibration'); });
+    socket.on('startCalibration', () => { calibrationState = 'active'; calibrationStartTime = Date.now(); io.emit('startCalibration'); });
     socket.on('endCalibration', () => { 
         calibrationState = 'off'; 
-        // חישוב סטטיסטיקות לשליחה למסך
         let pings = Object.values(activePlayers).filter(p => p.ping > 0).map(p => p.ping);
         let stats = { count: pings.length, avg: 0, min: 0, max: 0 };
-        if(pings.length > 0) {
-            stats.avg = Math.round(pings.reduce((a,b)=>a+b,0)/pings.length);
-            stats.min = Math.min(...pings);
-            stats.max = Math.max(...pings);
-        }
+        if(pings.length > 0) { stats.avg = Math.round(pings.reduce((a,b)=>a+b,0)/pings.length); stats.min = Math.min(...pings); stats.max = Math.max(...pings); }
         io.emit('endCalibration', stats); 
     });
 
@@ -126,20 +104,13 @@ io.on('connection', (socket) => {
     });
 
     socket.on('addSingleQuestion', q => { questions.push(q); io.emit('updateQuestions', questions); });
-    
-    socket.on('toggleLock', lock => { 
-        answersLocked = lock; 
-        if(lock && timerTimeout) clearTimeout(timerTimeout); 
-        io.emit('lockState', answersLocked); 
-    });
+    socket.on('toggleLock', lock => { answersLocked = lock; if(lock && timerTimeout) clearTimeout(timerTimeout); io.emit('lockState', answersLocked); });
 
     socket.on('startTimer', sec => {
         answersLocked = false; questionStartTime = Date.now(); 
         io.emit('lockState', false); io.emit('startCountdown', sec);
         if(timerTimeout) clearTimeout(timerTimeout);
-        timerTimeout = setTimeout(() => {
-            answersLocked = true; io.emit('lockState', true); io.emit('playEffect', 'shake');
-        }, sec * 1000);
+        timerTimeout = setTimeout(() => { answersLocked = true; io.emit('lockState', true); io.emit('playEffect', 'shake'); }, sec * 1000);
     });
 
     socket.on('startGame', () => {
@@ -152,15 +123,25 @@ io.on('connection', (socket) => {
     socket.on('nextQuestion', () => {
         currentQuestion++;
         if (currentQuestion < questions.length) {
-            answersLocked = true; 
-            for(let p in activePlayers) activePlayers[p].currentChoice = null;
+            answersLocked = true; for(let p in activePlayers) activePlayers[p].currentChoice = null;
             io.emit('newQuestion', questions[currentQuestion]); io.emit('lockState', true);
         } else {
             gameActive = false; answersLocked = true; io.emit('gameOver');
         }
     });
+
+    // 🏆 פקודת סיום משחק ופודיום!
+    socket.on('showVictoryScreen', () => {
+        gameActive = false;
+        answersLocked = true;
+        io.emit('lockState', true);
+        // שולחים למסך את 3 המנצחים הגדולים
+        const topPlayers = Object.values(activePlayers).sort((a,b) => b.score - a.score).slice(0, 3);
+        io.emit('victoryPodium', topPlayers);
+    });
+
     socket.on('clearPlayers', () => { activePlayers = {}; io.emit('updateLeaderboard', activePlayers); });
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V16.0 (Pro Radar) is ONLINE ==="));
+http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V17.0 (Never Hangup & Podium) is ONLINE ==="));
