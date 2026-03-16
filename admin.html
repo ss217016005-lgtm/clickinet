@@ -14,6 +14,7 @@
         .btn-full { width: calc(100% - 10px); }
         .btn-danger { background: #ef4444; } .btn-success { background: #10b981; } .btn-effect { background: #8b5cf6; } .btn-bg { background: #f59e0b; color: #000; }
         .btn-radar { background: #14b8a6; color: #fff; } .btn-radar-go { background: #ef4444; font-size: 1.3rem; animation: pulse 1s infinite;}
+        .btn-victory { background: linear-gradient(90deg, #fbbf24, #f59e0b); color: #000; font-size: 1.3rem; border: 2px solid #fff; box-shadow: 0 0 15px rgba(251, 191, 36, 0.5); }
         @keyframes pulse { 0% {box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);} 70% {box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);} 100% {box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);} }
         input, select { width: calc(100% - 22px); padding: 10px; margin: 5px 0 15px 0; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: #fff; }
         .status-box { background: #000; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 1.2rem; color: #10b981; text-align: center; margin-bottom: 15px;}
@@ -39,6 +40,10 @@
                 <span>שניות:</span><input type="number" id="timerInput" value="15" min="3" max="120">
                 <button class="btn-full" style="background:#f97316; margin:0;" onclick="startTimer()">⏱️ פתח עם שעון!</button>
             </div>
+            
+            <hr style="border-color: #334155; margin: 20px 0;">
+            <button class="btn-full btn-victory" onclick="triggerVictory()">🏆 סיום וטקס מנצחים!</button>
+            
             <button class="btn-full btn-danger" style="margin-top:20px;" onclick="clearPlayers()">🗑️ נתק שחקנים</button>
         </div>
 
@@ -117,8 +122,8 @@
         function clearPlayers() { if(confirm('לנתק כולם?')) socket.emit('clearPlayers'); }
         function sendEffect(type) { socket.emit('triggerEffect', type); }
         function sendBackground(bg) { socket.emit('changeBackground', bg); }
+        function triggerVictory() { if(confirm('לסיים את המשחק ולהציג את הפודיום?')) socket.emit('showVictoryScreen'); }
         
-        // פקודות רדאר חדשות!
         function prepareCalibration() { socket.emit('prepareCalibration'); document.getElementById('btnGo').style.display = 'block'; document.getElementById('adminStats').style.display = 'none'; }
         function startCalibration() { socket.emit('startCalibration'); document.getElementById('btnGo').style.display = 'none'; }
         function stopCalibration() { socket.emit('endCalibration'); }
