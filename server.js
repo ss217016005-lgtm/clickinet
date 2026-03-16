@@ -37,9 +37,11 @@ app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
 app.get('/admin', (req, res) => res.sendFile(__dirname + '/admin.html'));
 app.get('/super', (req, res) => res.sendFile(__dirname + '/superadmin.html')); 
 
+// === הראוט של ימות המשיח (משולב עם אלגוריתם הניקוד של יהודה!) ===
 app.all('/api/answer', (req, res) => {
     res.set('Content-Type', 'text/plain; charset=utf-8');
     try {
+        const exactHitTime = Date.now(); // לכידת הזמן המדויק
         const input = { ...req.query, ...req.body };
         console.log("📞 בקשה מימות המשיח:", JSON.stringify(input));
 
@@ -51,66 +53,82 @@ app.all('/api/answer', (req, res) => {
         let roomId = db.phoneToRoom[phone];
         let val = input.val_1; 
 
+        // --- 1. שחקן לא מחובר לחדר ---
         if (!roomId) {
             if (val !== undefined && val !== '') {
-                if (val === '1' && !db.pins['1']) {
-                    return res.send("read=t-נא להקיש קוד משחק וסולמית=val_1,no,10,1,15,no,no");
-                }
-                if (!db.pins[val]) {
-                    console.log("❌ קוד שגוי:", val);
-                    return res.send(`read=t-קוד שגוי נא לנסות שוב=val_1,no,10,1,15,no,no`);
-                }
-                if (db.pins[val].gamesLeft <= 0) {
-                    return res.send(`id_list_message=t-הקוד סיים את המכסה&go_to_folder=hangup`);
-                }
+                if (val === '1' && !db.pins['1']) return res.send("read=t-נא להקיש קוד משחק וסולמית=val_1,no,10,1,15,no,no");
+                if (!db.pins[val]) return res.send(`read=t-קוד שגוי נא לנסות שוב=val_1,no,10,1,15,no,no`);
+                if (db.pins[val].gamesLeft <= 0) return res.send(`id_list_message=t-הקוד סיים את המכסה&go_to_folder=hangup`);
 
-                console.log("✅ מחובר לחדר:", val);
                 db.phoneToRoom[phone] = val;
                 saveDB();
                 getRoom(val);
-                
                 return res.send(`id_list_message=t-מחובר בהצלחה&go_to_folder=${folderPath}`);
             } else {
-                console.log("⏳ מבקש קוד משחק...");
                 return res.send("read=t-ברוכים הבאים הקישו קוד משחק וסולמית=val_1,no,10,1,15,no,no");
             }
         }
 
+        // --- 2. שחקן מחובר לחדר ---
         const room = getRoom(roomId);
         let player = room.activePlayers[phone];
+        
+        // יצירת השחקן עם מונה רצף ההצלחות (streak)
         if (!player) {
-            room.activePlayers[phone] = { name: db.phonebooks[roomId][phone] || "שחקן", score: 0, lastAnswered: -1, ping: 0 };
+            room.activePlayers[phone] = { name: db.phonebooks[roomId][phone] || "שחקן חדש", score: 0, lastAnswered: -1, ping: 0, streak: 0 };
             player = room.activePlayers[phone];
             io.to(roomId).emit('updateLeaderboard', room.activePlayers);
         }
 
-        if (val === '') {
-            console.log("🔄 ריסטרט שקט");
-            return res.send(`go_to_folder=${folderPath}`);
+        let totalPlayers = Object.keys(room.activePlayers).length;
+        if (!room.gameSettings.isPremium && totalPlayers > 10) {
+            return res.send(`id_list_message=t-המשחק החינמי מוגבל לעשרה שחקנים&go_to_folder=${folderPath}`);
         }
+
+        if (val === '') return res.send(`go_to_folder=${folderPath}`);
         
         if (val && val !== '') {
-            console.log("🎯 לחץ:", val);
             if (room.calibrationState === 'active') {
-                player.ping = Date.now() - room.calibrationStartTime;
+                player.ping = exactHitTime - room.calibrationStartTime;
                 io.to(roomId).emit('calibrationProgress', { count: Object.values(room.activePlayers).filter(p => p.ping > 0).length });
                 return res.send(`id_list_message=t-נקלט&go_to_folder=${folderPath}`);
             }
+            
+            // המענה פתוח והמשחק פעיל
             if (room.gameActive && !room.answersLocked && room.currentQuestion >= 0) {
                 let q = room.questions[room.currentQuestion];
+                
                 if (player.lastAnswered !== room.currentQuestion) {
                     player.lastAnswered = room.currentQuestion;
+                    player.currentChoice = val;
+                    
+                    // --- אלגוריתם הניקוד המשוכלל ---
                     if (q.ans && val === String(q.ans)) {
-                        let netTime = Math.max(100, (Date.now() - room.questionStartTime) - (player.ping || 0)); 
-                        player.score += Math.max(10, 1000 - Math.floor(netTime / 10));
+                        let netTime = Math.max(100, (exactHitTime - room.questionStartTime) - (player.ping || 0)); 
+                        let speedBonus = Math.max(0, 100 - Math.floor(netTime / 1000));
+                        
+                        player.streak = (player.streak || 0) + 1; // העלאת הרצף
+                        let streakBonus = (player.streak > 1) ? (player.streak * 15) : 0; // בונוס רצף
+                        
+                        player.score += (100 + speedBonus + streakBonus); // הוספת כל הנקודות
+                    } else {
+                        player.streak = 0; // שריפת הרצף בטעות
                     }
+                    
                     io.to(roomId).emit('updateLeaderboard', room.activePlayers);
                 }
                 return res.send(`id_list_message=t-תשובה נקלטה&go_to_folder=${folderPath}`);
             }
+            
+            // אם המענה סגור
+            if (room.answersLocked) {
+                return res.send(`id_list_message=t-המענה סגור כעת&go_to_folder=${folderPath}`);
+            }
+            
             return res.send(`id_list_message=t-נקלט&go_to_folder=${folderPath}`);
         }
 
+        // --- 3. לולאת המתנה ---
         if (room.calibrationState === 'prepared') return res.send("read=t-היכונו=val_1,no,1,1,10,no,no");
         if (room.calibrationState === 'active') return res.send("read=t-הקש 1 עכשיו=val_1,no,1,1,10,no,no");
         if (room.gameActive && !room.answersLocked) {
@@ -118,7 +136,6 @@ app.all('/api/answer', (req, res) => {
             return res.send("read=t-הקש תשובה=val_1,no,1,1,15,no,no");
         }
         
-        console.log("⏳ ממתין...");
         return res.send("read=t-ממתין=val_1,no,1,1,10,no,no");
 
     } catch(err) {
@@ -154,7 +171,7 @@ io.on('connection', (socket) => {
         if(!socket.roomId) return; let room = rooms[socket.roomId]; if(room.questions.length === 0) return; 
         db.pins[socket.roomId].gamesLeft--; saveDB(); io.to(socket.roomId).emit('updateGamesLeft', db.pins[socket.roomId].gamesLeft);
         room.gameActive = true; room.currentQuestion = 0; room.answersLocked = true; 
-        for(let p in room.activePlayers) { room.activePlayers[p].score = 0; room.activePlayers[p].lastAnswered = -1; } 
+        for(let p in room.activePlayers) { room.activePlayers[p].score = 0; room.activePlayers[p].lastAnswered = -1; room.activePlayers[p].streak = 0; } 
         io.to(socket.roomId).emit('newQuestion', room.questions[room.currentQuestion]); io.to(socket.roomId).emit('lockState', true); io.to(socket.roomId).emit('updateLeaderboard', room.activePlayers); 
     });
 
@@ -166,22 +183,21 @@ io.on('connection', (socket) => {
     socket.on('endCalibration', () => { if(socket.roomId) { rooms[socket.roomId].calibrationState = 'off'; let pings = Object.values(rooms[socket.roomId].activePlayers).filter(p => p.ping > 0).map(p => p.ping); let stats = { count: pings.length, avg: 0, min: 0, max: 0 }; if(pings.length > 0) { stats.avg = Math.round(pings.reduce((a,b)=>a+b,0)/pings.length); stats.min = Math.min(...pings); stats.max = Math.max(...pings); } io.to(socket.roomId).emit('endCalibration', stats); } });
     socket.on('updatePlayerName', ({ phone, newName }) => { if(socket.roomId) { db.phonebooks[socket.roomId][phone] = newName; saveDB(); if (rooms[socket.roomId].activePlayers[phone]) rooms[socket.roomId].activePlayers[phone].name = newName; io.to(socket.roomId).emit('updateLeaderboard', rooms[socket.roomId].activePlayers); } });
     
-    // פקודות הוספת השאלות
     socket.on('addSingleQuestion', q => { if(socket.roomId) { rooms[socket.roomId].questions.push(q); io.to(socket.roomId).emit('updateQuestions', rooms[socket.roomId].questions); } });
-    
-    // פקודה חדשה: שאיבת אקסל שלם!
     socket.on('addBulkQuestions', qs => { if(socket.roomId) { rooms[socket.roomId].questions = rooms[socket.roomId].questions.concat(qs); io.to(socket.roomId).emit('updateQuestions', rooms[socket.roomId].questions); } });
-    
     socket.on('clearQuestions', () => { if(socket.roomId) { rooms[socket.roomId].questions = []; io.to(socket.roomId).emit('updateQuestions', rooms[socket.roomId].questions); } });
     socket.on('saveGameToBank', name => { if(socket.roomId) { db.savedGames[socket.roomId][name] = [...rooms[socket.roomId].questions]; saveDB(); io.to(socket.roomId).emit('updateSavedGames', Object.keys(db.savedGames[socket.roomId])); } });
     socket.on('loadGameFromBank', name => { if(socket.roomId && db.savedGames[socket.roomId][name]) { rooms[socket.roomId].questions = [...db.savedGames[socket.roomId][name]]; io.to(socket.roomId).emit('updateQuestions', rooms[socket.roomId].questions); } });
     socket.on('deleteGameFromBank', name => { if(socket.roomId) { delete db.savedGames[socket.roomId][name]; saveDB(); io.to(socket.roomId).emit('updateSavedGames', Object.keys(db.savedGames[socket.roomId])); } });
     socket.on('toggleLock', lock => { if(socket.roomId) { rooms[socket.roomId].answersLocked = lock; if(lock && rooms[socket.roomId].timerTimeout) clearTimeout(rooms[socket.roomId].timerTimeout); io.to(socket.roomId).emit('lockState', rooms[socket.roomId].answersLocked); } });
     socket.on('startTimer', sec => { if(socket.roomId) { let room = rooms[socket.roomId]; room.answersLocked = false; room.questionStartTime = Date.now(); io.to(socket.roomId).emit('lockState', false); io.to(socket.roomId).emit('startCountdown', sec); if(room.timerTimeout) clearTimeout(room.timerTimeout); room.timerTimeout = setTimeout(() => { room.answersLocked = true; io.to(socket.roomId).emit('lockState', true); io.to(socket.roomId).emit('playEffect', 'shake'); }, sec * 1000); } });
+    
     socket.on('nextQuestion', () => { if(socket.roomId) { let room = rooms[socket.roomId]; room.currentQuestion++; if (room.currentQuestion < room.questions.length) { room.answersLocked = true; for(let p in room.activePlayers) room.activePlayers[p].currentChoice = null; io.to(socket.roomId).emit('newQuestion', room.questions[room.currentQuestion]); io.to(socket.roomId).emit('lockState', true); } else { room.gameActive = false; room.answersLocked = true; io.to(socket.roomId).emit('gameOver'); } } });
+    socket.on('prevQuestion', () => { if(socket.roomId) { let room = rooms[socket.roomId]; if (room.currentQuestion > 0) { room.currentQuestion--; room.answersLocked = true; for(let p in room.activePlayers) room.activePlayers[p].currentChoice = null; io.to(socket.roomId).emit('newQuestion', room.questions[room.currentQuestion]); io.to(socket.roomId).emit('lockState', true); } } });
+
     socket.on('showVictoryScreen', () => { if(socket.roomId) { let room = rooms[socket.roomId]; room.gameActive = false; room.answersLocked = true; io.to(socket.roomId).emit('lockState', true); const topPlayers = Object.values(room.activePlayers).sort((a,b) => b.score - a.score).slice(0, 3); io.to(socket.roomId).emit('victoryPodium', topPlayers); } });
     socket.on('clearPlayers', () => { if(socket.roomId) { rooms[socket.roomId].activePlayers = {}; io.to(socket.roomId).emit('updateLeaderboard', rooms[socket.roomId].activePlayers); } });
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V47.0 (Excel Upload Ready) is ONLINE ==="));
+http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V49.0 (Excel + Streak + PrevBtn) is ONLINE ==="));
