@@ -37,7 +37,6 @@ app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
 app.get('/admin', (req, res) => res.sendFile(__dirname + '/admin.html'));
 app.get('/super', (req, res) => res.sendFile(__dirname + '/superadmin.html')); 
 
-// 🛡️ מנוע התקשורת V46 - תחביר ימות המשיח מושלם!
 app.all('/api/answer', (req, res) => {
     res.set('Content-Type', 'text/plain; charset=utf-8');
     try {
@@ -47,19 +46,16 @@ app.all('/api/answer', (req, res) => {
         const phone = input.ApiPhone || "unknown";
         let ext = input.ApiExtension || "";
         let folderPath = ext.startsWith('/') ? ext : '/' + ext; 
-        if (folderPath === '/') folderPath = '/'; // נשארים בשלוחה הראשית!
+        if (folderPath === '/') folderPath = '/'; 
 
         let roomId = db.phoneToRoom[phone];
-        let val = input.val_1; // חזרנו ל-val_1 הסטנדרטי
+        let val = input.val_1; 
 
-        // --- 1. הילד עוד לא מחובר ---
         if (!roomId) {
             if (val !== undefined && val !== '') {
-                // התעלמות מלחצן 1 אם לחצו כדי להיכנס לשלוחה בטעות
                 if (val === '1' && !db.pins['1']) {
                     return res.send("read=t-נא להקיש קוד משחק וסולמית=val_1,no,10,1,15,no,no");
                 }
-
                 if (!db.pins[val]) {
                     console.log("❌ קוד שגוי:", val);
                     return res.send(`read=t-קוד שגוי נא לנסות שוב=val_1,no,10,1,15,no,no`);
@@ -76,12 +72,10 @@ app.all('/api/answer', (req, res) => {
                 return res.send(`id_list_message=t-מחובר בהצלחה&go_to_folder=${folderPath}`);
             } else {
                 console.log("⏳ מבקש קוד משחק...");
-                // בלי נקודות, no קטן!
                 return res.send("read=t-ברוכים הבאים הקישו קוד משחק וסולמית=val_1,no,10,1,15,no,no");
             }
         }
 
-        // --- 2. הילד מחובר ---
         const room = getRoom(roomId);
         let player = room.activePlayers[phone];
         if (!player) {
@@ -117,7 +111,6 @@ app.all('/api/answer', (req, res) => {
             return res.send(`id_list_message=t-נקלט&go_to_folder=${folderPath}`);
         }
 
-        // --- 3. לולאת המתנה ---
         if (room.calibrationState === 'prepared') return res.send("read=t-היכונו=val_1,no,1,1,10,no,no");
         if (room.calibrationState === 'active') return res.send("read=t-הקש 1 עכשיו=val_1,no,1,1,10,no,no");
         if (room.gameActive && !room.answersLocked) {
@@ -172,7 +165,13 @@ io.on('connection', (socket) => {
     socket.on('startCalibration', () => { if(socket.roomId) { rooms[socket.roomId].calibrationState = 'active'; rooms[socket.roomId].calibrationStartTime = Date.now(); io.to(socket.roomId).emit('startCalibration'); } });
     socket.on('endCalibration', () => { if(socket.roomId) { rooms[socket.roomId].calibrationState = 'off'; let pings = Object.values(rooms[socket.roomId].activePlayers).filter(p => p.ping > 0).map(p => p.ping); let stats = { count: pings.length, avg: 0, min: 0, max: 0 }; if(pings.length > 0) { stats.avg = Math.round(pings.reduce((a,b)=>a+b,0)/pings.length); stats.min = Math.min(...pings); stats.max = Math.max(...pings); } io.to(socket.roomId).emit('endCalibration', stats); } });
     socket.on('updatePlayerName', ({ phone, newName }) => { if(socket.roomId) { db.phonebooks[socket.roomId][phone] = newName; saveDB(); if (rooms[socket.roomId].activePlayers[phone]) rooms[socket.roomId].activePlayers[phone].name = newName; io.to(socket.roomId).emit('updateLeaderboard', rooms[socket.roomId].activePlayers); } });
+    
+    // פקודות הוספת השאלות
     socket.on('addSingleQuestion', q => { if(socket.roomId) { rooms[socket.roomId].questions.push(q); io.to(socket.roomId).emit('updateQuestions', rooms[socket.roomId].questions); } });
+    
+    // פקודה חדשה: שאיבת אקסל שלם!
+    socket.on('addBulkQuestions', qs => { if(socket.roomId) { rooms[socket.roomId].questions = rooms[socket.roomId].questions.concat(qs); io.to(socket.roomId).emit('updateQuestions', rooms[socket.roomId].questions); } });
+    
     socket.on('clearQuestions', () => { if(socket.roomId) { rooms[socket.roomId].questions = []; io.to(socket.roomId).emit('updateQuestions', rooms[socket.roomId].questions); } });
     socket.on('saveGameToBank', name => { if(socket.roomId) { db.savedGames[socket.roomId][name] = [...rooms[socket.roomId].questions]; saveDB(); io.to(socket.roomId).emit('updateSavedGames', Object.keys(db.savedGames[socket.roomId])); } });
     socket.on('loadGameFromBank', name => { if(socket.roomId && db.savedGames[socket.roomId][name]) { rooms[socket.roomId].questions = [...db.savedGames[socket.roomId][name]]; io.to(socket.roomId).emit('updateQuestions', rooms[socket.roomId].questions); } });
@@ -185,4 +184,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V46.0 (Yemot Syntax Perfection) is ONLINE ==="));
+http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V47.0 (Excel Upload Ready) is ONLINE ==="));
