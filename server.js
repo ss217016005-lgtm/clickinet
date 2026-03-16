@@ -39,19 +39,18 @@ app.post('/api/webhook/meshulam', (req, res) => {
     res.status(200).send("OK");
 });
 
-// 📞 המנוע הסופי! (עוקף את הניתוקים של ימות המשיח)
+// 📞 מנוע התקשורת הסופי והמתוקן
 app.get('/api/answer', (req, res) => {
     const phone = req.query.ApiPhone || "unknown";
     
-    // 1. הילד הרגע התקשר? נבקש את קוד החדר שאתה המצאת!
+    // 🔑 התיקון הקריטי! max_digits שונה מ-1 ל-10 (אפשר להקיש קוד חדר ארוך!)
     if (!req.query.val_room) {
-        return res.send("read=t-ברוכים הבאים למערכת קליקינט. אנא הקישו את קוד המשחק וסיום בסולמית=val_room,no,1,1,15,No,No");
+        return res.send("read=t-ברוכים הבאים. אנא הקישו את קוד המשחק וסיום בסולמית=val_room,no,1,10,15,No,No");
     }
     
     const roomId = req.query.val_room;
     const room = getRoom(roomId);
 
-    // 2. חיפוש התשובה של הילד
     let userChoice = null;
     for (let key in req.query) {
         if (key.startsWith('val_') && key !== 'val_room' && req.query[key] !== '') { 
@@ -59,7 +58,6 @@ app.get('/api/answer', (req, res) => {
         }
     }
     
-    // 🔑 הקסם: משתנה רנדומלי שמונע מימות המשיח לנתק את השיחה לעולם!
     const nextVar = "val_" + Math.floor(Math.random() * 100000);
 
     if (!room.activePlayers[phone]) {
@@ -70,7 +68,6 @@ app.get('/api/answer', (req, res) => {
         io.to(roomId).emit('updateLeaderboard', room.activePlayers);
     }
 
-    // 3. אם הילד לחץ על משהו עכשיו
     if (userChoice) {
         if (room.calibrationState === 'active') {
             let userPing = Date.now() - room.calibrationStartTime; room.activePlayers[phone].ping = userPing; 
@@ -97,7 +94,6 @@ app.get('/api/answer', (req, res) => {
         return res.send(`read=t-תשובתך נקלטה. נא להמתין=${nextVar},no,1,1,10,No,No`);
     }
     
-    // 4. אם הילד לא לחץ על כלום (רק שומרים אותו על הקו בלולאה שקטה)
     if (room.calibrationState === 'prepared') {
         return res.send(`read=t-היכונו למבחן המהירות. אל תקישו עד להוראה=${nextVar},no,1,1,10,No,No`);
     } else if (room.calibrationState === 'active') {
@@ -147,4 +143,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V24.0 (Anti-Hangup Loop Fix) is ONLINE ==="));
+http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V25.1 (PIN Fix) is ONLINE ==="));
