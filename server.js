@@ -7,7 +7,6 @@ const fs = require('fs');
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// 🗄️ מסד הנתונים
 let db = { phonebooks: {}, savedGames: {}, pins: {}, phoneToRoom: {} };
 try { 
     if (fs.existsSync('database.json')) {
@@ -38,48 +37,48 @@ app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
 app.get('/admin', (req, res) => res.sendFile(__dirname + '/admin.html'));
 app.get('/super', (req, res) => res.sendFile(__dirname + '/superadmin.html')); 
 
-// 🛡️ מנוע התקשורת - מותאם לשלוחה ראשית וללא ניתוקים בטעות!
-app.get('/api/answer', (req, res) => {
+// 🛡️ שאיבת הכל - app.all קולט גם GET וגם POST!
+app.all('/api/answer', (req, res) => {
     res.set('Content-Type', 'text/plain; charset=utf-8');
     try {
-        console.log("📞 בקשה נכנסת מימות המשיח: ", JSON.stringify(req.query));
+        // מאחדים את הנתונים, לא משנה איך ימות המשיח שלחו אותם
+        const input = { ...req.query, ...req.body };
+        console.log("📞 בקשה נכנסת מימות המשיח: ", JSON.stringify(input));
 
-        const phone = req.query.ApiPhone || "unknown";
-        
-        // תיקון קריטי: לא מכריחים יותר לעבור לשלוחה 1! נשארים איפה שהמשתמש נמצא.
-        let ext = req.query.ApiExtension || "";
+        const phone = input.ApiPhone || "unknown";
+        let ext = input.ApiExtension || "1";
         let folderPath = ext.startsWith('/') ? ext : '/' + ext; 
-        if (folderPath === '/') folderPath = '/'; // נשאר בשלוחה הראשית!
+        if (folderPath === '/') folderPath = '/1';
 
         let roomId = db.phoneToRoom[phone];
-        let val1 = req.query.val_1;
+        let val2 = input.val_2; // קוד משחק
+        let val3 = input.val_3; // תשובות במשחק
 
-        // --- 1. הילד עוד לא מחובר לאף חדר ---
+        // --- 1. הילד עוד לא מחובר ---
         if (!roomId) {
-            if (val1 !== undefined && val1 !== '') {
-                console.log(`🔍 בודק קוד חדר: ${val1}`);
-                
-                // במקום לנתק על קוד שגוי, פשוט מבקשים שוב!
-                if (!db.pins[val1]) {
-                    console.log("❌ קוד שגוי");
-                    return res.send(`read=t-קוד המשחק אינו קיים. אנא נסו שוב וסיום בסולמית=val_1,no,10,1,15,No,No`);
+            if (val2 !== undefined && val2 !== '') {
+                if (!db.pins[val2]) {
+                    console.log("❌ קוד שגוי:", val2);
+                    return res.send(`id_list_message=t-קוד המשחק אינו קיים&go_to_folder=hangup`);
                 }
-                if (db.pins[val1].gamesLeft <= 0) {
-                    return res.send(`read=t-הקוד סיים את מכסת המשחקים. נסו קוד אחר=val_1,no,10,1,15,No,No`);
+                if (db.pins[val2].gamesLeft <= 0) {
+                    console.log("❌ נגמרה מכסה לקוד:", val2);
+                    return res.send(`id_list_message=t-הקוד סיים את המכסה&go_to_folder=hangup`);
                 }
 
-                db.phoneToRoom[phone] = val1;
+                console.log("✅ מחובר לחדר:", val2);
+                db.phoneToRoom[phone] = val2;
                 saveDB();
-                getRoom(val1);
+                getRoom(val2);
                 
-                console.log(`✅ מחובר בהצלחה לחדר: ${val1}`);
                 return res.send(`id_list_message=t-מחובר בהצלחה&go_to_folder=${folderPath}`);
             } else {
-                return res.send("read=t-ברוכים הבאים. הקישו קוד משחק וסיום בסולמית=val_1,no,10,1,15,No,No");
+                console.log("⏳ מבקש קוד משחק מהמשתמש...");
+                return res.send("read=t-ברוכים הבאים. הקישו קוד משחק וסיום בסולמית=val_2,no,10,1,15,No,No");
             }
         }
 
-        // --- 2. הילד מחובר ורשום בשרת ---
+        // --- 2. הילד מחובר ---
         const room = getRoom(roomId);
         let player = room.activePlayers[phone];
         if (!player) {
@@ -88,13 +87,15 @@ app.get('/api/answer', (req, res) => {
             io.to(roomId).emit('updateLeaderboard', room.activePlayers);
         }
 
-        // אם ימות המשיח החזירו 'ריק' כי עברו 10 שניות של המתנה:
-        if (val1 === '') {
+        // "מכונת הכביסה"
+        if (val3 === '') {
+            console.log("🔄 ריסטרט שקט");
             return res.send(`go_to_folder=${folderPath}`);
         }
         
-        // הילד באמת לחץ על משהו!
-        if (val1 && val1 !== '') {
+        // הילד לחץ על תשובה!
+        if (val3 && val3 !== '') {
+            console.log("🎯 שחקן לחץ:", val3);
             if (room.calibrationState === 'active') {
                 player.ping = Date.now() - room.calibrationStartTime;
                 io.to(roomId).emit('calibrationProgress', { count: Object.values(room.activePlayers).filter(p => p.ping > 0).length });
@@ -104,7 +105,7 @@ app.get('/api/answer', (req, res) => {
                 let q = room.questions[room.currentQuestion];
                 if (player.lastAnswered !== room.currentQuestion) {
                     player.lastAnswered = room.currentQuestion;
-                    if (q.ans && val1 === String(q.ans)) {
+                    if (q.ans && val3 === String(q.ans)) {
                         let netTime = Math.max(100, (Date.now() - room.questionStartTime) - (player.ping || 0)); 
                         player.score += Math.max(10, 1000 - Math.floor(netTime / 10));
                     }
@@ -115,19 +116,19 @@ app.get('/api/answer', (req, res) => {
             return res.send(`id_list_message=t-נקלט&go_to_folder=${folderPath}`);
         }
 
-        // 3. הילד נכנס לשלוחה (אחרי איפוס), שואל מה לעשות עכשיו
-        if (room.calibrationState === 'prepared') return res.send("read=t-היכונו=val_1,no,1,1,10,No,No");
-        if (room.calibrationState === 'active') return res.send("read=t-הקש 1 עכשיו=val_1,no,1,1,10,No,No");
+        // --- 3. הילד נכנס נקי לשלוחה ---
+        if (room.calibrationState === 'prepared') return res.send("read=t-היכונו=val_3,no,1,1,10,No,No");
+        if (room.calibrationState === 'active') return res.send("read=t-הקש 1 עכשיו=val_3,no,1,1,10,No,No");
         if (room.gameActive && !room.answersLocked) {
-            if (player.lastAnswered === room.currentQuestion) return res.send("read=t-ממתין=val_1,no,1,1,10,No,No");
-            return res.send("read=t-הקש תשובה=val_1,no,1,1,15,No,No");
+            if (player.lastAnswered === room.currentQuestion) return res.send("read=t-ממתין=val_3,no,1,1,10,No,No");
+            return res.send("read=t-הקש תשובה=val_3,no,1,1,15,No,No");
         }
         
-        // המתנה רגילה
-        return res.send("read=t-ממתין=val_1,no,1,1,10,No,No");
+        console.log("⏳ משמיע ממתין...");
+        return res.send("read=t-ממתין=val_3,no,1,1,10,No,No");
 
     } catch(err) {
-        console.error(err);
+        console.error("❌ שגיאה בקוד:", err);
         res.send("id_list_message=t-שגיאה&go_to_folder=hangup");
     }
 });
@@ -137,14 +138,12 @@ io.on('connection', (socket) => {
         if (pass === "Ahal2026!") socket.emit('superData', db.pins);
         else socket.emit('superError');
     });
-
     socket.on('createBulkPins', (data) => {
         for(let i = parseInt(data.start); i <= parseInt(data.end); i++) {
             db.pins[i.toString()] = { type: data.type, gamesLeft: 3, created: new Date().toLocaleDateString('he-IL') };
         }
         saveDB(); io.emit('superData', db.pins); 
     });
-
     socket.on('deletePin', (pin) => { delete db.pins[pin]; saveDB(); io.emit('superData', db.pins); });
 
     socket.on('joinRoom', (roomId) => {
@@ -185,4 +184,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V44.0 (Main Extension Fix) is ONLINE ==="));
+http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V45.0 (Omni-Catcher GET/POST Engine) is ONLINE ==="));
