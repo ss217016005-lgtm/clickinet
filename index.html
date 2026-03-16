@@ -7,6 +7,15 @@
     <style>
         :root { --bg-color: #0B0E14; --glass-bg: rgba(255, 255, 255, 0.05); --glass-border: rgba(255, 255, 255, 0.1); --primary: #00F0FF; --secondary: #FF0055; --accent: #7000FF; --text-main: #FFFFFF; --text-muted: #8892B0; }
         body { font-family: 'Heebo', sans-serif; background-color: var(--bg-color); background-image: radial-gradient(circle at 15% 50%, rgba(112, 0, 255, 0.15), transparent 25%), radial-gradient(circle at 85% 30%, rgba(0, 240, 255, 0.15), transparent 25%); color: var(--text-main); margin: 0; padding: 0; display: flex; flex-direction: column; min-height: 100vh; overflow-x: hidden; transition: background 0.5s ease, background-image 0.5s ease; }
+        
+        /* 🔒 מסך הזנת קוד */
+        #loginOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0b0f19; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        #loginBox { background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--primary); padding: 50px; border-radius: 30px; text-align: center; box-shadow: 0 0 50px rgba(0, 240, 255, 0.2); }
+        .login-input { width: 300px; padding: 20px; font-size: 2rem; text-align: center; margin-bottom: 20px; border-radius: 15px; border: none; font-weight: bold;}
+        .login-btn { background: var(--primary); color: #000; border: none; padding: 15px 40px; font-size: 1.5rem; border-radius: 15px; cursor: pointer; font-weight: 900; transition: 0.3s;}
+        .login-btn:hover { box-shadow: 0 0 20px var(--primary); transform: scale(1.05);}
+        #mainApp { display: none; flex-direction: column; min-height: 100vh;}
+
         header { display: flex; justify-content: space-between; align-items: center; padding: 1.5rem 3rem; background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, transparent 100%); border-bottom: 1px solid var(--glass-border); z-index: 10;}
         .logo-area { display: flex; align-items: center; gap: 15px; }
         h1 { margin: 0; font-weight: 900; font-size: 2.5rem; letter-spacing: 2px; text-transform: uppercase; background: linear-gradient(90deg, var(--primary), #fff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 0 20px rgba(0, 240, 255, 0.3); }
@@ -39,7 +48,6 @@
         @keyframes radar-spin { 100% { transform: rotate(360deg) translate(-50%, -50%); } }
         .stats-display { margin-top: 2rem; background: rgba(0,0,0,0.5); padding: 20px; border-radius: 15px; border: 1px solid var(--primary); font-size: 1.5rem; text-align: center; display: none;}
         
-        /* 🏆 עיצוב מסך הניצחון והפודיום */
         .victory-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.9); z-index: 200; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; display: none; overflow: hidden;}
         .victory-title { position: absolute; top: 10%; font-size: 5rem; font-weight: 900; color: #FFD700; text-shadow: 0 0 50px rgba(255, 215, 0, 0.8); animation: dropDown 1s ease-out; z-index: 205;}
         @keyframes dropDown { 0% { top: -20%; opacity: 0;} 100% { top: 10%; opacity: 1;} }
@@ -60,155 +68,124 @@
 </head>
 <body>
 
-    <header>
-        <div class="logo-area"><h1>CLICKINET</h1><span style="color: var(--accent); font-weight: bold; font-size: 1.2rem;">PRO</span></div>
-        <div class="phone-instruction">חייגו עכשיו: <span id="displayPhone">077-000-0000</span></div>
-    </header>
-
-    <div class="calibration-overlay" id="calibrationScreen">
-        <div class="radar" id="radarCircle"></div>
-        <h1 style="font-size: 4rem;" id="calibTitle">היכונו למבחן רשת...</h1>
-        <h2 style="font-size: 2.5rem; color: #ffcc00;" id="calibSub">הניחו אצבע על ספרה 1 - אל תלחצו עדיין!</h2>
-        <div style="margin-top: 3rem; font-size: 2rem; font-weight: bold; color: var(--primary);" id="calibrationCounter">
-            ממתין להזנקה... <span id="pingCount">0</span> ענו
-        </div>
-        <div class="stats-display" id="calibStats"></div>
-    </div>
-
-    <div class="victory-overlay" id="victoryScreen">
-        <div class="victory-title">אלופי המשחק!</div>
-        <div class="podium-container">
-            <div class="podium-step step-2" id="podium2" style="visibility:hidden;">
-                <div class="p-medal">🥈</div>
-                <div class="p-name" id="name2">---</div>
-                <div class="p-score" id="score2">0</div>
-            </div>
-            <div class="podium-step step-1" id="podium1" style="visibility:hidden;">
-                <div class="p-medal">👑</div>
-                <div class="p-name" id="name1">---</div>
-                <div class="p-score" id="score1">0</div>
-            </div>
-            <div class="podium-step step-3" id="podium3" style="visibility:hidden;">
-                <div class="p-medal">🥉</div>
-                <div class="p-name" id="name3">---</div>
-                <div class="p-score" id="score3">0</div>
-            </div>
+    <div id="loginOverlay">
+        <div id="loginBox">
+            <h1 style="font-size: 4rem; margin-top: 0; color: var(--primary);">הפעלת המסך</h1>
+            <p style="color: #94a3b8; font-size: 1.5rem; margin-bottom: 30px;">הקלידו את קוד המשחק כדי להתחבר לחדר</p>
+            <input type="text" id="roomIdInput" class="login-input" placeholder="קוד משחק...">
+            <br>
+            <button class="login-btn" onclick="joinRoom()">התחבר למסך</button>
         </div>
     </div>
 
-    <main id="mainGameArea">
-        <div class="game-board">
-            <div class="timer-display" id="mainTimer">15</div>
-            <div class="status-badge" id="lockStatus">המענה סגור</div>
-            <div class="question-box">
-                <div class="question-text" id="qText">ברוכים הבאים לקליקינט!</div>
-                <div style="font-size: 1.5rem; color: var(--text-muted);" id="qSubText">המשחק יתחיל בעוד רגע, נא להכין פלאפונים</div>
-                <div class="answers-grid" id="answersArea" style="display: none;">
-                    <div class="answer-card" id="ans1"><div class="answer-num">1</div><span id="text1"></span></div>
-                    <div class="answer-card" id="ans2"><div class="answer-num">2</div><span id="text2"></span></div>
-                    <div class="answer-card" id="ans3"><div class="answer-num">3</div><span id="text3"></span></div>
-                    <div class="answer-card" id="ans4"><div class="answer-num">4</div><span id="text4"></span></div>
+    <div id="mainApp">
+        <header>
+            <div class="logo-area"><h1>CLICKINET</h1><span style="color: var(--accent); font-weight: bold; font-size: 1.2rem;">PRO</span></div>
+            <div class="phone-instruction">חייגו עכשיו: <span id="displayPhone">077-000-0000</span> <span style="color: var(--primary); margin-right: 10px;">קוד משחק: <span id="displayRoomIdText">---</span></span></div>
+        </header>
+
+        <div class="calibration-overlay" id="calibrationScreen">
+            <div class="radar" id="radarCircle"></div>
+            <h1 style="font-size: 4rem;" id="calibTitle">היכונו למבחן רשת...</h1>
+            <h2 style="font-size: 2.5rem; color: #ffcc00;" id="calibSub">הניחו אצבע על ספרה 1 - אל תלחצו עדיין!</h2>
+            <div style="margin-top: 3rem; font-size: 2rem; font-weight: bold; color: var(--primary);" id="calibrationCounter">ממתין להזנקה... <span id="pingCount">0</span> ענו</div>
+            <div class="stats-display" id="calibStats"></div>
+        </div>
+
+        <div class="victory-overlay" id="victoryScreen">
+            <div class="victory-title">אלופי המשחק!</div>
+            <div class="podium-container">
+                <div class="podium-step step-2" id="podium2" style="visibility:hidden;"><div class="p-medal">🥈</div><div class="p-name" id="name2">---</div><div class="p-score" id="score2">0</div></div>
+                <div class="podium-step step-1" id="podium1" style="visibility:hidden;"><div class="p-medal">👑</div><div class="p-name" id="name1">---</div><div class="p-score" id="score1">0</div></div>
+                <div class="podium-step step-3" id="podium3" style="visibility:hidden;"><div class="p-medal">🥉</div><div class="p-name" id="name3">---</div><div class="p-score" id="score3">0</div></div>
+            </div>
+        </div>
+
+        <main id="mainGameArea">
+            <div class="game-board">
+                <div class="timer-display" id="mainTimer">15</div>
+                <div class="status-badge" id="lockStatus">המענה סגור</div>
+                <div class="question-box">
+                    <div class="question-text" id="qText">ברוכים הבאים לקליקינט!</div>
+                    <div style="font-size: 1.5rem; color: var(--text-muted);" id="qSubText">המשחק יתחיל בעוד רגע, נא להכין פלאפונים</div>
+                    <div class="answers-grid" id="answersArea" style="display: none;">
+                        <div class="answer-card" id="ans1"><div class="answer-num">1</div><span id="text1"></span></div>
+                        <div class="answer-card" id="ans2"><div class="answer-num">2</div><span id="text2"></span></div>
+                        <div class="answer-card" id="ans3"><div class="answer-num">3</div><span id="text3"></span></div>
+                        <div class="answer-card" id="ans4"><div class="answer-num">4</div><span id="text4"></span></div>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div class="leaderboard-panel">
-            <div class="leaderboard-title">🏆 מובילים בזמן אמת</div>
-            <ul class="players-list" id="leaderboardList"><li class="player-row"><div class="player-name">ממתין לשחקנים...</div></li></ul>
-        </div>
-    </main>
-    
-    <footer style="text-align: center; padding: 1.5rem; background: linear-gradient(0deg, rgba(0,0,0,0.9) 0%, transparent 100%); border-top: 1px solid var(--primary); font-size: 1.2rem; text-shadow: 0 0 10px rgba(0, 240, 255, 0.5); position:relative; z-index:10;">
-        🏆 נוצר ופותח ע"י <strong>אהל יהודה</strong> לתועלת הכלל | Clickinet Pro V17.0
-    </footer>
+            <div class="leaderboard-panel">
+                <div class="leaderboard-title">🏆 מובילים בזמן אמת</div>
+                <ul class="players-list" id="leaderboardList"><li class="player-row"><div class="player-name">ממתין לשחקנים...</div></li></ul>
+            </div>
+        </main>
+        
+        <footer style="text-align: center; padding: 1.5rem; background: linear-gradient(0deg, rgba(0,0,0,0.9) 0%, transparent 100%); border-top: 1px solid var(--primary); font-size: 1.2rem; text-shadow: 0 0 10px rgba(0, 240, 255, 0.5); position:relative; z-index:10;">
+            🏆 נוצר ופותח ע"י <strong>אהל יהודה</strong> לתועלת הכלל | Clickinet Pro V22.0
+        </footer>
+    </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
         let timerInterval = null;
+        let myRoomId = "";
+
+        function joinRoom() {
+            const input = document.getElementById('roomIdInput').value.trim();
+            if (!input) return alert("חובה להזין קוד משחק!");
+            myRoomId = input;
+            socket.emit('joinRoom', myRoomId);
+            document.getElementById('loginOverlay').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'flex';
+            document.getElementById('displayRoomIdText').innerText = myRoomId;
+        }
 
         function playBeep(freq = 600, duration = 100) {
-            try {
-                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-                osc.type = 'sine'; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-                gain.gain.setValueAtTime(0.1, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + (duration/1000));
-                osc.connect(gain); gain.connect(audioCtx.destination); osc.start();
-                setTimeout(() => { osc.stop(); audioCtx.close(); }, duration);
-            } catch(e) {}
+            try { const audioCtx = new (window.AudioContext || window.webkitAudioContext)(); const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.type = 'sine'; osc.frequency.setValueAtTime(freq, audioCtx.currentTime); gain.gain.setValueAtTime(0.1, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + (duration/1000)); osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); setTimeout(() => { osc.stop(); audioCtx.close(); }, duration); } catch(e) {}
         }
 
-        // אפקט קונפטי רציף לפודיום
         function fireConfettiStream() {
-            let stream = setInterval(() => {
-                let conf = document.createElement('div'); conf.style.position = 'fixed'; conf.style.width = '10px'; conf.style.height = '10px'; conf.style.backgroundColor = ['#FF3366', '#33CCFF', '#FFCC00', '#00FF66'][Math.floor(Math.random()*4)]; conf.style.left = Math.random() * 100 + 'vw'; conf.style.top = '-10px'; conf.style.zIndex = '9999'; conf.style.transition = 'all 2s ease-in'; document.body.appendChild(conf); setTimeout(() => { conf.style.top = '100vh'; conf.style.transform = `rotate(${Math.random()*360}deg)`; }, 10); setTimeout(() => conf.remove(), 2000);
-            }, 50);
-            setTimeout(() => clearInterval(stream), 10000); // מפסיק אחרי 10 שניות
+            let stream = setInterval(() => { let conf = document.createElement('div'); conf.style.position = 'fixed'; conf.style.width = '10px'; conf.style.height = '10px'; conf.style.backgroundColor = ['#FF3366', '#33CCFF', '#FFCC00', '#00FF66'][Math.floor(Math.random()*4)]; conf.style.left = Math.random() * 100 + 'vw'; conf.style.top = '-10px'; conf.style.zIndex = '9999'; conf.style.transition = 'all 2s ease-in'; document.body.appendChild(conf); setTimeout(() => { conf.style.top = '100vh'; conf.style.transform = `rotate(${Math.random()*360}deg)`; }, 10); setTimeout(() => conf.remove(), 2000); }, 50);
+            setTimeout(() => clearInterval(stream), 10000); 
         }
 
-        // 🏆 חשיפת הפודיום
         socket.on('victoryPodium', (topPlayers) => {
-            document.getElementById('victoryScreen').style.display = 'flex';
-            document.getElementById('mainGameArea').style.filter = 'blur(10px)';
-            
-            // מילוי הנתונים
+            document.getElementById('victoryScreen').style.display = 'flex'; document.getElementById('mainGameArea').style.filter = 'blur(10px)';
             if(topPlayers[0]) { document.getElementById('name1').innerText = topPlayers[0].name; document.getElementById('score1').innerText = topPlayers[0].score + ' נק\''; }
             if(topPlayers[1]) { document.getElementById('name2').innerText = topPlayers[1].name; document.getElementById('score2').innerText = topPlayers[1].score + ' נק\''; }
             if(topPlayers[2]) { document.getElementById('name3').innerText = topPlayers[2].name; document.getElementById('score3').innerText = topPlayers[2].score + ' נק\''; }
-            
-            // אנימציית הופעה לפי סדר: מקום 3 -> 2 -> 1
             setTimeout(() => { document.getElementById('podium3').style.visibility = 'visible'; playBeep(500, 300); }, 500);
             setTimeout(() => { document.getElementById('podium2').style.visibility = 'visible'; playBeep(700, 300); }, 1500);
-            setTimeout(() => { 
-                document.getElementById('podium1').style.visibility = 'visible'; 
-                playBeep(1000, 800); 
-                fireConfettiStream(); // בום! זורק קונפטי ברצף על המקום הראשון!
-            }, 3000);
+            setTimeout(() => { document.getElementById('podium1').style.visibility = 'visible'; playBeep(1000, 800); fireConfettiStream(); }, 3000);
         });
 
-        // שאר הפקודות הרגילות (שעון, שאלות וכו')
         socket.on('startCountdown', (seconds) => {
-            const timerEl = document.getElementById('mainTimer');
-            timerEl.style.display = 'block'; timerEl.classList.remove('warning'); timerEl.innerText = seconds;
-            let timeLeft = seconds;
-            if(timerInterval) clearInterval(timerInterval);
-            playBeep(800, 200);
+            const timerEl = document.getElementById('mainTimer'); timerEl.style.display = 'block'; timerEl.classList.remove('warning'); timerEl.innerText = seconds; let timeLeft = seconds; if(timerInterval) clearInterval(timerInterval); playBeep(800, 200);
             timerInterval = setInterval(() => {
                 timeLeft--; timerEl.innerText = timeLeft;
-                if (timeLeft > 0 && timeLeft <= 3) { timerEl.classList.add('warning'); playBeep(1000, 150); } 
-                else if (timeLeft > 3) { playBeep(600, 100); }
+                if (timeLeft > 0 && timeLeft <= 3) { timerEl.classList.add('warning'); playBeep(1000, 150); } else if (timeLeft > 3) { playBeep(600, 100); }
                 if (timeLeft <= 0) { clearInterval(timerInterval); timerEl.innerText = "זמן עבר!"; playBeep(400, 500); setTimeout(() => { timerEl.style.display = 'none'; }, 2000); }
             }, 1000);
         });
 
         socket.on('updateSettings', s => { document.getElementById('displayPhone').innerText = s.phoneNumber; });
-        socket.on('lockState', isLocked => {
-            const badge = document.getElementById('lockStatus'); badge.style.display = 'inline-block';
-            if(isLocked) { badge.innerText = 'המענה סגור 🔒'; badge.style.background = 'var(--secondary)'; badge.style.color = 'white'; } 
-            else { badge.innerText = 'המענה פתוח! 🔥'; badge.style.background = '#00FF66'; badge.style.color = '#000'; }
-        });
+        socket.on('lockState', isLocked => { const badge = document.getElementById('lockStatus'); badge.style.display = 'inline-block'; if(isLocked) { badge.innerText = 'המענה סגור 🔒'; badge.style.background = 'var(--secondary)'; badge.style.color = 'white'; } else { badge.innerText = 'המענה פתוח! 🔥'; badge.style.background = '#00FF66'; badge.style.color = '#000'; } });
 
         socket.on('newQuestion', q => {
-            document.getElementById('victoryScreen').style.display = 'none'; // מכבה פודיום אם מתחילים שוב
-            document.getElementById('mainGameArea').style.filter = 'none';
-            document.getElementById('qText').innerText = q.q; document.getElementById('qSubText').style.display = 'none';
-            document.getElementById('answersArea').style.display = 'grid'; document.getElementById('mainTimer').style.display = 'none';
+            document.getElementById('victoryScreen').style.display = 'none'; document.getElementById('mainGameArea').style.filter = 'none';
+            document.getElementById('qText').innerText = q.q; document.getElementById('qSubText').style.display = 'none'; document.getElementById('answersArea').style.display = 'grid'; document.getElementById('mainTimer').style.display = 'none';
             if(timerInterval) clearInterval(timerInterval);
-            for(let i=1; i<=4; i++) {
-                const ansDiv = document.getElementById('ans'+i);
-                if(q['a'+i] && q['a'+i].trim() !== '') { ansDiv.classList.remove('hidden'); document.getElementById('text'+i).innerText = q['a'+i]; } 
-                else { ansDiv.classList.add('hidden'); }
-            }
+            for(let i=1; i<=4; i++) { const ansDiv = document.getElementById('ans'+i); if(q['a'+i] && q['a'+i].trim() !== '') { ansDiv.classList.remove('hidden'); document.getElementById('text'+i).innerText = q['a'+i]; } else { ansDiv.classList.add('hidden'); } }
         });
 
         socket.on('updateLeaderboard', players => {
-            const list = document.getElementById('leaderboardList');
-            const arr = Object.values(players).sort((a,b) => b.score - a.score); list.innerHTML = '';
+            const list = document.getElementById('leaderboardList'); const arr = Object.values(players).sort((a,b) => b.score - a.score); list.innerHTML = '';
             if(arr.length === 0) { list.innerHTML = '<li class="player-row"><div class="player-name">אין שחקנים עדיין</div></li>'; return; }
-            arr.slice(0, 10).forEach((p, index) => {
-                let medalClass = ''; if(index === 0) medalClass = 'top-1'; else if(index === 1) medalClass = 'top-2'; else if(index === 2) medalClass = 'top-3';
-                list.innerHTML += `<li class="player-row ${medalClass}"><div class="player-name">#${index+1} ${p.name}</div><div class="player-score">${p.score}</div></li>`;
-            });
+            arr.slice(0, 10).forEach((p, index) => { let medalClass = ''; if(index === 0) medalClass = 'top-1'; else if(index === 1) medalClass = 'top-2'; else if(index === 2) medalClass = 'top-3'; list.innerHTML += `<li class="player-row ${medalClass}"><div class="player-name">#${index+1} ${p.name}</div><div class="player-score">${p.score}</div></li>`; });
         });
 
         socket.on('prepareCalibration', () => { document.getElementById('calibrationScreen').style.display = 'flex'; document.getElementById('radarCircle').classList.remove('active'); document.getElementById('calibTitle').innerText = 'היכונו למבחן רשת...'; document.getElementById('calibSub').innerText = 'הניחו אצבע על ספרה 1 - אל תלחצו עדיין!'; document.getElementById('calibSub').style.color = '#ffcc00'; document.getElementById('pingCount').innerText = '0'; document.getElementById('calibStats').style.display = 'none'; });
