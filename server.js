@@ -212,7 +212,13 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('revealAnswer', () => { if(socket.roomId && rooms[socket.roomId].currentQuestion >= 0) io.to(socket.roomId).emit('showCorrectAnswer', rooms[socket.roomId].questions[rooms[socket.roomId].currentQuestion].ans); });
+    // התיקון לקריסה! 🛡️ מוודא שהשאלה אכן קיימת במחסנית
+    socket.on('revealAnswer', () => { 
+        if(socket.roomId && rooms[socket.roomId].currentQuestion >= 0 && rooms[socket.roomId].currentQuestion < rooms[socket.roomId].questions.length) {
+            io.to(socket.roomId).emit('showCorrectAnswer', rooms[socket.roomId].questions[rooms[socket.roomId].currentQuestion].ans); 
+        }
+    });
+
     socket.on('triggerEffect', type => { if(socket.roomId) io.to(socket.roomId).emit('playEffect', type); });
     socket.on('toggleMusic', state => { if(socket.roomId) io.to(socket.roomId).emit('musicState', state); });
     socket.on('clearQuestions', () => { if(socket.roomId) { rooms[socket.roomId].questions = []; io.to(socket.roomId).emit('updateQuestions', rooms[socket.roomId].questions); } });
