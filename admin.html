@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>Clickinet | חדר בקרה Pro</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎮</text></svg>">
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; }
@@ -11,7 +13,8 @@
         .login-input { width: 300px; padding: 15px; font-size: 1.5rem; text-align: center; margin-bottom: 20px; border-radius: 10px; border: none; }
         .login-btn { background: #10b981; color: white; border: none; padding: 15px 40px; font-size: 1.5rem; border-radius: 10px; cursor: pointer; font-weight: bold; }
         #mainDashboard { display: none; } 
-        h1 { text-align: center; color: #38bdf8; text-shadow: 0 0 10px rgba(56, 189, 248, 0.5); margin-bottom: 5px;}
+        h1 { text-align: center; color: #38bdf8; text-shadow: 0 0 10px rgba(56, 189, 248, 0.5); margin-bottom: 5px; position: relative;}
+        .logout-btn { position: absolute; left: 0; top: 0; background: #ef4444; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1rem; }
         .room-indicator { text-align: center; color: #10b981; font-size: 1.2rem; font-weight: bold; margin-bottom: 20px;}
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; max-width: 1400px; margin: 0 auto; }
         .panel { background: #1e293b; padding: 20px; border-radius: 15px; border: 1px solid #334155; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); }
@@ -42,7 +45,10 @@
     </div>
 
     <div id="mainDashboard">
-        <h1>🎛️ חדר בקרה - Clickinet Pro</h1>
+        <h1>
+            🎛️ חדר בקרה - Clickinet Pro
+            <button class="logout-btn" onclick="logout()">🚪 התנתק</button>
+        </h1>
         <div class="room-indicator">
             קוד משחק: <span id="displayRoomId" style="color:#fff; margin-right: 15px;">---</span> | 
             <span style="color: #eab308; margin-right: 15px;">משחקים שנותרו: <span id="displayGamesLeft">3</span></span>
@@ -61,7 +67,6 @@
 
                 <button class="btn-success" onclick="toggleLock(false)">🔓 פתח ידנית</button>
                 <button class="btn-danger" onclick="toggleLock(true)">🔒 סגור ידנית</button>
-                
                 <button class="btn-full" style="background:#8b5cf6; margin-top: 10px;" onclick="revealAnswer()">👁️ חשוף תשובה נכונה לקהל</button>
 
                 <div class="timer-controls">
@@ -92,8 +97,33 @@
             </div>
 
             <div class="panel">
+                <h2>🗂️ בנק משחקים (שמירה/טעינה)</h2>
+                <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <input type="text" id="newGameName" placeholder="תן שם למשחק">
+                    <button class="btn-full btn-success" onclick="saveToBank()">💾 שמור מחסנית לבנק</button>
+                </div>
+                <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px;">
+                    <select id="savedGamesList"><option value="">-- בחר משחק לטעינה --</option></select>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn-full" style="background: #38bdf8; color: #000;" onclick="loadFromBank()">📂 טען למחסנית</button>
+                        <button class="btn-full btn-danger" onclick="deleteFromBank()">🗑️ מחק מהבנק</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
                 <h2>👥 ניהול קהל ושקיפות ניקוד</h2>
                 <div id="adminPlayersList" style="max-height: 400px; overflow-y: auto; padding-right: 5px;"></div>
+            </div>
+
+            <div class="panel">
+                <h2>💰 חבילת המנוי שלך</h2>
+                <button class="btn-full" id="premiumBtn" style="background: #ef4444;" disabled>💎 פרימיום: כבוי</button>
+                <hr style="border-color: #334155; margin: 20px 0;">
+                <h3 style="margin:0 0 10px 0; color: #14b8a6;">⏱️ מבחן מהירות (רדאר)</h3>
+                <button class="btn-full btn-radar" onclick="prepareCalibration()">1. הכן קהל (הצג מסך)</button>
+                <button class="btn-full btn-radar-go" onclick="startCalibration()" id="btnGo" style="display:none;">2. הזנק מבחן! (GO)</button>
+                <button class="btn-full btn-danger" onclick="stopCalibration()">3. סיים והצג סטטיסטיקות</button>
             </div>
 
             <div class="panel">
@@ -112,6 +142,15 @@
         const socket = io();
         let myRoomId = "";
 
+        // כשהדף נטען - בודקים אם יש התחברות שמורה
+        window.onload = () => {
+            const savedRoom = sessionStorage.getItem('clickinetAdminRoom');
+            if (savedRoom) {
+                document.getElementById('roomIdInput').value = savedRoom;
+                joinRoom(); // נכנס אוטומטית!
+            }
+        };
+
         function joinRoom() {
             const input = document.getElementById('roomIdInput').value.trim();
             if (!input) return alert("חובה להזין קוד מפיק!");
@@ -119,13 +158,25 @@
             socket.emit('joinRoom', myRoomId);
         }
 
+        // פונקציית התנתקות חדשה
+        function logout() {
+            sessionStorage.removeItem('clickinetAdminRoom'); // מוחקים את הזיכרון
+            location.reload(); // מרעננים את הדף חזרה למסך פתיחה
+        }
+
         socket.on('loginResponse', (res) => {
             if (res.success) {
+                // שומרים את ההתחברות בזכרון הדפדפן כדי למנוע זריקה בריענון!
+                sessionStorage.setItem('clickinetAdminRoom', myRoomId);
+                
                 document.getElementById('loginOverlay').style.display = 'none';
                 document.getElementById('mainDashboard').style.display = 'block';
                 document.getElementById('displayRoomId').innerText = myRoomId;
                 document.getElementById('displayGamesLeft').innerText = res.gamesLeft;
-            } else { alert(res.error); }
+            } else { 
+                alert(res.error); 
+                sessionStorage.removeItem('clickinetAdminRoom'); // אם טעה בקוד, מוחקים
+            }
         });
 
         socket.on('updateGamesLeft', count => { document.getElementById('displayGamesLeft').innerText = count; });
@@ -135,13 +186,15 @@
         });
         socket.on('updateQuestions', qs => { document.getElementById('qCount').innerText = qs.length; });
         
-        // --- 📊 שקיפות הניקוד למנהל ---
+        socket.on('updateSavedGames', games => {
+            const select = document.getElementById('savedGamesList'); select.innerHTML = '<option value="">-- בחר משחק לטעינה --</option>';
+            games.forEach(g => { select.innerHTML += `<option value="${g}">${g}</option>`; });
+        });
+
         socket.on('updateLeaderboard', players => {
             const adminList = document.getElementById('adminPlayersList');
             if(Object.keys(players).length === 0) { adminList.innerHTML = '<div style="text-align: center; color: #475569; margin-top: 20px;">ממתין...</div>'; return; }
             adminList.innerHTML = '';
-            
-            // סידור לפי ניקוד
             let sortedPlayers = Object.entries(players).sort((a,b) => b[1].score - a[1].score);
             
             for (let [phone, p] of sortedPlayers) {
@@ -166,12 +219,20 @@
         function nextQuestion() { socket.emit('nextQuestion'); }
         function prevQuestion() { socket.emit('prevQuestion'); } 
         function toggleLock(state) { socket.emit('toggleLock', state); }
-        function revealAnswer() { socket.emit('revealAnswer'); } // הפקודה החדשה!
+        function revealAnswer() { socket.emit('revealAnswer'); } 
         function clearPlayers() { if(confirm('לנתק כולם?')) socket.emit('clearPlayers'); }
         function sendEffect(type) { socket.emit('triggerEffect', type); }
         function sendBackground(bg) { socket.emit('changeBackground', bg); }
         function triggerVictory() { if(confirm('לסיים ולהציג פודיום?')) socket.emit('showVictoryScreen'); }
+        function prepareCalibration() { socket.emit('prepareCalibration'); document.getElementById('btnGo').style.display = 'block'; }
+        function startCalibration() { socket.emit('startCalibration'); document.getElementById('btnGo').style.display = 'none'; }
+        function stopCalibration() { socket.emit('endCalibration'); }
         function startTimer() { let sec = document.getElementById('timerInput').value || 15; socket.emit('startTimer', parseInt(sec)); }
+        
+        function saveToBank() { const name = document.getElementById('newGameName').value; const qCount = parseInt(document.getElementById('qCount').innerText); if (!name) return alert('נא להקליד שם למשחק!'); if (qCount === 0) return alert('המחסנית ריקה!'); socket.emit('saveGameToBank', name); document.getElementById('newGameName').value = ''; alert('נשמר לבנק!'); }
+        function loadFromBank() { const name = document.getElementById('savedGamesList').value; if (!name) return alert('נא לבחור משחק!'); if(confirm(`לטעון את ${name}?`)) socket.emit('loadGameFromBank', name); }
+        function deleteFromBank() { const name = document.getElementById('savedGamesList').value; if (!name) return alert('נא לבחור משחק למחיקה!'); if(confirm(`למחוק את ${name} לתמיד?`)) socket.emit('deleteGameFromBank', name); }
+        function clearCurrentQuestions() { if(confirm('למחוק את כל השאלות מהמחסנית הפעילה כעת?')) socket.emit('clearQuestions'); }
         
         function addQuestion() { 
             const q = { q: document.getElementById('qText').value, a1: document.getElementById('a1').value, a2: document.getElementById('a2').value, a3: document.getElementById('a3').value, a4: document.getElementById('a4').value, ans: document.getElementById('correct').value }; 
