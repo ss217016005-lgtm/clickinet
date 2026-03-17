@@ -7,13 +7,10 @@ const fs = require('fs');
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// יצירת תיקיית הכספת שלנו (המחוברת לכונן הקשיח ב-Railway)
 if (!fs.existsSync('uploads')) { fs.mkdirSync('uploads'); }
 app.use('/uploads', express.static('uploads'));
 
-// 🔒 התיקון הגדול! מסד הנתונים נשמר בתוך הכספת ולא נמחק לעולם
 const DB_PATH = 'uploads/database.json';
-
 let db = { phonebooks: {}, savedGames: {}, pins: {}, phoneToRoom: {} };
 try { 
     if (fs.existsSync(DB_PATH)) {
@@ -30,9 +27,9 @@ function getRoom(roomId) {
     if (!rooms[roomId]) {
         rooms[roomId] = {
             activePlayers: {}, questions: [], currentQuestion: -1, gameActive: false, answersLocked: true,
+            isDoublePoints: false, // 🎰 מנוע הדאבל
             gameSettings: { 
-                gameName: "קליקינט", 
-                phoneNumber: "077-2296674", 
+                gameName: "קליקינט", phoneNumber: "077-2296674", sponsorUrl: "", // 💼 לוגו חסות
                 isPremium: (db.pins[roomId]?.type === 'premium' || db.pins[roomId]?.type === 'gold'),
                 isGold: (db.pins[roomId]?.type === 'gold')
             },
@@ -65,7 +62,6 @@ app.all('/api/answer', (req, res) => {
             if (val !== undefined && val !== '') {
                 if (val === '1' && !db.pins['1']) return res.send("read=t-נא להקיש קוד משחק וסולמית=val_1,no,10,1,15,no,no");
                 if (!db.pins[val]) return res.send(`read=t-קוד שגוי נא לנסות שוב=val_1,no,10,1,15,no,no`);
-                // אם למנוי יש תאריך תפוגה והוא עבר - חסום!
                 if (db.pins[val].expiresAt && exactHitTime > db.pins[val].expiresAt) return res.send(`id_list_message=t-תוקף הקוד פג&go_to_folder=hangup`);
                 if (db.pins[val].gamesLeft <= 0) return res.send(`id_list_message=t-הקוד סיים את המכסה&go_to_folder=hangup`);
                 db.phoneToRoom[phone] = val; saveDB(); getRoom(val);
@@ -93,13 +89,20 @@ app.all('/api/answer', (req, res) => {
                 let q = room.questions[room.currentQuestion];
                 if (player.lastAnswered !== room.currentQuestion) {
                     player.lastAnswered = room.currentQuestion;
+                    player.currentChoice = val; // שומרים את ההצבעה בשביל הגרף
+                    
                     if (q.ans && val === String(q.ans)) {
                         let netTime = Math.max(100, (exactHitTime - room.questionStartTime) - (player.ping || 0)); 
-                        let speedBonus = Math.max(0, 100 - Math.floor(netTime / 1000));
+                        
+                        // 🎰 מערכת הדאבל!
+                        let multiplier = room.isDoublePoints ? 2 : 1;
+                        let baseScore = 100 * multiplier;
+                        let speedBonus = Math.max(0, 100 - Math.floor(netTime / 1000)) * multiplier;
+                        
                         player.streak = (player.streak || 0) + 1; 
                         let streakBonus = (player.streak > 1) ? (player.streak * 15) : 0; 
-                        player.score += (100 + speedBonus + streakBonus); 
-                        player.lastBreakdown = `✅ ענה נכון! | +${100+speedBonus+streakBonus}`;
+                        player.score += (baseScore + speedBonus + streakBonus); 
+                        player.lastBreakdown = `✅ ענה נכון! | ${room.isDoublePoints?'דאבל!':''} +${baseScore+speedBonus+streakBonus}`;
                     } else { player.streak = 0; player.lastBreakdown = `❌ טעות (בחר ${val})`; }
                     io.to(roomId).emit('updateLeaderboard', room.activePlayers);
                 }
@@ -124,15 +127,6 @@ io.on('connection', (socket) => {
     });
     socket.on('deletePin', (pin) => { delete db.pins[pin]; saveDB(); io.emit('superData', db.pins); });
     
-    socket.on('fetchLiveStats', () => {
-        let stats = {};
-        for (let r in rooms) {
-            let activeCount = Object.keys(rooms[r].activePlayers).length;
-            if (activeCount > 0 || rooms[r].gameActive) stats[r] = { players: activeCount, isActive: rooms[r].gameActive, qCount: rooms[r].questions.length, currentQ: rooms[r].currentQuestion + 1 };
-        }
-        socket.emit('liveStatsData', stats);
-    });
-
     socket.on('joinRoom', (roomId) => {
         if (!db.pins[roomId]) return socket.emit('loginResponse', { success: false, error: 'קוד לא קיים!' });
         if (db.pins[roomId].expiresAt && Date.now() > db.pins[roomId].expiresAt) return socket.emit('loginResponse', { success: false, error: 'הקוד פג תוקף!' });
@@ -143,7 +137,7 @@ io.on('connection', (socket) => {
         socket.emit('updateLeaderboard', room.activePlayers);
         socket.emit('lockState', room.answersLocked); 
         socket.emit('updateQuestions', room.questions);
-        socket.emit('updateSavedGames', Object.keys(db.savedGames[roomId] || {}));
+        socket.emit('doublePointsState', room.isDoublePoints);
     });
 
     socket.on('startGame', () => { 
@@ -151,8 +145,9 @@ io.on('connection', (socket) => {
         if (db.pins[socket.roomId].type !== 'gold') { db.pins[socket.roomId].gamesLeft--; saveDB(); }
         let gamesDisplay = (db.pins[socket.roomId].type === 'gold') ? 'ללא הגבלה 👑' : db.pins[socket.roomId].gamesLeft;
         io.to(socket.roomId).emit('updateGamesLeft', gamesDisplay);
-        room.gameActive = true; room.currentQuestion = 0; room.answersLocked = true; 
-        for(let p in room.activePlayers) { room.activePlayers[p].score = 0; room.activePlayers[p].lastAnswered = -1; room.activePlayers[p].streak = 0; } 
+        room.gameActive = true; room.currentQuestion = 0; room.answersLocked = true; room.isDoublePoints = false;
+        for(let p in room.activePlayers) { room.activePlayers[p].score = 0; room.activePlayers[p].lastAnswered = -1; room.activePlayers[p].streak = 0; room.activePlayers[p].currentChoice = null; } 
+        io.to(socket.roomId).emit('doublePointsState', false);
         io.to(socket.roomId).emit('newQuestion', room.questions[room.currentQuestion]); io.to(socket.roomId).emit('lockState', true); io.to(socket.roomId).emit('updateLeaderboard', room.activePlayers); 
     });
 
@@ -168,25 +163,69 @@ io.on('connection', (socket) => {
         } 
     });
 
+    // 🗑️ מחיקת שאלה בודדת
+    socket.on('deleteSingleQuestion', index => {
+        if(socket.roomId && rooms[socket.roomId].questions[index]) {
+            rooms[socket.roomId].questions.splice(index, 1);
+            io.to(socket.roomId).emit('updateQuestions', rooms[socket.roomId].questions);
+        }
+    });
+
+    // 🥾 העפת שחקן
+    socket.on('kickPlayer', phone => {
+        if(socket.roomId && rooms[socket.roomId].activePlayers[phone]) {
+            delete rooms[socket.roomId].activePlayers[phone];
+            delete db.phoneToRoom[phone]; saveDB();
+            io.to(socket.roomId).emit('updateLeaderboard', rooms[socket.roomId].activePlayers);
+        }
+    });
+
+    // 💼 העלאת לוגו ספונסר
+    socket.on('uploadSponsor', data => {
+        if(socket.roomId && rooms[socket.roomId].gameSettings.isGold && data.imgBase64) {
+            const base64Data = data.imgBase64.replace(/^data:image\/\w+;base64,/, "");
+            const fileName = 'sponsor_' + socket.roomId + '_' + Date.now() + '.png';
+            fs.writeFileSync('uploads/' + fileName, base64Data, 'base64');
+            rooms[socket.roomId].gameSettings.sponsorUrl = '/uploads/' + fileName;
+            io.to(socket.roomId).emit('updateSettings', rooms[socket.roomId].gameSettings);
+        }
+    });
+
+    // 🎰 שאלת דאבל
+    socket.on('toggleDoublePoints', isDouble => {
+        if(socket.roomId) {
+            rooms[socket.roomId].isDoublePoints = isDouble;
+            io.to(socket.roomId).emit('doublePointsState', isDouble);
+        }
+    });
+
+    // 📈 חישוב גרף ההצבעות
+    socket.on('showChart', () => {
+        if(socket.roomId) {
+            let room = rooms[socket.roomId];
+            let counts = {1:0, 2:0, 3:0, 4:0};
+            for(let p in room.activePlayers) {
+                let c = room.activePlayers[p].currentChoice;
+                if(c && counts[c] !== undefined) counts[c]++;
+            }
+            io.to(socket.roomId).emit('displayChart', counts);
+        }
+    });
+
     socket.on('revealAnswer', () => { if(socket.roomId && rooms[socket.roomId].currentQuestion >= 0) io.to(socket.roomId).emit('showCorrectAnswer', rooms[socket.roomId].questions[rooms[socket.roomId].currentQuestion].ans); });
     socket.on('triggerEffect', type => { if(socket.roomId) io.to(socket.roomId).emit('playEffect', type); });
-    socket.on('changeBackground', bg => { if(socket.roomId) io.to(socket.roomId).emit('setBg', bg); });
-    socket.on('addBulkQuestions', qs => { if(socket.roomId) { rooms[socket.roomId].questions = rooms[socket.roomId].questions.concat(qs); io.to(socket.roomId).emit('updateQuestions', rooms[socket.roomId].questions); } });
+    socket.on('toggleMusic', state => { if(socket.roomId) io.to(socket.roomId).emit('musicState', state); });
     socket.on('clearQuestions', () => { if(socket.roomId) { rooms[socket.roomId].questions = []; io.to(socket.roomId).emit('updateQuestions', rooms[socket.roomId].questions); } });
-    
-    // שמירת המשחקים לבנק נכתבת ישירות למסד הנתונים הבטוח שלנו!
-    socket.on('saveGameToBank', name => { if(socket.roomId) { db.savedGames[socket.roomId][name] = [...rooms[socket.roomId].questions]; saveDB(); io.to(socket.roomId).emit('updateSavedGames', Object.keys(db.savedGames[socket.roomId])); } });
-    socket.on('loadGameFromBank', name => { if(socket.roomId && db.savedGames[socket.roomId][name]) { rooms[socket.roomId].questions = [...db.savedGames[socket.roomId][name]]; io.to(socket.roomId).emit('updateQuestions', rooms[socket.roomId].questions); } });
-    socket.on('deleteGameFromBank', name => { if(socket.roomId) { delete db.savedGames[socket.roomId][name]; saveDB(); io.to(socket.roomId).emit('updateSavedGames', Object.keys(db.savedGames[socket.roomId])); } });
     
     socket.on('toggleLock', lock => { if(socket.roomId) { rooms[socket.roomId].answersLocked = lock; if(lock && rooms[socket.roomId].timerTimeout) clearTimeout(rooms[socket.roomId].timerTimeout); io.to(socket.roomId).emit('lockState', rooms[socket.roomId].answersLocked); } });
     socket.on('startTimer', sec => { if(socket.roomId) { let room = rooms[socket.roomId]; room.answersLocked = false; room.questionStartTime = Date.now(); io.to(socket.roomId).emit('lockState', false); io.to(socket.roomId).emit('startCountdown', sec); if(room.timerTimeout) clearTimeout(room.timerTimeout); room.timerTimeout = setTimeout(() => { room.answersLocked = true; io.to(socket.roomId).emit('lockState', true); io.to(socket.roomId).emit('playEffect', 'shake'); }, sec * 1000); } });
-    socket.on('nextQuestion', () => { if(socket.roomId) { let room = rooms[socket.roomId]; room.currentQuestion++; if (room.currentQuestion < room.questions.length) { room.answersLocked = true; for(let p in room.activePlayers) room.activePlayers[p].currentChoice = null; io.to(socket.roomId).emit('newQuestion', room.questions[room.currentQuestion]); io.to(socket.roomId).emit('lockState', true); } else { room.gameActive = false; room.answersLocked = true; io.to(socket.roomId).emit('gameOver'); } } });
-    socket.on('prevQuestion', () => { if(socket.roomId) { let room = rooms[socket.roomId]; if (room.currentQuestion > 0) { room.currentQuestion--; room.answersLocked = true; for(let p in room.activePlayers) room.activePlayers[p].currentChoice = null; io.to(socket.roomId).emit('newQuestion', room.questions[room.currentQuestion]); io.to(socket.roomId).emit('lockState', true); } } });
+    
+    socket.on('nextQuestion', () => { if(socket.roomId) { let room = rooms[socket.roomId]; room.currentQuestion++; if (room.currentQuestion < room.questions.length) { room.answersLocked = true; room.isDoublePoints = false; io.to(socket.roomId).emit('doublePointsState', false); for(let p in room.activePlayers) room.activePlayers[p].currentChoice = null; io.to(socket.roomId).emit('newQuestion', room.questions[room.currentQuestion]); io.to(socket.roomId).emit('lockState', true); } else { room.gameActive = false; room.answersLocked = true; io.to(socket.roomId).emit('gameOver'); } } });
+    socket.on('prevQuestion', () => { if(socket.roomId) { let room = rooms[socket.roomId]; if (room.currentQuestion > 0) { room.currentQuestion--; room.answersLocked = true; room.isDoublePoints = false; io.to(socket.roomId).emit('doublePointsState', false); for(let p in room.activePlayers) room.activePlayers[p].currentChoice = null; io.to(socket.roomId).emit('newQuestion', room.questions[room.currentQuestion]); io.to(socket.roomId).emit('lockState', true); } } });
+    
     socket.on('showVictoryScreen', () => { if(socket.roomId) { let room = rooms[socket.roomId]; room.gameActive = false; room.answersLocked = true; io.to(socket.roomId).emit('lockState', true); const topPlayers = Object.values(room.activePlayers).sort((a,b) => b.score - a.score).slice(0, 3); io.to(socket.roomId).emit('victoryPodium', topPlayers); } });
-    socket.on('clearPlayers', () => { if(socket.roomId) { rooms[socket.roomId].activePlayers = {}; io.to(socket.roomId).emit('updateLeaderboard', rooms[socket.roomId].activePlayers); } });
     socket.on('updatePlayerName', ({ phone, newName }) => { if(socket.roomId) { db.phonebooks[socket.roomId][phone] = newName; saveDB(); if (rooms[socket.roomId].activePlayers[phone]) rooms[socket.roomId].activePlayers[phone].name = newName; io.to(socket.roomId).emit('updateLeaderboard', rooms[socket.roomId].activePlayers); } });
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V56.0 (Persistent DB) is ONLINE ==="));
+http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V57.0 (Enterprise 8-Features) is ONLINE ==="));
