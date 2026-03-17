@@ -16,19 +16,18 @@
         .logout-btn { position: absolute; left: 0; top: 0; background: #ef4444; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1rem; }
         .room-indicator { text-align: center; color: #10b981; font-size: 1.2rem; font-weight: bold; margin-bottom: 20px;}
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; max-width: 1400px; margin: 0 auto; }
-        .panel { background: #1e293b; padding: 20px; border-radius: 15px; border: 1px solid #334155; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); }
+        .panel { background: #1e293b; padding: 20px; border-radius: 15px; border: 1px solid #334155; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); position: relative; }
         h2 { border-bottom: 2px solid #38bdf8; padding-bottom: 10px; margin-top: 0; font-size: 1.5rem; }
         button { background: #2563eb; color: white; border: none; padding: 12px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; margin: 5px; transition: all 0.2s; font-size: 1rem; width: calc(50% - 14px); }
         .btn-full { width: calc(100% - 10px); }
         .btn-danger { background: #ef4444; } .btn-success { background: #10b981; } .btn-effect { background: #8b5cf6; } .btn-bg { background: #f59e0b; color: #000; }
         input, select { width: calc(100% - 22px); padding: 10px; margin: 5px 0 15px 0; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: #fff; }
         .status-box { background: #000; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 1.2rem; color: #10b981; text-align: center; margin-bottom: 15px;}
-        .timer-controls { display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px solid #f97316; margin-top: 10px;}
-        .timer-controls input { width: 60px; text-align: center; margin: 0; font-size: 1.2rem; font-weight: bold;}
         .player-edit-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-bottom: 8px; border-right: 3px solid #38bdf8; }
         .player-edit-row input { margin: 0; padding: 8px; flex-grow: 1; font-size: 1rem; }
         .score-breakdown { width: 100%; font-size: 0.85rem; color: #cbd5e1; margin-top: 5px; text-align: right; background: rgba(0,0,0,0.4); padding: 5px; border-radius: 4px;}
         .gold-feature { background: rgba(234, 179, 8, 0.1); border: 1px dashed #eab308; padding: 10px; border-radius: 8px; margin-bottom: 10px; }
+        .q-list-item { display:flex; justify-content:space-between; align-items:center; background:#334155; padding:8px; margin-bottom:5px; border-radius:5px; font-size:0.9rem; }
     </style>
 </head>
 <body>
@@ -53,24 +52,36 @@
         
         <div class="grid">
             <div class="panel">
-                <h2>🎮 ניהול משחק</h2>
+                <h2>🎮 ניהול משחק מתקדם</h2>
                 <div class="status-box">סטטוס מענה: <span id="lockStatusDisplay" style="color:#ef4444;">סגור 🔒</span></div>
-                <button class="btn-full btn-success" onclick="startGame()">▶️ התחל משחק / אפס ניקוד</button>
+                
+                <button class="btn-full" style="background:#14b8a6; font-size: 1.2rem; border:2px solid #fff;" onclick="runAutoPilot()">▶️ טייס אוטומטי (שגר סייקל שלם!)</button>
+                <hr style="border-color: #334155; margin: 15px 0;">
+
                 <div style="display: flex; gap: 10px; margin-bottom: 5px;">
                     <button class="btn-full" style="background: #64748b;" onclick="prevQuestion()">⏮️ שאלה קודמת</button>
                     <button class="btn-full" onclick="nextQuestion()">⏭️ שאלה הבאה</button>
                 </div>
-                <button class="btn-success" onclick="toggleLock(false)">🔓 פתח ידנית</button>
-                <button class="btn-danger" onclick="toggleLock(true)">🔒 סגור ידנית</button>
-                <button class="btn-full" style="background:#8b5cf6; margin-top: 10px;" onclick="revealAnswer()">👁️ חשוף תשובה נכונה</button>
-                <div class="timer-controls">
-                    <span>שניות:</span><input type="number" id="timerInput" value="15" min="3" max="120">
-                    <button class="btn-full" style="background:#f97316; margin:0;" onclick="startTimer()">⏱️ פתח עם שעון!</button>
+                
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <button class="btn-full btn-success" onclick="toggleLock(false)">🔓 פתח ידנית</button>
+                    <button class="btn-full" style="background:#f97316; margin:0;" onclick="startTimer()">⏱️ פתח עם שעון (15ש)</button>
                 </div>
+                <button class="btn-full btn-danger" style="margin-top:10px;" onclick="toggleLock(true)">🔒 סגור מענה</button>
+                
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                    <button class="btn-full" style="background:#3b82f6;" onclick="showChart()">📊 הצג גרף הצבעות</button>
+                    <button class="btn-full" style="background:#8b5cf6;" onclick="revealAnswer()">👁️ חשוף תשובה!</button>
+                </div>
+
+                <button class="btn-full" id="doubleBtn" style="background:#eab308; color:#000; margin-top:15px; border: 2px dashed #000;" onclick="toggleDouble()">✨ הפעל שאלת דאבל נקודות!</button>
+                
+                <hr style="border-color: #334155; margin: 15px 0;">
+                <button class="btn-full btn-victory" onclick="triggerVictory()">🏆 סיום וטקס מנצחים!</button>
             </div>
 
             <div class="panel">
-                <h2>📝 הזנת שאלות למחסנית</h2>
+                <h2>📝 מחסנית השאלות</h2>
                 <input type="text" id="qText" placeholder="שאלה...">
                 <div class="gold-feature">
                     <label style="color: #eab308; font-weight: bold; font-size: 0.9rem;">👑 תמונה (זהב בלבד):</label>
@@ -80,25 +91,37 @@
                 <div style="display:flex; gap:10px;"><input type="text" id="a3" placeholder="תשובה 3"><input type="text" id="a4" placeholder="תשובה 4"></div>
                 <input type="number" id="correct" placeholder="נכונה (1-4)" min="1" max="4">
                 <button class="btn-full btn-success" onclick="addQuestion()">➕ הוסף למחסנית</button>
-                <p style="text-align: center; margin-bottom: 5px;">שאלות: <span id="qCount" style="color:#38bdf8; font-weight:bold;">0</span></p>
-                <button class="btn-full btn-danger" onclick="clearCurrentQuestions()">🗑️ מחק הכל</button>
-                <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; margin-top: 15px; border: 1px dashed #38bdf8;">
-                    <input type="file" id="excelFile" accept=".xlsx, .xls, .csv" style="width: 90%;">
-                    <button class="btn-full" style="background: #38bdf8; color: #000;" onclick="uploadExcel()">⬆️ העלה אקסל</button>
+                
+                <div style="margin-top: 15px; max-height: 150px; overflow-y: auto; background:rgba(0,0,0,0.3); padding:10px; border-radius:8px;" id="qListItems">
+                    <p style="text-align:center; color:#94a3b8; font-size:0.9rem;">המחסנית ריקה</p>
                 </div>
+                <button class="btn-full btn-danger" style="background: transparent; border: 1px solid #ef4444; color: #ef4444; margin-top:5px;" onclick="clearCurrentQuestions()">🗑️ רוקן את כל המחסנית</button>
             </div>
 
             <div class="panel">
                 <h2>👥 ניהול קהל</h2>
-                <div id="adminPlayersList" style="max-height: 400px; overflow-y: auto;"></div>
+                <button class="btn-full btn-success" style="margin-bottom: 15px;" onclick="exportResults()">⬇️ הורד דוח תוצאות לאקסל</button>
+                <div id="adminPlayersList" style="max-height: 300px; overflow-y: auto;"></div>
+                <button class="btn-full btn-danger" style="margin-top:10px;" onclick="clearPlayers()">🗑️ נתק את כולם</button>
             </div>
 
             <div class="panel">
-                <h2>💰 חבילת מנוי</h2>
+                <h2>👑 פינוקי פרימיום ומוזיקה</h2>
                 <button class="btn-full" id="premiumBtn" style="background: #ef4444;" disabled>טוען סטטוס...</button>
-                <hr style="border-color: #334155;">
-                <button class="btn-bg" onclick="sendBackground('studio')">🎙️ אולפן</button> 
-                <button class="btn-bg" onclick="sendBackground('matrix')">💻 מאטריקס</button>
+                
+                <div class="gold-feature" style="margin-top: 15px;">
+                    <label style="color: #eab308; font-weight: bold; font-size: 0.9rem;">💼 העלה לוגו נותן חסות (קבוע במסך):</label>
+                    <input type="file" id="sponsorImg" accept="image/*" style="width: 90%; margin-top: 5px;" disabled onchange="uploadSponsor()">
+                </div>
+
+                <hr style="border-color: #334155; margin: 15px 0;">
+                <h3 style="margin:0 0 10px 0; color: #14b8a6;">🎵 מוזיקת רקע</h3>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-full btn-success" onclick="toggleMusic(true)">▶️ נגן מוזיקה</button>
+                    <button class="btn-full btn-danger" onclick="toggleMusic(false)">⏸️ השתק</button>
+                </div>
+
+                <hr style="border-color: #334155; margin: 15px 0;">
                 <button class="btn-effect" onclick="sendEffect('confetti')">🎉 קונפטי</button> 
                 <button class="btn-effect" onclick="sendEffect('shake')">🌩️ רעידה</button>
             </div>
@@ -109,6 +132,8 @@
     <script>
         const socket = io();
         let myRoomId = "";
+        let currentPlayersObj = {}; 
+        let isDouble = false;
 
         window.onload = () => {
             const savedRoom = sessionStorage.getItem('clickinetAdminRoom');
@@ -136,28 +161,109 @@
         socket.on('updateSettings', s => { 
             const pBtn = document.getElementById('premiumBtn');
             const fileInput = document.getElementById('qImage');
+            const sponsorInput = document.getElementById('sponsorImg');
             if(s.isGold) { 
                 pBtn.innerText = '👑 פרימיום זהב: פעיל!'; pBtn.style.background = '#eab308'; pBtn.style.color = '#000';
-                fileInput.disabled = false;
+                fileInput.disabled = false; sponsorInput.disabled = false;
             } else if(s.isPremium) { 
                 pBtn.innerText = '💎 פרימיום: מופעל!'; pBtn.style.background = '#38bdf8'; pBtn.style.color = '#000';
-                fileInput.disabled = true;
+                fileInput.disabled = true; sponsorInput.disabled = true;
             } else { 
                 pBtn.innerText = 'רגיל (עד 10 משתתפים)'; pBtn.style.background = '#ef4444'; pBtn.style.color = '#fff';
-                fileInput.disabled = true;
+                fileInput.disabled = true; sponsorInput.disabled = true;
             }
         });
 
+        socket.on('lockState', isLocked => {
+            const display = document.getElementById('lockStatusDisplay');
+            if(isLocked) { display.innerText = 'סגור 🔒'; display.style.color = '#ef4444'; } else { display.innerText = 'פתוח להצבעות! 🔥'; display.style.color = '#10b981'; }
+        });
+
+        // עדכון רשימת השאלות ומחיקה פרטנית
+        socket.on('updateQuestions', qs => { 
+            const list = document.getElementById('qListItems');
+            list.innerHTML = '';
+            if(qs.length === 0) list.innerHTML = '<p style="text-align:center; color:#94a3b8; font-size:0.9rem;">המחסנית ריקה</p>';
+            qs.forEach((q, i) => {
+                list.innerHTML += `<div class="q-list-item"><span>${i+1}. ${q.q}</span> <button class="btn-danger" style="padding:4px 8px; margin:0;" onclick="deleteSingleQ(${i})">❌</button></div>`;
+            });
+        });
+        function deleteSingleQ(index) { socket.emit('deleteSingleQuestion', index); }
+
         socket.on('updateLeaderboard', players => {
+            currentPlayersObj = players; 
             const adminList = document.getElementById('adminPlayersList');
             adminList.innerHTML = '';
             let sortedPlayers = Object.entries(players).sort((a,b) => b[1].score - a[1].score);
             for (let [phone, p] of sortedPlayers) {
-                adminList.innerHTML += `<div class="player-edit-row"><span>${phone}</span><input type="text" id="name_${phone}" value="${p.name}"><button onclick="saveName('${phone}')">💾</button><div class="score-breakdown"><strong>${p.score}</strong> | ${p.lastBreakdown || ''}</div></div>`;
+                let breakdown = p.lastBreakdown || '';
+                let scoreColor = breakdown.includes('✅') ? '#10b981' : (breakdown.includes('❌') ? '#ef4444' : '#cbd5e1');
+                // הוספת כפתור הבעיטה 🥾
+                adminList.innerHTML += `<div class="player-edit-row">
+                    <span class="player-phone">${phone}</span>
+                    <input type="text" id="name_${phone}" value="${p.name}">
+                    <button style="background:#10b981;width:auto;padding:8px;margin:0;" onclick="saveName('${phone}')">💾</button>
+                    <button style="background:#ef4444;width:auto;padding:8px;margin:0;" title="העף שחקן" onclick="kick('${phone}')">🥾</button>
+                    <div class="score-breakdown" style="border-right-color: ${scoreColor}"><strong>ניקוד: ${p.score}</strong> | ${breakdown}</div>
+                </div>`;
             }
         });
 
-        function saveName(phone) { const newName = document.getElementById('name_' + phone).value; socket.emit('updatePlayerName', { phone, newName }); }
+        function saveName(phone) { socket.emit('updatePlayerName', { phone, newName: document.getElementById('name_' + phone).value }); }
+        function kick(phone) { if(confirm('לזרוק את השחקן מהחדר?')) socket.emit('kickPlayer', phone); }
+        
+        // 📊 הפקת אקסל
+        function exportResults() {
+            if(Object.keys(currentPlayersObj).length === 0) return alert("אין נתונים להורדה.");
+            let data = [["טלפון", "שם שחקן", "ניקוד סופי", "רצף נוכחי"]];
+            let sorted = Object.entries(currentPlayersObj).sort((a,b) => b[1].score - a[1].score);
+            for(let [phone, p] of sorted) { data.push([phone, p.name, p.score, p.streak]); }
+            let ws = XLSX.utils.aoa_to_sheet(data);
+            let wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "תוצאות");
+            XLSX.writeFile(wb, `Clickinet_Results_${myRoomId}.xlsx`);
+        }
+
+        // 🤖 טייס אוטומטי
+        function runAutoPilot() {
+            if(!confirm('להפעיל סייקל אוטומטי? המערכת תשאל, תפעיל שעון של 15ש, תציג גרף, ותחשוף תשובה לבד.')) return;
+            socket.emit('nextQuestion');
+            setTimeout(() => {
+                socket.emit('startTimer', 15);
+                setTimeout(() => {
+                    socket.emit('showChart');
+                    setTimeout(() => { socket.emit('revealAnswer'); }, 4000); // חשוף אחרי 4 שניות של גרף
+                }, 16000); // גרף מופיע שניה אחרי שהטיימר של 15 נגמר
+            }, 5000); // 5 שניות לקהל לקרוא את השאלה לפני שהטיימר מתחיל
+        }
+
+        function toggleDouble() {
+            isDouble = !isDouble;
+            socket.emit('toggleDoublePoints', isDouble);
+            const btn = document.getElementById('doubleBtn');
+            btn.style.background = isDouble ? '#000' : '#eab308';
+            btn.style.color = isDouble ? '#eab308' : '#000';
+            btn.innerText = isDouble ? '✨ דאבל נקודות פועל כעת! ✨' : '✨ הפעל שאלת דאבל נקודות!';
+        }
+        
+        socket.on('doublePointsState', state => {
+            isDouble = state;
+            const btn = document.getElementById('doubleBtn');
+            btn.style.background = isDouble ? '#000' : '#eab308';
+            btn.style.color = isDouble ? '#eab308' : '#000';
+            btn.innerText = isDouble ? '✨ דאבל נקודות פועל כעת! ✨' : '✨ הפעל שאלת דאבל נקודות!';
+        });
+
+        // העלאת לוגו ספונסר
+        function uploadSponsor() {
+            const fileInput = document.getElementById('sponsorImg');
+            if(fileInput.files.length > 0) {
+                const reader = new FileReader();
+                reader.onload = e => { socket.emit('uploadSponsor', { imgBase64: e.target.result }); alert('לוגו חסות עלה בהצלחה!'); };
+                reader.readAsDataURL(fileInput.files[0]);
+            }
+        }
+
         function addQuestion() { 
             const fileInput = document.getElementById('qImage');
             const q = { q: document.getElementById('qText').value, a1: document.getElementById('a1').value, a2: document.getElementById('a2').value, a3: document.getElementById('a3').value, a4: document.getElementById('a4').value, ans: document.getElementById('correct').value }; 
@@ -167,15 +273,19 @@
                 reader.readAsDataURL(fileInput.files[0]);
             } else { socket.emit('addSingleQuestion', q); document.getElementById('qText').value = ''; alert('נוסף!'); }
         }
+        
         function startGame() { socket.emit('startGame'); }
         function nextQuestion() { socket.emit('nextQuestion'); }
         function prevQuestion() { socket.emit('prevQuestion'); } 
         function toggleLock(state) { socket.emit('toggleLock', state); }
         function revealAnswer() { socket.emit('revealAnswer'); } 
+        function showChart() { socket.emit('showChart'); }
         function sendEffect(type) { socket.emit('triggerEffect', type); }
-        function sendBackground(bg) { socket.emit('changeBackground', bg); }
-        function startTimer() { socket.emit('startTimer', parseInt(document.getElementById('timerInput').value)); }
-        function uploadExcel() { /* פונקציית אקסל הקודמת... */ }
+        function toggleMusic(state) { socket.emit('toggleMusic', state); }
+        function startTimer() { socket.emit('startTimer', 15); }
+        function clearCurrentQuestions() { if(confirm('למחוק הכל?')) socket.emit('clearQuestions'); }
+        function clearPlayers() { if(confirm('לנתק כולם?')) socket.emit('clearPlayers'); }
+        function triggerVictory() { if(confirm('לסיים ולהציג פודיום?')) socket.emit('showVictoryScreen'); }
     </script>
 </body>
 </html>
