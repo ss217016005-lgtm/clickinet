@@ -92,10 +92,14 @@
                 <input type="number" id="correct" placeholder="נכונה (1-4)" min="1" max="4">
                 <button class="btn-full btn-success" onclick="addQuestion()">➕ הוסף למחסנית</button>
                 
-                <div style="margin-top: 15px; max-height: 150px; overflow-y: auto; background:rgba(0,0,0,0.3); padding:10px; border-radius:8px;" id="qListItems">
-                    <p style="text-align:center; color:#94a3b8; font-size:0.9rem;">המחסנית ריקה</p>
-                </div>
+                <div style="margin-top: 15px; max-height: 150px; overflow-y: auto; background:rgba(0,0,0,0.3); padding:10px; border-radius:8px;" id="qListItems"></div>
                 <button class="btn-full btn-danger" style="background: transparent; border: 1px solid #ef4444; color: #ef4444; margin-top:5px;" onclick="clearCurrentQuestions()">🗑️ רוקן את כל המחסנית</button>
+
+                <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; margin-top: 15px; border: 1px dashed #38bdf8;">
+                    <h3 style="margin-top:0; color: #38bdf8;">📁 טעינה מאקסל</h3>
+                    <input type="file" id="excelFile" accept=".xlsx, .xls, .csv" style="width: 90%;">
+                    <button class="btn-full" style="background: #38bdf8; color: #000; margin-top: 10px;" onclick="uploadExcel()">⬆️ העלה קובץ שאלות</button>
+                </div>
             </div>
 
             <div class="panel">
@@ -117,13 +121,23 @@
                 <hr style="border-color: #334155; margin: 15px 0;">
                 <h3 style="margin:0 0 10px 0; color: #14b8a6;">🎵 מוזיקת רקע</h3>
                 <div style="display: flex; gap: 10px;">
-                    <button class="btn-full btn-success" onclick="toggleMusic(true)">▶️ נגן מוזיקה</button>
+                    <button class="btn-full btn-success" onclick="toggleMusic(true)">▶️ נגן</button>
                     <button class="btn-full btn-danger" onclick="toggleMusic(false)">⏸️ השתק</button>
                 </div>
 
                 <hr style="border-color: #334155; margin: 15px 0;">
-                <button class="btn-effect" onclick="sendEffect('confetti')">🎉 קונפטי</button> 
-                <button class="btn-effect" onclick="sendEffect('shake')">🌩️ רעידה</button>
+                <h2>🗂️ בנק משחקים</h2>
+                <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <input type="text" id="newGameName" placeholder="תן שם למשחק">
+                    <button class="btn-full btn-success" onclick="saveToBank()">💾 שמור לבנק</button>
+                </div>
+                <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px;">
+                    <select id="savedGamesList"><option value="">-- בחר משחק לטעינה --</option></select>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn-full" style="background: #38bdf8; color: #000;" onclick="loadFromBank()">📂 טען למחסנית</button>
+                        <button class="btn-full btn-danger" onclick="deleteFromBank()">🗑️ מחק</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -179,7 +193,11 @@
             if(isLocked) { display.innerText = 'סגור 🔒'; display.style.color = '#ef4444'; } else { display.innerText = 'פתוח להצבעות! 🔥'; display.style.color = '#10b981'; }
         });
 
-        // עדכון רשימת השאלות ומחיקה פרטנית
+        socket.on('updateSavedGames', games => {
+            const select = document.getElementById('savedGamesList'); select.innerHTML = '<option value="">-- בחר משחק לטעינה --</option>';
+            games.forEach(g => { select.innerHTML += `<option value="${g}">${g}</option>`; });
+        });
+
         socket.on('updateQuestions', qs => { 
             const list = document.getElementById('qListItems');
             list.innerHTML = '';
@@ -187,6 +205,7 @@
             qs.forEach((q, i) => {
                 list.innerHTML += `<div class="q-list-item"><span>${i+1}. ${q.q}</span> <button class="btn-danger" style="padding:4px 8px; margin:0;" onclick="deleteSingleQ(${i})">❌</button></div>`;
             });
+            document.getElementById('qCount').innerText = qs.length;
         });
         function deleteSingleQ(index) { socket.emit('deleteSingleQuestion', index); }
 
@@ -198,7 +217,8 @@
             for (let [phone, p] of sortedPlayers) {
                 let breakdown = p.lastBreakdown || '';
                 let scoreColor = breakdown.includes('✅') ? '#10b981' : (breakdown.includes('❌') ? '#ef4444' : '#cbd5e1');
-                // הוספת כפתור הבעיטה 🥾
+                
+                // הנה השדות להקלדת שם ושמירה!
                 adminList.innerHTML += `<div class="player-edit-row">
                     <span class="player-phone">${phone}</span>
                     <input type="text" id="name_${phone}" value="${p.name}">
@@ -212,7 +232,6 @@
         function saveName(phone) { socket.emit('updatePlayerName', { phone, newName: document.getElementById('name_' + phone).value }); }
         function kick(phone) { if(confirm('לזרוק את השחקן מהחדר?')) socket.emit('kickPlayer', phone); }
         
-        // 📊 הפקת אקסל
         function exportResults() {
             if(Object.keys(currentPlayersObj).length === 0) return alert("אין נתונים להורדה.");
             let data = [["טלפון", "שם שחקן", "ניקוד סופי", "רצף נוכחי"]];
@@ -224,17 +243,42 @@
             XLSX.writeFile(wb, `Clickinet_Results_${myRoomId}.xlsx`);
         }
 
-        // 🤖 טייס אוטומטי
+        // --- הנה פונקציית האקסל שחזרה במלואה! ---
+        function uploadExcel() {
+            const file = document.getElementById('excelFile').files[0];
+            if (!file) return alert('נא לבחור קובץ אקסל קודם!');
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(firstSheet, {header: 1});
+                let newQuestions = [];
+                for (let i = 1; i < rows.length; i++) { 
+                    let r = rows[i];
+                    if (r.length >= 6 && r[0] && r[5]) {
+                        newQuestions.push({ q: String(r[0]), a1: String(r[1] || ''), a2: String(r[2] || ''), a3: String(r[3] || ''), a4: String(r[4] || ''), ans: String(r[5]) });
+                    }
+                }
+                if (newQuestions.length > 0) {
+                    socket.emit('addBulkQuestions', newQuestions);
+                    alert('הועלו ' + newQuestions.length + ' שאלות בהצלחה למחסנית!');
+                    document.getElementById('excelFile').value = '';
+                } else { alert('לא נמצאו שאלות תקינות בקובץ.'); }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
         function runAutoPilot() {
-            if(!confirm('להפעיל סייקל אוטומטי? המערכת תשאל, תפעיל שעון של 15ש, תציג גרף, ותחשוף תשובה לבד.')) return;
+            if(!confirm('להפעיל סייקל אוטומטי? המערכת תשאל, תפעיל שעון, תציג גרף, ותחשוף תשובה לבד.')) return;
             socket.emit('nextQuestion');
             setTimeout(() => {
                 socket.emit('startTimer', 15);
                 setTimeout(() => {
                     socket.emit('showChart');
-                    setTimeout(() => { socket.emit('revealAnswer'); }, 4000); // חשוף אחרי 4 שניות של גרף
-                }, 16000); // גרף מופיע שניה אחרי שהטיימר של 15 נגמר
-            }, 5000); // 5 שניות לקהל לקרוא את השאלה לפני שהטיימר מתחיל
+                    setTimeout(() => { socket.emit('revealAnswer'); }, 4000);
+                }, 16000); 
+            }, 5000); 
         }
 
         function toggleDouble() {
@@ -254,7 +298,6 @@
             btn.innerText = isDouble ? '✨ דאבל נקודות פועל כעת! ✨' : '✨ הפעל שאלת דאבל נקודות!';
         });
 
-        // העלאת לוגו ספונסר
         function uploadSponsor() {
             const fileInput = document.getElementById('sponsorImg');
             if(fileInput.files.length > 0) {
@@ -286,6 +329,10 @@
         function clearCurrentQuestions() { if(confirm('למחוק הכל?')) socket.emit('clearQuestions'); }
         function clearPlayers() { if(confirm('לנתק כולם?')) socket.emit('clearPlayers'); }
         function triggerVictory() { if(confirm('לסיים ולהציג פודיום?')) socket.emit('showVictoryScreen'); }
+        
+        function saveToBank() { const name = document.getElementById('newGameName').value; socket.emit('saveGameToBank', name); document.getElementById('newGameName').value='';}
+        function loadFromBank() { const name = document.getElementById('savedGamesList').value; socket.emit('loadGameFromBank', name); }
+        function deleteFromBank() { const name = document.getElementById('savedGamesList').value; socket.emit('deleteGameFromBank', name); }
     </script>
 </body>
 </html>
