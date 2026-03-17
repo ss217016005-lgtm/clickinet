@@ -7,18 +7,22 @@ const fs = require('fs');
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+// יצירת תיקיית הכספת שלנו (המחוברת לכונן הקשיח ב-Railway)
 if (!fs.existsSync('uploads')) { fs.mkdirSync('uploads'); }
 app.use('/uploads', express.static('uploads'));
 
+// 🔒 התיקון הגדול! מסד הנתונים נשמר בתוך הכספת ולא נמחק לעולם
+const DB_PATH = 'uploads/database.json';
+
 let db = { phonebooks: {}, savedGames: {}, pins: {}, phoneToRoom: {} };
 try { 
-    if (fs.existsSync('database.json')) {
-        let data = fs.readFileSync('database.json', 'utf8');
+    if (fs.existsSync(DB_PATH)) {
+        let data = fs.readFileSync(DB_PATH, 'utf8');
         if (data.trim() !== '') db = JSON.parse(data);
     }
 } catch(e) {}
 
-function saveDB() { try { fs.writeFileSync('database.json', JSON.stringify(db)); } catch(e){} }
+function saveDB() { try { fs.writeFileSync(DB_PATH, JSON.stringify(db)); } catch(e){} }
 
 let rooms = {};
 
@@ -61,6 +65,7 @@ app.all('/api/answer', (req, res) => {
             if (val !== undefined && val !== '') {
                 if (val === '1' && !db.pins['1']) return res.send("read=t-נא להקיש קוד משחק וסולמית=val_1,no,10,1,15,no,no");
                 if (!db.pins[val]) return res.send(`read=t-קוד שגוי נא לנסות שוב=val_1,no,10,1,15,no,no`);
+                // אם למנוי יש תאריך תפוגה והוא עבר - חסום!
                 if (db.pins[val].expiresAt && exactHitTime > db.pins[val].expiresAt) return res.send(`id_list_message=t-תוקף הקוד פג&go_to_folder=hangup`);
                 if (db.pins[val].gamesLeft <= 0) return res.send(`id_list_message=t-הקוד סיים את המכסה&go_to_folder=hangup`);
                 db.phoneToRoom[phone] = val; saveDB(); getRoom(val);
@@ -118,6 +123,16 @@ io.on('connection', (socket) => {
         saveDB(); io.emit('superData', db.pins); 
     });
     socket.on('deletePin', (pin) => { delete db.pins[pin]; saveDB(); io.emit('superData', db.pins); });
+    
+    socket.on('fetchLiveStats', () => {
+        let stats = {};
+        for (let r in rooms) {
+            let activeCount = Object.keys(rooms[r].activePlayers).length;
+            if (activeCount > 0 || rooms[r].gameActive) stats[r] = { players: activeCount, isActive: rooms[r].gameActive, qCount: rooms[r].questions.length, currentQ: rooms[r].currentQuestion + 1 };
+        }
+        socket.emit('liveStatsData', stats);
+    });
+
     socket.on('joinRoom', (roomId) => {
         if (!db.pins[roomId]) return socket.emit('loginResponse', { success: false, error: 'קוד לא קיים!' });
         if (db.pins[roomId].expiresAt && Date.now() > db.pins[roomId].expiresAt) return socket.emit('loginResponse', { success: false, error: 'הקוד פג תוקף!' });
@@ -130,6 +145,7 @@ io.on('connection', (socket) => {
         socket.emit('updateQuestions', room.questions);
         socket.emit('updateSavedGames', Object.keys(db.savedGames[roomId] || {}));
     });
+
     socket.on('startGame', () => { 
         if(!socket.roomId) return; let room = rooms[socket.roomId]; if(room.questions.length === 0) return; 
         if (db.pins[socket.roomId].type !== 'gold') { db.pins[socket.roomId].gamesLeft--; saveDB(); }
@@ -139,6 +155,7 @@ io.on('connection', (socket) => {
         for(let p in room.activePlayers) { room.activePlayers[p].score = 0; room.activePlayers[p].lastAnswered = -1; room.activePlayers[p].streak = 0; } 
         io.to(socket.roomId).emit('newQuestion', room.questions[room.currentQuestion]); io.to(socket.roomId).emit('lockState', true); io.to(socket.roomId).emit('updateLeaderboard', room.activePlayers); 
     });
+
     socket.on('addSingleQuestion', q => { 
         if(socket.roomId) { 
             if (q.imgBase64) {
@@ -150,14 +167,18 @@ io.on('connection', (socket) => {
             rooms[socket.roomId].questions.push(q); io.to(socket.roomId).emit('updateQuestions', rooms[socket.roomId].questions); 
         } 
     });
+
     socket.on('revealAnswer', () => { if(socket.roomId && rooms[socket.roomId].currentQuestion >= 0) io.to(socket.roomId).emit('showCorrectAnswer', rooms[socket.roomId].questions[rooms[socket.roomId].currentQuestion].ans); });
     socket.on('triggerEffect', type => { if(socket.roomId) io.to(socket.roomId).emit('playEffect', type); });
     socket.on('changeBackground', bg => { if(socket.roomId) io.to(socket.roomId).emit('setBg', bg); });
     socket.on('addBulkQuestions', qs => { if(socket.roomId) { rooms[socket.roomId].questions = rooms[socket.roomId].questions.concat(qs); io.to(socket.roomId).emit('updateQuestions', rooms[socket.roomId].questions); } });
     socket.on('clearQuestions', () => { if(socket.roomId) { rooms[socket.roomId].questions = []; io.to(socket.roomId).emit('updateQuestions', rooms[socket.roomId].questions); } });
+    
+    // שמירת המשחקים לבנק נכתבת ישירות למסד הנתונים הבטוח שלנו!
     socket.on('saveGameToBank', name => { if(socket.roomId) { db.savedGames[socket.roomId][name] = [...rooms[socket.roomId].questions]; saveDB(); io.to(socket.roomId).emit('updateSavedGames', Object.keys(db.savedGames[socket.roomId])); } });
     socket.on('loadGameFromBank', name => { if(socket.roomId && db.savedGames[socket.roomId][name]) { rooms[socket.roomId].questions = [...db.savedGames[socket.roomId][name]]; io.to(socket.roomId).emit('updateQuestions', rooms[socket.roomId].questions); } });
     socket.on('deleteGameFromBank', name => { if(socket.roomId) { delete db.savedGames[socket.roomId][name]; saveDB(); io.to(socket.roomId).emit('updateSavedGames', Object.keys(db.savedGames[socket.roomId])); } });
+    
     socket.on('toggleLock', lock => { if(socket.roomId) { rooms[socket.roomId].answersLocked = lock; if(lock && rooms[socket.roomId].timerTimeout) clearTimeout(rooms[socket.roomId].timerTimeout); io.to(socket.roomId).emit('lockState', rooms[socket.roomId].answersLocked); } });
     socket.on('startTimer', sec => { if(socket.roomId) { let room = rooms[socket.roomId]; room.answersLocked = false; room.questionStartTime = Date.now(); io.to(socket.roomId).emit('lockState', false); io.to(socket.roomId).emit('startCountdown', sec); if(room.timerTimeout) clearTimeout(room.timerTimeout); room.timerTimeout = setTimeout(() => { room.answersLocked = true; io.to(socket.roomId).emit('lockState', true); io.to(socket.roomId).emit('playEffect', 'shake'); }, sec * 1000); } });
     socket.on('nextQuestion', () => { if(socket.roomId) { let room = rooms[socket.roomId]; room.currentQuestion++; if (room.currentQuestion < room.questions.length) { room.answersLocked = true; for(let p in room.activePlayers) room.activePlayers[p].currentChoice = null; io.to(socket.roomId).emit('newQuestion', room.questions[room.currentQuestion]); io.to(socket.roomId).emit('lockState', true); } else { room.gameActive = false; room.answersLocked = true; io.to(socket.roomId).emit('gameOver'); } } });
@@ -168,4 +189,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V54.0 (Sticky Premium Status) is ONLINE ==="));
+http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V56.0 (Persistent DB) is ONLINE ==="));
