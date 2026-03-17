@@ -7,6 +7,10 @@ const fs = require('fs');
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+// יצירת תיקיית תמונות אם לא קיימת והנגשתה לרשת
+if (!fs.existsSync('uploads')) { fs.mkdirSync('uploads'); }
+app.use('/uploads', express.static('uploads'));
+
 let db = { phonebooks: {}, savedGames: {}, pins: {}, phoneToRoom: {} };
 try { 
     if (fs.existsSync('database.json')) {
@@ -23,7 +27,12 @@ function getRoom(roomId) {
     if (!rooms[roomId]) {
         rooms[roomId] = {
             activePlayers: {}, questions: [], currentQuestion: -1, gameActive: false, answersLocked: true,
-            gameSettings: { gameName: "קליקינט", phoneNumber: "077-2296674", isPremium: db.pins[roomId]?.type === 'premium' },
+            gameSettings: { 
+                gameName: "קליקינט", 
+                phoneNumber: "077-2296674", 
+                isPremium: db.pins[roomId]?.type === 'premium' || db.pins[roomId]?.type === 'gold',
+                isGold: db.pins[roomId]?.type === 'gold' 
+            },
             calibrationState: 'off', calibrationStartTime: 0, questionStartTime: 0, timerTimeout: null
         };
         if (!db.phonebooks[roomId]) db.phonebooks[roomId] = {};
@@ -91,15 +100,12 @@ app.all('/api/answer', (req, res) => {
                 if (player.lastAnswered !== room.currentQuestion) {
                     player.lastAnswered = room.currentQuestion;
                     player.currentChoice = val;
-                    
                     if (q.ans && val === String(q.ans)) {
                         let netTime = Math.max(100, (exactHitTime - room.questionStartTime) - (player.ping || 0)); 
                         let speedBonus = Math.max(0, 100 - Math.floor(netTime / 1000));
                         player.streak = (player.streak || 0) + 1; 
                         let streakBonus = (player.streak > 1) ? (player.streak * 15) : 0; 
                         player.score += (100 + speedBonus + streakBonus); 
-                        
-                        // שמירת דוח הניקוד המדויק
                         player.lastBreakdown = `✅ ענה נכון! | בסיס: 100 | מהירות: +${speedBonus} | בונוס רצף: +${streakBonus}`;
                     } else {
                         player.streak = 0; 
@@ -120,22 +126,18 @@ app.all('/api/answer', (req, res) => {
             return res.send("read=t-הקש תשובה=val_1,no,1,1,15,no,no");
         }
         return res.send("read=t-ממתין=val_1,no,1,1,10,no,no");
-
-    } catch(err) {
-        console.error("❌ שגיאה:", err);
-        res.send("id_list_message=t-שגיאה&go_to_folder=hangup");
-    }
+    } catch(err) { res.send("id_list_message=t-שגיאה&go_to_folder=hangup"); }
 });
 
 io.on('connection', (socket) => {
-    socket.on('superLogin', (pass) => {
-        if (pass === "Ahal2026!") socket.emit('superData', db.pins); else socket.emit('superError');
-    });
+    socket.on('superLogin', (pass) => { if (pass === "Ahal2026!") socket.emit('superData', db.pins); else socket.emit('superError'); });
     
     socket.on('createBulkPins', (data) => {
         let start = parseInt(data.start); let end = data.end ? parseInt(data.end) : start; 
+        // 👑 אם זה זהב, הוא מקבל 9999 משחקים (ללא הגבלה!)
+        let initialGames = data.type === 'gold' ? 9999 : 3;
         for(let i = start; i <= end; i++) {
-            db.pins[i.toString()] = { type: data.type, gamesLeft: 3, created: new Date().toLocaleDateString('he-IL'), expiresAt: data.expiresAt };
+            db.pins[i.toString()] = { type: data.type, gamesLeft: initialGames, created: new Date().toLocaleDateString('he-IL'), expiresAt: data.expiresAt };
         }
         saveDB(); io.emit('superData', db.pins); 
     });
@@ -156,7 +158,9 @@ io.on('connection', (socket) => {
         if (db.pins[roomId].gamesLeft <= 0) return socket.emit('loginResponse', { success: false, error: 'נגמרה מכסת המשחקים!' });
         
         socket.join(roomId); socket.roomId = roomId; const room = getRoom(roomId);
-        socket.emit('loginResponse', { success: true, gamesLeft: db.pins[roomId].gamesLeft });
+        let gamesDisplay = room.gameSettings.isGold ? 'ללא הגבלה 👑' : db.pins[roomId].gamesLeft;
+        
+        socket.emit('loginResponse', { success: true, gamesLeft: gamesDisplay });
         socket.emit('updateSettings', room.gameSettings); socket.emit('updateLeaderboard', room.activePlayers);
         socket.emit('lockState', room.answersLocked); socket.emit('updateQuestions', room.questions);
         socket.emit('updateSavedGames', Object.keys(db.savedGames[roomId] || {}));
@@ -164,31 +168,34 @@ io.on('connection', (socket) => {
 
     socket.on('startGame', () => { 
         if(!socket.roomId) return; let room = rooms[socket.roomId]; if(room.questions.length === 0) return; 
-        db.pins[socket.roomId].gamesLeft--; saveDB(); io.to(socket.roomId).emit('updateGamesLeft', db.pins[socket.roomId].gamesLeft);
+        if (!room.gameSettings.isGold) { db.pins[socket.roomId].gamesLeft--; saveDB(); } // זהב לא יורד!
+        let gamesDisplay = room.gameSettings.isGold ? 'ללא הגבלה 👑' : db.pins[socket.roomId].gamesLeft;
+        io.to(socket.roomId).emit('updateGamesLeft', gamesDisplay);
+        
         room.gameActive = true; room.currentQuestion = 0; room.answersLocked = true; 
         for(let p in room.activePlayers) { room.activePlayers[p].score = 0; room.activePlayers[p].lastAnswered = -1; room.activePlayers[p].streak = 0; room.activePlayers[p].lastBreakdown = ""; } 
         io.to(socket.roomId).emit('newQuestion', room.questions[room.currentQuestion]); io.to(socket.roomId).emit('lockState', true); io.to(socket.roomId).emit('updateLeaderboard', room.activePlayers); 
     });
 
-    // 💡 הפקודה לחשיפת התשובה הנכונה לקהל!
-    socket.on('revealAnswer', () => {
-        if(socket.roomId) {
-            let room = rooms[socket.roomId];
-            if(room.currentQuestion >= 0 && room.currentQuestion < room.questions.length) {
-                io.to(socket.roomId).emit('showCorrectAnswer', room.questions[room.currentQuestion].ans);
-                io.to(socket.roomId).emit('playEffect', 'tada'); // צליל ניצחון קטן
-            }
-        }
-    });
-
-    socket.on('saveSettings', s => { if(socket.roomId) { rooms[socket.roomId].gameSettings = s; io.to(socket.roomId).emit('updateSettings', s); } });
+    socket.on('revealAnswer', () => { if(socket.roomId && rooms[socket.roomId].currentQuestion >= 0) io.to(socket.roomId).emit('showCorrectAnswer', rooms[socket.roomId].questions[rooms[socket.roomId].currentQuestion].ans); });
     socket.on('triggerEffect', type => { if(socket.roomId) io.to(socket.roomId).emit('playEffect', type); });
     socket.on('changeBackground', bg => { if(socket.roomId) io.to(socket.roomId).emit('setBg', bg); });
-    socket.on('prepareCalibration', () => { if(socket.roomId) { rooms[socket.roomId].calibrationState = 'prepared'; for(let p in rooms[socket.roomId].activePlayers) rooms[socket.roomId].activePlayers[p].ping = 0; io.to(socket.roomId).emit('prepareCalibration'); } });
-    socket.on('startCalibration', () => { if(socket.roomId) { rooms[socket.roomId].calibrationState = 'active'; rooms[socket.roomId].calibrationStartTime = Date.now(); io.to(socket.roomId).emit('startCalibration'); } });
-    socket.on('endCalibration', () => { if(socket.roomId) { rooms[socket.roomId].calibrationState = 'off'; let pings = Object.values(rooms[socket.roomId].activePlayers).filter(p => p.ping > 0).map(p => p.ping); let stats = { count: pings.length, avg: 0, min: 0, max: 0 }; if(pings.length > 0) { stats.avg = Math.round(pings.reduce((a,b)=>a+b,0)/pings.length); stats.min = Math.min(...pings); stats.max = Math.max(...pings); } io.to(socket.roomId).emit('endCalibration', stats); } });
-    socket.on('updatePlayerName', ({ phone, newName }) => { if(socket.roomId) { db.phonebooks[socket.roomId][phone] = newName; saveDB(); if (rooms[socket.roomId].activePlayers[phone]) rooms[socket.roomId].activePlayers[phone].name = newName; io.to(socket.roomId).emit('updateLeaderboard', rooms[socket.roomId].activePlayers); } });
-    socket.on('addSingleQuestion', q => { if(socket.roomId) { rooms[socket.roomId].questions.push(q); io.to(socket.roomId).emit('updateQuestions', rooms[socket.roomId].questions); } });
+    
+    // 📸 קבלת שאלה עם תמונה ושמירתה בשרת!
+    socket.on('addSingleQuestion', q => { 
+        if(socket.roomId) { 
+            if (q.imgBase64) {
+                const base64Data = q.imgBase64.replace(/^data:image\/\w+;base64,/, "");
+                const fileName = 'img_' + Date.now() + '.png';
+                fs.writeFileSync('uploads/' + fileName, base64Data, 'base64');
+                q.image = '/uploads/' + fileName;
+                delete q.imgBase64; // מוחקים כדי לחסוך מקום במסד הנתונים
+            }
+            rooms[socket.roomId].questions.push(q); 
+            io.to(socket.roomId).emit('updateQuestions', rooms[socket.roomId].questions); 
+        } 
+    });
+    
     socket.on('addBulkQuestions', qs => { if(socket.roomId) { rooms[socket.roomId].questions = rooms[socket.roomId].questions.concat(qs); io.to(socket.roomId).emit('updateQuestions', rooms[socket.roomId].questions); } });
     socket.on('clearQuestions', () => { if(socket.roomId) { rooms[socket.roomId].questions = []; io.to(socket.roomId).emit('updateQuestions', rooms[socket.roomId].questions); } });
     socket.on('saveGameToBank', name => { if(socket.roomId) { db.savedGames[socket.roomId][name] = [...rooms[socket.roomId].questions]; saveDB(); io.to(socket.roomId).emit('updateSavedGames', Object.keys(db.savedGames[socket.roomId])); } });
@@ -200,7 +207,8 @@ io.on('connection', (socket) => {
     socket.on('prevQuestion', () => { if(socket.roomId) { let room = rooms[socket.roomId]; if (room.currentQuestion > 0) { room.currentQuestion--; room.answersLocked = true; for(let p in room.activePlayers) room.activePlayers[p].currentChoice = null; io.to(socket.roomId).emit('newQuestion', room.questions[room.currentQuestion]); io.to(socket.roomId).emit('lockState', true); } } });
     socket.on('showVictoryScreen', () => { if(socket.roomId) { let room = rooms[socket.roomId]; room.gameActive = false; room.answersLocked = true; io.to(socket.roomId).emit('lockState', true); const topPlayers = Object.values(room.activePlayers).sort((a,b) => b.score - a.score).slice(0, 3); io.to(socket.roomId).emit('victoryPodium', topPlayers); } });
     socket.on('clearPlayers', () => { if(socket.roomId) { rooms[socket.roomId].activePlayers = {}; io.to(socket.roomId).emit('updateLeaderboard', rooms[socket.roomId].activePlayers); } });
+    socket.on('updatePlayerName', ({ phone, newName }) => { if(socket.roomId) { db.phonebooks[socket.roomId][phone] = newName; saveDB(); if (rooms[socket.roomId].activePlayers[phone]) rooms[socket.roomId].activePlayers[phone].name = newName; io.to(socket.roomId).emit('updateLeaderboard', rooms[socket.roomId].activePlayers); } });
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V51.0 (Score Transparency + Reveal Answer) is ONLINE ==="));
+http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V53.0 (Gold Tier & Images) is ONLINE ==="));
