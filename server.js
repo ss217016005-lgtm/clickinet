@@ -11,8 +11,15 @@ if (!fs.existsSync('uploads')) { fs.mkdirSync('uploads'); }
 app.use('/uploads', express.static('uploads'));
 
 const DB_PATH = 'uploads/database.json';
-// 💡 הוספנו את אובייקט analytics (כניסות לאתר)
-let db = { phonebooks: {}, savedGames: {}, pins: {}, vouchers: {}, messages: [], portalMsg: "", portalAd: { img: "", link: "" }, publicExcels: [], analytics: { portal: 0, audience: 0, admin: 0 } };
+
+// 💡 הוספנו את myDesk עבור האזור האישי שלך
+let db = { 
+    phonebooks: {}, savedGames: {}, pins: {}, vouchers: {}, messages: [], 
+    portalMsg: "", portalAd: { img: "", link: "" }, publicExcels: [], 
+    analytics: { portal: 0, audience: 0, admin: 0 },
+    myDesk: { links: [], passwords: [], tasks: [], files: [] } 
+};
+
 try { 
     if (fs.existsSync(DB_PATH)) {
         let data = fs.readFileSync(DB_PATH, 'utf8');
@@ -20,6 +27,7 @@ try {
             let parsed = JSON.parse(data);
             db = { ...db, ...parsed }; 
             if(!db.analytics) db.analytics = { portal: 0, audience: 0, admin: 0 }; // הגנה לגרסאות קודמות
+            if(!db.myDesk) db.myDesk = { links: [], passwords: [], tasks: [], files: [] }; // הגנה לאזור האישי
         }
     }
 } catch(e) {}
@@ -62,6 +70,11 @@ app.get('/portal', (req, res) => {
     res.sendFile(__dirname + '/portal.html'); 
 });
 app.get('/super', (req, res) => res.sendFile(__dirname + '/superadmin.html')); 
+
+// 🆕 הנתיב החדש לאזור האישי שלך
+app.get('/desk', (req, res) => { 
+    res.sendFile(__dirname + '/desk.html'); 
+});
 
 // מנוע ה-API לימות המשיח
 app.all('/api/answer', (req, res) => {
@@ -140,6 +153,48 @@ function emitSuperData() { io.emit('superData', { pins: db.pins, vouchers: db.vo
 function emitPortalData() { io.emit('portalData', { msg: db.portalMsg, ad: db.portalAd, excels: db.publicExcels }); }
 
 io.on('connection', (socket) => {
+    
+    // --- התחלת קוד האזור האישי ---
+    socket.on('deskLogin', (pass) => {
+        if (pass === "TCRHNHCUHTR") {
+            socket.emit('deskData', db.myDesk);
+        } else {
+            socket.emit('deskError');
+        }
+    });
+
+    socket.on('deskUpdateData', (newData) => {
+        db.myDesk.links = newData.links || db.myDesk.links;
+        db.myDesk.passwords = newData.passwords || db.myDesk.passwords;
+        db.myDesk.tasks = newData.tasks || db.myDesk.tasks;
+        saveDB();
+        socket.emit('deskData', db.myDesk);
+    });
+
+    socket.on('deskUploadFile', data => {
+        if(data.base64) { 
+            const base64Data = data.base64.replace(/^data:.*?;base64,/, ""); 
+            const fileName = 'desk_file_' + Date.now() + '_' + data.name; 
+            fs.writeFileSync('uploads/' + fileName, base64Data, 'base64'); 
+            db.myDesk.files.push({ name: data.name, url: '/uploads/' + fileName }); 
+            saveDB(); 
+            socket.emit('deskData', db.myDesk); 
+        }
+    });
+
+    socket.on('deskDeleteFile', index => {
+        if(db.myDesk.files[index]) {
+            // בונוס: מחיקת הקובץ הפיזי מהשרת כדי שלא יתפוס מקום סתם
+            const filePath = 'uploads/' + db.myDesk.files[index].url.split('/').pop();
+            if (fs.existsSync(filePath)) { fs.unlinkSync(filePath); }
+            
+            db.myDesk.files.splice(index, 1);
+            saveDB();
+            socket.emit('deskData', db.myDesk);
+        }
+    });
+    // --- סוף קוד האזור האישי ---
+
     socket.on('getPortalData', () => { socket.emit('portalData', { msg: db.portalMsg, ad: db.portalAd, excels: db.publicExcels }); });
     socket.on('superLogin', (pass) => { if (pass === "Ahal2026!") emitSuperData(); else socket.emit('superError'); });
     
