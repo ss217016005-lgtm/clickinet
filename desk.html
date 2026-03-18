@@ -3,65 +3,161 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>האזור האישי</title>
+    <title>האזור האישי שלי</title>
     <style>
-        body { margin: 0; padding: 0; font-family: Arial, sans-serif; background: #fff; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        :root {
+            --primary: #4361ee;
+            --secondary: #3f37c9;
+            --bg: #f4f7f6;
+            --card-bg: #ffffff;
+            --text: #333333;
+            --text-light: #666666;
+            --danger: #ef233c;
+            --danger-hover: #d90429;
+            --border: #e0e0e0;
+        }
+
+        body { 
+            margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: var(--bg); color: var(--text); min-height: 100vh;
+        }
         
-        /* מסך ההתחברות הלבן והחלק */
-        #login-screen { width: 100%; height: 100vh; display: flex; justify-content: center; align-items: center; background: #fff; }
-        #login-input { border: 1px solid #ccc; outline: none; padding: 10px; font-size: 16px; width: 200px; text-align: center; border-radius: 4px; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
+        /* מסך כניסה */
+        #login-screen { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: #fff; display: flex; justify-content: center; align-items: center; z-index: 1000;
+        }
+        #login-input { 
+            border: 2px solid #eee; padding: 15px 20px; font-size: 18px; width: 250px; text-align: center; 
+            border-radius: 30px; outline: none; transition: 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        #login-input:focus { border-color: var(--primary); }
+
+        /* כותרת וכלים עליונים */
+        header {
+            background: var(--card-bg); padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;
+        }
+        header h1 { margin: 0; font-size: 24px; color: var(--primary); }
+        .controls { display: flex; gap: 10px; flex-wrap: wrap; }
+        .controls input, .controls select {
+            padding: 10px 15px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; outline: none;
+        }
+        .controls input:focus { border-color: var(--primary); }
+
+        /* אזור הכרטיסיות */
+        #dashboard { 
+            display: none; padding: 30px 20px; max-width: 1200px; margin: 0 auto;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px;
+        }
         
-        /* הפאנל הפנימי */
-        #dashboard { display: none; width: 90%; max-width: 1000px; background: #f9f9f9; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); align-items: flex-start; gap: 20px; flex-wrap: wrap; }
-        .card { background: #fff; flex: 1; min-width: 250px; padding: 15px; border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .card h3 { margin-top: 0; border-bottom: 2px solid #333; padding-bottom: 5px; }
+        .card { 
+            background: var(--card-bg); padding: 25px; border-radius: 12px; 
+            box-shadow: 0 5px 20px rgba(0,0,0,0.04); display: flex; flex-direction: column;
+        }
+        .card h3 { margin-top: 0; margin-bottom: 20px; color: var(--text); font-size: 18px; border-bottom: 2px solid var(--primary); padding-bottom: 10px; display: inline-block; }
         
-        input[type="text"], input[type="password"] { width: 80%; padding: 8px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; }
-        button { padding: 8px 12px; background: #333; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
-        button:hover { background: #555; }
-        .delete-btn { background: #d9534f; padding: 4px 8px; font-size: 12px; margin-right: 10px; }
-        .delete-btn:hover { background: #c9302c; }
+        .input-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+        .input-group input, .input-group select { padding: 10px; border: 1px solid var(--border); border-radius: 6px; outline: none; }
         
-        ul { list-style: none; padding: 0; }
-        li { background: #f1f1f1; margin-bottom: 8px; padding: 8px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; }
-        a { color: #0066cc; text-decoration: none; }
+        button.add-btn { 
+            padding: 10px; background: var(--primary); color: #fff; border: none; border-radius: 6px; 
+            cursor: pointer; font-weight: bold; transition: 0.2s; 
+        }
+        button.add-btn:hover { background: var(--secondary); transform: translateY(-1px); }
+        
+        /* רשימות */
+        ul { list-style: none; padding: 0; margin: 0; overflow-y: auto; max-height: 350px; }
+        li { 
+            background: var(--bg); margin-bottom: 10px; padding: 12px 15px; border-radius: 8px; 
+            display: flex; justify-content: space-between; align-items: center; transition: 0.2s;
+            border: 1px solid transparent;
+        }
+        li:hover { border-color: var(--border); background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        
+        .item-content { display: flex; flex-direction: column; gap: 4px; }
+        .item-title { font-weight: 600; font-size: 15px; }
+        .item-subtitle { font-size: 12px; color: var(--text-light); }
+        
+        a { color: var(--primary); text-decoration: none; font-weight: 600; }
+        a:hover { text-decoration: underline; }
+        
+        button.delete-btn { 
+            background: var(--danger); color: white; padding: 6px 12px; font-size: 12px; 
+            border: none; border-radius: 4px; cursor: pointer; transition: 0.2s;
+        }
+        button.delete-btn:hover { background: var(--danger-hover); }
+
+        /* קטגוריות קישורים */
+        .category-header { font-size: 14px; color: var(--text-light); font-weight: bold; margin: 15px 0 5px 0; }
+        
+        /* קובץ מוסתר בעיצוב יפה */
+        .file-upload-wrapper { position: relative; overflow: hidden; display: inline-block; width: 100%; margin-bottom: 10px;}
+        .file-upload-wrapper input[type=file] { font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; height: 100%;}
+        .btn-file { background: #e0e0e0; color: #333; padding: 10px; text-align: center; border-radius: 6px; font-weight: bold; display: block; border: 1px dashed #999;}
     </style>
 </head>
 <body>
 
     <div id="login-screen">
-        <input type="password" id="login-input" placeholder="...">
+        <input type="password" id="login-input" placeholder="הקש סיסמה ולחץ אנטר...">
     </div>
 
-    <div id="dashboard">
-        <div class="card">
-            <h3>קישורים מועדפים</h3>
-            <input type="text" id="link-name" placeholder="שם האתר">
-            <input type="text" id="link-url" placeholder="http://...">
-            <button onclick="addLink()">הוסף</button>
-            <ul id="links-list"></ul>
-        </div>
+    <div id="app-container" style="display: none;">
+        <header>
+            <h1>האזור האישי</h1>
+            <div class="controls">
+                <input type="text" id="search-box" placeholder="חיפוש מהיר..." onkeyup="renderAll()">
+                <select id="sort-box" onchange="renderAll()">
+                    <option value="newest">הכי חדש קודם</option>
+                    <option value="oldest">הכי ישן קודם</option>
+                    <option value="az">א - ת</option>
+                </select>
+            </div>
+        </header>
 
-        <div class="card">
-            <h3>סיסמאות</h3>
-            <input type="text" id="pass-desc" placeholder="תיאור (למשל: בנק)">
-            <input type="text" id="pass-val" placeholder="סיסמה">
-            <button onclick="addPass()">הוסף</button>
-            <ul id="pass-list"></ul>
-        </div>
+        <div id="dashboard">
+            <div class="card">
+                <h3>🔗 קישורים</h3>
+                <div class="input-group">
+                    <input type="text" id="link-name" placeholder="שם האתר">
+                    <input type="text" id="link-url" placeholder="קישור (https://...)">
+                    <input type="text" id="link-category" placeholder="קטגוריה (למשל: לימודים, עבודה...)">
+                    <button class="add-btn" onclick="addLink()">הוסף קישור</button>
+                </div>
+                <div id="links-container"></div>
+            </div>
 
-        <div class="card">
-            <h3>מטלות (To-Do)</h3>
-            <input type="text" id="task-val" placeholder="מה צריך לעשות?">
-            <button onclick="addTask()">הוסף</button>
-            <ul id="tasks-list"></ul>
-        </div>
+            <div class="card">
+                <h3>🔑 סיסמאות מורכבות</h3>
+                <div class="input-group">
+                    <input type="text" id="pass-desc" placeholder="עבור מה? (למשל: בנק, מייל)">
+                    <input type="text" id="pass-val" placeholder="הסיסמה">
+                    <button class="add-btn" onclick="addPass()">הוסף סיסמה</button>
+                </div>
+                <ul id="pass-list"></ul>
+            </div>
 
-        <div class="card">
-            <h3>אחסון קבצים</h3>
-            <input type="file" id="file-input" style="margin-bottom:10px;">
-            <button onclick="uploadFile()">העלה קובץ</button>
-            <ul id="files-list"></ul>
+            <div class="card">
+                <h3>📝 מטלות (To-Do)</h3>
+                <div class="input-group">
+                    <input type="text" id="task-val" placeholder="מה צריך לעשות?">
+                    <button class="add-btn" onclick="addTask()">הוסף מטלה</button>
+                </div>
+                <ul id="tasks-list"></ul>
+            </div>
+
+            <div class="card">
+                <h3>📁 אחסון קבצים</h3>
+                <div class="input-group">
+                    <div class="file-upload-wrapper">
+                        <span class="btn-file">לחץ לבחירת קובץ מהמחשב</span>
+                        <input type="file" id="file-input" onchange="document.querySelector('.btn-file').innerText = this.files[0].name">
+                    </div>
+                    <button class="add-btn" onclick="uploadFile()">העלה לשרת</button>
+                </div>
+                <ul id="files-list"></ul>
+            </div>
         </div>
     </div>
 
@@ -80,26 +176,27 @@
 
         socket.on('deskError', () => {
             loginInput.value = '';
-            loginInput.style.borderColor = 'red';
-            setTimeout(() => loginInput.style.borderColor = '#ccc', 1000);
+            loginInput.style.borderColor = 'var(--danger)';
+            setTimeout(() => loginInput.style.borderColor = '#eee', 1000);
         });
 
         socket.on('deskData', (data) => {
             document.getElementById('login-screen').style.display = 'none';
-            document.getElementById('dashboard').style.display = 'flex';
-            document.body.style.background = '#e9e9e9';
+            document.getElementById('app-container').style.display = 'block';
             currentData = data;
             renderAll();
         });
 
-        // פונקציות הוספה
+        // פעולות הוספה
         function addLink() {
             let name = document.getElementById('link-name').value;
             let url = document.getElementById('link-url').value;
+            let category = document.getElementById('link-category').value.trim() || 'כללי';
             if(name && url) {
-                currentData.links.push({name, url});
+                if(!url.startsWith('http')) url = 'https://' + url;
+                currentData.links.push({name, url, category});
                 socket.emit('deskUpdateData', currentData);
-                document.getElementById('link-name').value = ''; document.getElementById('link-url').value = '';
+                document.getElementById('link-name').value = ''; document.getElementById('link-url').value = ''; document.getElementById('link-category').value = '';
             }
         }
 
@@ -130,27 +227,98 @@
                 reader.onload = function(e) {
                     socket.emit('deskUploadFile', { name: file.name, base64: e.target.result });
                     fileInput.value = '';
+                    document.querySelector('.btn-file').innerText = 'לחץ לבחירת קובץ מהמחשב';
                 };
                 reader.readAsDataURL(file);
             }
         }
 
-        // פונקציות מחיקה
-        function delItem(type, index) {
+        function delItem(type, originalIndex) {
             if(type === 'files') {
-                socket.emit('deskDeleteFile', index);
+                socket.emit('deskDeleteFile', originalIndex);
             } else {
-                currentData[type].splice(index, 1);
+                currentData[type].splice(originalIndex, 1);
                 socket.emit('deskUpdateData', currentData);
             }
         }
 
-        // רינדור (הצגה)
+        // מערכת סינון ומיון חכמה ששומרת על האינדקסים המקוריים למחיקה בטוחה
+        function processArray(arr, textField, searchVal, sortType) {
+            // הוספת האינדקס המקורי כדי שהמחיקה תמיד תמחק את הדבר הנכון
+            let processed = arr.map((item, index) => ({ item, originalIndex: index }));
+            
+            // סינון (חיפוש)
+            if (searchVal) {
+                processed = processed.filter(obj => {
+                    let text = typeof obj.item === 'string' ? obj.item : obj.item[textField];
+                    return text.toLowerCase().includes(searchVal.toLowerCase());
+                });
+            }
+
+            // מיון
+            if (sortType === 'newest') processed.reverse();
+            if (sortType === 'az') {
+                processed.sort((a, b) => {
+                    let textA = typeof a.item === 'string' ? a.item : a.item[textField];
+                    let textB = typeof b.item === 'string' ? b.item : b.item[textField];
+                    return textA.localeCompare(textB);
+                });
+            }
+            return processed;
+        }
+
+        // עדכון התצוגה
         function renderAll() {
-            document.getElementById('links-list').innerHTML = currentData.links.map((item, i) => `<li><a href="${item.url}" target="_blank">${item.name}</a> <button class="delete-btn" onclick="delItem('links', ${i})">מחק</button></li>`).join('');
-            document.getElementById('pass-list').innerHTML = currentData.passwords.map((item, i) => `<li>${item.desc}: <strong>${item.val}</strong> <button class="delete-btn" onclick="delItem('passwords', ${i})">מחק</button></li>`).join('');
-            document.getElementById('tasks-list').innerHTML = currentData.tasks.map((item, i) => `<li>${item} <button class="delete-btn" onclick="delItem('tasks', ${i})">מחק</button></li>`).join('');
-            document.getElementById('files-list').innerHTML = currentData.files.map((item, i) => `<li><a href="${item.url}" target="_blank">${item.name}</a> <button class="delete-btn" onclick="delItem('files', ${i})">מחק</button></li>`).join('');
+            const searchVal = document.getElementById('search-box').value;
+            const sortType = document.getElementById('sort-box').value;
+
+            // עיבוד רשימות
+            const pLinks = processArray(currentData.links, 'name', searchVal, sortType);
+            const pPass = processArray(currentData.passwords, 'desc', searchVal, sortType);
+            const pTasks = processArray(currentData.tasks, '', searchVal, sortType);
+            const pFiles = processArray(currentData.files, 'name', searchVal, sortType);
+
+            // רינדור קישורים לפי קטגוריות
+            let linksHtml = '';
+            let categories = {};
+            pLinks.forEach(obj => {
+                let cat = obj.item.category || 'כללי';
+                if(!categories[cat]) categories[cat] = [];
+                categories[cat].push(obj);
+            });
+            
+            for (let cat in categories) {
+                linksHtml += `<div class="category-header">${cat}</div><ul>`;
+                categories[cat].forEach(obj => {
+                    linksHtml += `<li>
+                        <div class="item-content"><a href="${obj.item.url}" target="_blank">${obj.item.name}</a></div>
+                        <button class="delete-btn" onclick="delItem('links', ${obj.originalIndex})">מחק</button>
+                    </li>`;
+                });
+                linksHtml += `</ul>`;
+            }
+            document.getElementById('links-container').innerHTML = linksHtml || '<ul><li>אין קישורים</li></ul>';
+
+            // רינדור סיסמאות
+            document.getElementById('pass-list').innerHTML = pPass.map(obj => 
+                `<li>
+                    <div class="item-content"><span class="item-title">${obj.item.desc}</span><span class="item-subtitle">${obj.item.val}</span></div>
+                    <button class="delete-btn" onclick="delItem('passwords', ${obj.originalIndex})">מחק</button>
+                </li>`).join('') || '<li>אין סיסמאות</li>';
+
+            // רינדור מטלות
+            document.getElementById('tasks-list').innerHTML = pTasks.map(obj => 
+                `<li>
+                    <div class="item-content"><span class="item-title">${obj.item}</span></div>
+                    <button class="delete-btn" onclick="delItem('tasks', ${obj.originalIndex})">מחק</button>
+                </li>`).join('') || '<li>אין מטלות</li>';
+
+            // רינדור קבצים
+            document.getElementById('files-list').innerHTML = pFiles.map(obj => 
+                `<li>
+                    <div class="item-content"><a href="${obj.item.url}" target="_blank">${obj.item.name}</a></div>
+                    <button class="delete-btn" onclick="delItem('files', ${obj.originalIndex})">מחק</button>
+                </li>`).join('') || '<li>אין קבצים</li>';
         }
     </script>
 </body>
