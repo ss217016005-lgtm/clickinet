@@ -61,12 +61,14 @@ app.all('/api/answer', (req, res) => {
         const phone = input.ApiPhone || "unknown";
         const callId = input.ApiCallId || "unknown_call"; // זיהוי השיחה עצמה!
         let val = input.val_1; 
-// 📡 רדאר שיחות: מדפיס ליומן של ריילוי כל פעם שמישהו מתקשר
+        
+        // 📡 רדאר שיחות: מדפיס ליומן של ריילוי כל פעם שמישהו מתקשר
         console.log(`📞 שיחה נכנסת! טלפון: ${phone} | הקשה: ${val} | חדר נוכחי: ${callToRoom[callId] || 'טרם נבחר'}`);
+        
         // 🌟 אם השחקן לחץ כוכבית - זורקים אותו מהחדר כדי שיוכל להחליף
         if (val === '*') {
             delete callToRoom[callId];
-            return res.send("read=f-000=val_1,no,10,1,15,no,no"); 
+            return res.send("read=t-הקש קוד משחק וסולמית=val_1,no,10,1,15,no,no"); 
         }
 
         let roomId = callToRoom[callId];
@@ -85,7 +87,7 @@ app.all('/api/answer', (req, res) => {
                 return res.send(`id_list_message=t-מחובר בהצלחה&read=t-ממתין=val_1,no,1,1,10,no,no`);
             } else { 
                 // הוא רק עכשיו התקשר - נבקש קוד!
-                return res.send("read=f-000=val_1,no,10,1,15,no,no"); 
+                return res.send("read=t-ברוכים הבאים לקליקינט. הקש קוד משחק וסולמית=val_1,no,10,1,15,no,no"); 
             }
         }
 
@@ -117,12 +119,16 @@ app.all('/api/answer', (req, res) => {
                 let q = room.questions[room.currentQuestion];
                 if (player.lastAnswered !== room.currentQuestion) {
                     player.lastAnswered = room.currentQuestion;
-                    player.currentChoice = val; 
+                    player.currentChoice = val; // שומרים את ההצבעה בשביל הגרף
+                    
                     if (q.ans && val === String(q.ans)) {
                         let netTime = Math.max(100, (exactHitTime - room.questionStartTime) - (player.ping || 0)); 
+                        
+                        // 🎰 מערכת הדאבל!
                         let multiplier = room.isDoublePoints ? 2 : 1;
                         let baseScore = 100 * multiplier;
                         let speedBonus = Math.max(0, 100 - Math.floor(netTime / 1000)) * multiplier;
+                        
                         player.streak = (player.streak || 0) + 1; 
                         let streakBonus = (player.streak > 1) ? (player.streak * 15) : 0; 
                         player.score += (baseScore + speedBonus + streakBonus); 
