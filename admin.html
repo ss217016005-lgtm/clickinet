@@ -6,12 +6,18 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎮</text></svg>">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; position: relative;}
+        
+        /* 🌐 תפריט הניווט החדש */
+        #topNav { position: absolute; top: 20px; right: 20px; z-index: 100; display: flex; gap: 10px; }
+        .nav-btn { background: rgba(30, 41, 59, 0.8); border: 1px solid #38bdf8; color: #38bdf8; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: all 0.2s; font-size: 1rem; backdrop-filter: blur(5px); }
+        .nav-btn:hover { background: #38bdf8; color: #000; transform: scale(1.05); }
+
         #loginOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0b0f19; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         #loginBox { background: #1e293b; padding: 40px; border-radius: 20px; text-align: center; border: 2px solid #38bdf8; box-shadow: 0 0 30px rgba(56, 189, 248, 0.3); }
         .login-input { width: 300px; padding: 15px; font-size: 1.5rem; text-align: center; margin-bottom: 20px; border-radius: 10px; border: none; }
         .login-btn { background: #10b981; color: white; border: none; padding: 15px 40px; font-size: 1.5rem; border-radius: 10px; cursor: pointer; font-weight: bold; }
-        #mainDashboard { display: none; } 
+        #mainDashboard { display: none; margin-top: 40px; } 
         h1 { text-align: center; color: #38bdf8; text-shadow: 0 0 10px rgba(56, 189, 248, 0.5); margin-bottom: 5px; position: relative;}
         .logout-btn { position: absolute; left: 0; top: 0; background: #ef4444; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1rem; }
         .room-indicator { text-align: center; color: #10b981; font-size: 1.2rem; font-weight: bold; margin-bottom: 20px;}
@@ -31,6 +37,12 @@
     </style>
 </head>
 <body>
+
+    <div id="topNav">
+        <button class="nav-btn" onclick="window.open('/portal', '_blank')">🌐 לפורטל הלקוחות</button>
+        <button class="nav-btn" onclick="window.open('/', '_blank')">📺 פתח מסך קהל</button>
+    </div>
+
     <div id="loginOverlay">
         <div id="loginBox">
             <h1 style="font-size: 3rem; margin-top: 0;">התחברות מפיק</h1>
@@ -43,7 +55,7 @@
     <div id="mainDashboard">
         <h1>
             🎛️ חדר בקרה - Clickinet Pro
-            <button class="logout-btn" onclick="logout()">🚪 התנתק</button>
+            <button class="logout-btn" onclick="logout()">🚪 התנתק מחדר</button>
         </h1>
         <div class="room-indicator">
             קוד משחק: <span id="displayRoomId" style="color:#fff; margin-right: 15px;">---</span> | 
@@ -55,7 +67,8 @@
                 <h2>🎮 ניהול משחק מתקדם</h2>
                 <div class="status-box">סטטוס מענה: <span id="lockStatusDisplay" style="color:#ef4444;">סגור 🔒</span></div>
                 
-                <button class="btn-full" style="background:#14b8a6; font-size: 1.2rem; border:2px solid #fff;" onclick="runAutoPilot()">▶️ טייס אוטומטי (שגר סייקל שלם!)</button>
+                <button class="btn-full" style="background:#10b981; font-size: 1.4rem; border:2px solid #fff; margin-bottom: 10px;" onclick="startGame()">▶️ התחל משחק (מצב ידני)</button>
+                <button class="btn-full" style="background:#14b8a6; font-size: 1.2rem; border:2px dashed #fff;" onclick="runAutoPilot()">🤖 טייס אוטומטי (שגר סייקל שלם!)</button>
                 <hr style="border-color: #334155; margin: 15px 0;">
 
                 <div style="display: flex; gap: 10px; margin-bottom: 5px;">
@@ -207,7 +220,6 @@
             qs.forEach((q, i) => {
                 list.innerHTML += `<div class="q-list-item"><span>${i+1}. ${q.q}</span> <button class="btn-danger" style="padding:4px 8px; margin:0;" onclick="deleteSingleQ(${i})">❌</button></div>`;
             });
-            // 🛠️ הנה השורה שכבר לא תעשה שגיאה
             document.getElementById('qCount').innerText = qs.length;
         });
         function deleteSingleQ(index) { socket.emit('deleteSingleQuestion', index); }
@@ -239,34 +251,23 @@
             let data = [["טלפון", "שם שחקן", "ניקוד סופי", "רצף נוכחי"]];
             let sorted = Object.entries(currentPlayersObj).sort((a,b) => b[1].score - a[1].score);
             for(let [phone, p] of sorted) { data.push([phone, p.name, p.score, p.streak]); }
-            let ws = XLSX.utils.aoa_to_sheet(data);
-            let wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "תוצאות");
-            XLSX.writeFile(wb, `Clickinet_Results_${myRoomId}.xlsx`);
+            let ws = XLSX.utils.aoa_to_sheet(data); let wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "תוצאות"); XLSX.writeFile(wb, `Clickinet_Results_${myRoomId}.xlsx`);
         }
 
-        // --- הנה פונקציית העלאת האקסל! עכשיו היא תעבוד מושלם ---
         function uploadExcel() {
             const file = document.getElementById('excelFile').files[0];
             if (!file) return alert('נא לבחור קובץ אקסל קודם!');
             const reader = new FileReader();
             reader.onload = function(e) {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, {type: 'array'});
-                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                const rows = XLSX.utils.sheet_to_json(firstSheet, {header: 1});
+                const data = new Uint8Array(e.target.result); const workbook = XLSX.read(data, {type: 'array'});
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]]; const rows = XLSX.utils.sheet_to_json(firstSheet, {header: 1});
                 let newQuestions = [];
                 for (let i = 1; i < rows.length; i++) { 
                     let r = rows[i];
-                    if (r.length >= 6 && r[0] && r[5]) {
-                        newQuestions.push({ q: String(r[0]), a1: String(r[1] || ''), a2: String(r[2] || ''), a3: String(r[3] || ''), a4: String(r[4] || ''), ans: String(r[5]) });
-                    }
+                    if (r.length >= 6 && r[0] && r[5]) { newQuestions.push({ q: String(r[0]), a1: String(r[1] || ''), a2: String(r[2] || ''), a3: String(r[3] || ''), a4: String(r[4] || ''), ans: String(r[5]) }); }
                 }
-                if (newQuestions.length > 0) {
-                    socket.emit('addBulkQuestions', newQuestions);
-                    alert('הועלו ' + newQuestions.length + ' שאלות בהצלחה למחסנית!');
-                    document.getElementById('excelFile').value = '';
-                } else { alert('לא נמצאו שאלות תקינות בקובץ. אנא ודא שהקובץ תואם לתבנית.'); }
+                if (newQuestions.length > 0) { socket.emit('addBulkQuestions', newQuestions); alert('הועלו ' + newQuestions.length + ' שאלות בהצלחה למחסנית!'); document.getElementById('excelFile').value = ''; } 
+                else { alert('לא נמצאו שאלות תקינות בקובץ. אנא ודא שהקובץ תואם לתבנית.'); }
             };
             reader.readAsArrayBuffer(file);
         }
@@ -276,35 +277,26 @@
             socket.emit('nextQuestion');
             setTimeout(() => {
                 socket.emit('startTimer', 15);
-                setTimeout(() => {
-                    socket.emit('showChart');
-                    setTimeout(() => { socket.emit('revealAnswer'); }, 4000);
-                }, 16000); 
+                setTimeout(() => { socket.emit('showChart'); setTimeout(() => { socket.emit('revealAnswer'); }, 4000); }, 16000); 
             }, 5000); 
         }
 
         function toggleDouble() {
-            isDouble = !isDouble;
-            socket.emit('toggleDoublePoints', isDouble);
-            const btn = document.getElementById('doubleBtn');
-            btn.style.background = isDouble ? '#000' : '#eab308';
-            btn.style.color = isDouble ? '#eab308' : '#000';
+            isDouble = !isDouble; socket.emit('toggleDoublePoints', isDouble); const btn = document.getElementById('doubleBtn');
+            btn.style.background = isDouble ? '#000' : '#eab308'; btn.style.color = isDouble ? '#eab308' : '#000';
             btn.innerText = isDouble ? '✨ דאבל נקודות פועל כעת! ✨' : '✨ הפעל שאלת דאבל נקודות!';
         }
         
         socket.on('doublePointsState', state => {
-            isDouble = state;
-            const btn = document.getElementById('doubleBtn');
-            btn.style.background = isDouble ? '#000' : '#eab308';
-            btn.style.color = isDouble ? '#eab308' : '#000';
+            isDouble = state; const btn = document.getElementById('doubleBtn');
+            btn.style.background = isDouble ? '#000' : '#eab308'; btn.style.color = isDouble ? '#eab308' : '#000';
             btn.innerText = isDouble ? '✨ דאבל נקודות פועל כעת! ✨' : '✨ הפעל שאלת דאבל נקודות!';
         });
 
         function uploadSponsor() {
             const fileInput = document.getElementById('sponsorImg');
             if(fileInput.files.length > 0) {
-                const reader = new FileReader();
-                reader.onload = e => { socket.emit('uploadSponsor', { imgBase64: e.target.result }); alert('לוגו חסות עלה בהצלחה!'); };
+                const reader = new FileReader(); reader.onload = e => { socket.emit('uploadSponsor', { imgBase64: e.target.result }); alert('לוגו חסות עלה בהצלחה!'); };
                 reader.readAsDataURL(fileInput.files[0]);
             }
         }
@@ -312,11 +304,8 @@
         function addQuestion() { 
             const fileInput = document.getElementById('qImage');
             const q = { q: document.getElementById('qText').value, a1: document.getElementById('a1').value, a2: document.getElementById('a2').value, a3: document.getElementById('a3').value, a4: document.getElementById('a4').value, ans: document.getElementById('correct').value }; 
-            if(fileInput.files.length > 0) {
-                const reader = new FileReader();
-                reader.onload = e => { q.imgBase64 = e.target.result; socket.emit('addSingleQuestion', q); document.getElementById('qText').value = ''; fileInput.value = ''; alert('נוסף!'); };
-                reader.readAsDataURL(fileInput.files[0]);
-            } else { socket.emit('addSingleQuestion', q); document.getElementById('qText').value = ''; alert('נוסף!'); }
+            if(fileInput.files.length > 0) { const reader = new FileReader(); reader.onload = e => { q.imgBase64 = e.target.result; socket.emit('addSingleQuestion', q); document.getElementById('qText').value = ''; fileInput.value = ''; alert('נוסף!'); }; reader.readAsDataURL(fileInput.files[0]); } 
+            else { socket.emit('addSingleQuestion', q); document.getElementById('qText').value = ''; alert('נוסף!'); }
         }
         
         function startGame() { socket.emit('startGame'); }
