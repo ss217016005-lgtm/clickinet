@@ -5,47 +5,55 @@
     <title>Clickinet | מסך קהל</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📺</text></svg>">
     <style>
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #0f172a; color: white; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; transition: background 0.5s; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #0f172a; color: white; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; transition: all 0.5s; position: relative;}
         
-        /* מסך כניסה */
-        #joinBox { background: #1e293b; padding: 40px; border-radius: 20px; text-align: center; border: 2px solid #38bdf8; box-shadow: 0 0 30px rgba(56, 189, 248, 0.3); }
+        #sponsorLogo { position: absolute; top: 20px; left: 20px; max-height: 80px; display: none; border-radius: 8px; box-shadow: 0 0 15px rgba(255,255,255,0.2); z-index: 100;}
+        
+        #joinBox { background: #1e293b; padding: 40px; border-radius: 20px; text-align: center; border: 2px solid #38bdf8; box-shadow: 0 0 30px rgba(56, 189, 248, 0.3); z-index: 10;}
         input { padding: 15px; font-size: 1.5rem; text-align: center; border-radius: 10px; border: none; margin-bottom: 20px; width: 80%; }
         button { background: #38bdf8; color: black; border: none; padding: 15px 40px; font-size: 1.5rem; border-radius: 10px; cursor: pointer; font-weight: bold; }
         
-        #mainContainer { display: none; width: 95%; height: 90vh; text-align: center; position: relative; }
+        #mainContainer { display: none; width: 95%; height: 90vh; text-align: center; position: relative; z-index: 10;}
+        .header { margin-bottom: 20px; display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; }
+        
+        /* עיצוב משופר למספר הטלפון וקוד החדר! */
+        .phone-display { background: #ef4444; color: white; padding: 8px 25px; border-radius: 50px; font-weight: bold; font-size: 1.6rem; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4); }
+        .room-pin-display { background: #38bdf8; color: #000; padding: 8px 25px; border-radius: 50px; font-weight: bold; font-size: 1.6rem; box-shadow: 0 4px 15px rgba(56, 189, 248, 0.4); }
 
-        /* לוגו וכותרות */
-        .header { margin-bottom: 20px; }
-        .room-pin-display { background: #38bdf8; color: #000; padding: 5px 20px; border-radius: 50px; font-weight: bold; font-size: 1.2rem; display: inline-block; margin-bottom: 10px; }
-
-        /* מסך לובי - רשימת שחקנים */
-        #lobbyView { display: flex; flex-direction: column; align-items: center; height: 100%; }
+        #lobbyView { display: flex; flex-direction: column; align-items: center; height: 100%; margin-top: 20px; }
         .lobby-title { font-size: 3rem; color: #38bdf8; margin-bottom: 30px; text-shadow: 0 0 15px rgba(56,189,248,0.5); }
         #playersGrid { display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; width: 100%; overflow-y: auto; }
         .player-tag { background: #1e293b; border: 2px solid #334155; padding: 15px 25px; border-radius: 15px; font-size: 1.8rem; font-weight: bold; animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .player-tag.has-score { border-color: #10b981; display: flex; flex-direction: column; }
-        .player-tag .score-small { font-size: 1rem; color: #10b981; }
 
-        /* מסך משחק */
-        #gameView { display: none; }
-        h1#questionText { font-size: 3.5rem; text-shadow: 0 0 20px rgba(56,189,248,0.8); margin-bottom: 20px; color: #fff; line-height: 1.2;}
-        #qImg { max-height: 350px; max-width: 100%; border-radius: 15px; display: none; margin: 0 auto 20px auto; border: 3px solid #38bdf8; box-shadow: 0 0 20px rgba(56,189,248,0.5); }
-        .answers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .answer-box { background: rgba(30,41,59,0.9); padding: 25px; border-radius: 15px; font-size: 2.2rem; font-weight: bold; border: 3px solid #334155; transition: all 0.3s; display: flex; align-items: center; justify-content: flex-start; text-align: right; }
-        .answer-box span.num { display: inline-block; background: #38bdf8; color: #000; width: 50px; height: 50px; line-height: 50px; border-radius: 50%; font-size: 1.8rem; margin-left: 20px; flex-shrink: 0; text-align: center; }
+        #gameView { display: none; margin-top: 20px; }
+        h1#questionText { font-size: 3.5rem; text-shadow: 0 0 20px rgba(56,189,248,0.8); margin-bottom: 20px; color: #fff; line-height: 1.2; transition: all 0.3s;}
         
-        /* טיימר */
-        #timerDisplay { position: absolute; top: -10px; right: 20px; font-size: 4rem; color: #f97316; font-weight: bold; text-shadow: 0 0 10px rgba(249,115,22,0.5); }
+        .double-points-active #questionText { color: #eab308; text-shadow: 0 0 30px rgba(234,179,8,0.9); transform: scale(1.05); }
+        .double-label { display: none; color: #eab308; font-size: 1.5rem; font-weight: bold; background: #000; padding: 5px 15px; border-radius: 20px; border: 2px dashed #eab308; margin-bottom: 10px; animation: pulse 1s infinite; }
+        .double-points-active .double-label { display: inline-block; }
 
-        /* תשובה נכונה */
-        .correct-answer { background: #10b981 !important; border-color: #fff !important; transform: scale(1.05); box-shadow: 0 0 40px rgba(16, 185, 129, 0.8); animation: pulse 1s infinite; }
+        #qImg { max-height: 300px; max-width: 100%; border-radius: 15px; display: none; margin: 0 auto 20px auto; border: 3px solid #38bdf8; box-shadow: 0 0 20px rgba(56,189,248,0.5); }
+        
+        .answers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .answer-box { background: rgba(30,41,59,0.9); padding: 25px; border-radius: 15px; font-size: 2.2rem; font-weight: bold; border: 3px solid #334155; transition: all 0.3s; display: flex; align-items: center; text-align: right; position: relative; overflow: hidden;}
+        .answer-box span.num { display: inline-block; background: #38bdf8; color: #000; width: 50px; height: 50px; line-height: 50px; border-radius: 50%; font-size: 1.8rem; margin-left: 20px; flex-shrink: 0; text-align: center; z-index: 2;}
+        .answer-text { z-index: 2; }
+        
+        .bar-fill { position: absolute; left: 0; top: 0; height: 100%; width: 0%; background: rgba(56, 189, 248, 0.3); z-index: 1; transition: width 1s cubic-bezier(0.4, 0, 0.2, 1); }
+        .bar-count { position: absolute; left: 20px; font-size: 2rem; color: #fff; z-index: 2; opacity: 0; transition: opacity 0.5s; }
+
+        #timerDisplay { position: absolute; top: -10px; right: 20px; font-size: 4rem; color: #f97316; font-weight: bold; text-shadow: 0 0 10px rgba(249,115,22,0.5); }
+        .correct-answer { background: #10b981 !important; border-color: #fff !important; transform: scale(1.05); box-shadow: 0 0 40px rgba(16, 185, 129, 0.8); z-index: 5;}
 
         @keyframes popIn { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-        @keyframes pulse { 0% { transform: scale(1.05); } 50% { transform: scale(1.1); } 100% { transform: scale(1.05); } }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
         @keyframes shake { 0%, 100% { transform: translate(0,0); } 10%, 30%, 50%, 70%, 90% { transform: translate(-5px,0); } 20%, 40%, 60%, 80% { transform: translate(5px,0); } }
     </style>
 </head>
 <body onclick="enableAudio()">
+
+    <img id="sponsorLogo" src="" alt="Sponsor">
+    <audio id="bgMusic" loop src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"></audio>
 
     <div id="joinBox">
         <h1 style="font-size: 3.5rem; margin: 0; color: #38bdf8;">קליקינט 🎮</h1>
@@ -56,27 +64,27 @@
     </div>
 
     <div id="mainContainer">
-        
         <div class="header">
-            <div class="room-pin-display">חדר: <span id="pinText">---</span></div>
+            <div class="phone-display">📞 חייגו: 077-2296674</div>
+            <div class="room-pin-display">🎮 קוד משחק: <span id="pinText">---</span></div>
         </div>
 
         <div id="lobbyView">
             <h2 class="lobby-title" id="lobbyStatus">ממתינים לשחקנים...</h2>
-            <div id="playersGrid">
-                </div>
+            <div id="playersGrid"></div>
         </div>
 
         <div id="gameView">
             <div id="timerDisplay" style="display: none;">⏳ <span id="timeVal">15</span></div>
+            <div class="double-label">✨ שאלת דאבל - ניקוד כפול! ✨</div>
             <h1 id="questionText">ממתין לשאלה...</h1>
             <img id="qImg" src="">
 
             <div class="answers-grid">
-                <div class="answer-box" id="ans-1"><span class="num">1</span> <span id="text-1"></span></div>
-                <div class="answer-box" id="ans-2"><span class="num">2</span> <span id="text-2"></span></div>
-                <div class="answer-box" id="ans-3"><span class="num">3</span> <span id="text-3"></span></div>
-                <div class="answer-box" id="ans-4"><span class="num">4</span> <span id="text-4"></span></div>
+                <div class="answer-box" id="ans-1"><div class="bar-fill" id="bar-1"></div><span class="num">1</span> <span class="answer-text" id="text-1"></span> <span class="bar-count" id="count-1">0</span></div>
+                <div class="answer-box" id="ans-2"><div class="bar-fill" id="bar-2"></div><span class="num">2</span> <span class="answer-text" id="text-2"></span> <span class="bar-count" id="count-2">0</span></div>
+                <div class="answer-box" id="ans-3"><div class="bar-fill" id="bar-3"></div><span class="num">3</span> <span class="answer-text" id="text-3"></span> <span class="bar-count" id="count-3">0</span></div>
+                <div class="answer-box" id="ans-4"><div class="bar-fill" id="bar-4"></div><span class="num">4</span> <span class="answer-text" id="text-4"></span> <span class="bar-count" id="count-4">0</span></div>
             </div>
         </div>
     </div>
@@ -86,30 +94,25 @@
         const socket = io();
         let audioEnabled = false;
         let isGameRunning = false;
+        const bgMusic = document.getElementById('bgMusic');
+        bgMusic.volume = 0.3;
 
         const sounds = {
-            victory: new Audio('https://actions.google.com/sounds/v1/crowds/crowd_cheer.ogg'),
-            shake: new Audio('https://actions.google.com/sounds/v1/alarms/bugle_tune.ogg'),
+            tada: new Audio('https://actions.google.com/sounds/v1/cartoon/pop.ogg'),
             clock: new Audio('https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg'),
-            tada: new Audio('https://actions.google.com/sounds/v1/cartoon/pop.ogg') 
+            shake: new Audio('https://actions.google.com/sounds/v1/alarms/bugle_tune.ogg')
         };
 
         window.onload = () => {
             const savedRoom = sessionStorage.getItem('clickinetPlayerRoom');
-            if (savedRoom) {
-                document.getElementById('roomIdInput').value = savedRoom;
-                joinRoom();
-            }
+            if (savedRoom) { document.getElementById('roomIdInput').value = savedRoom; joinRoom(); }
         };
 
         function enableAudio() { audioEnabled = true; }
 
         function joinRoom() {
             const roomId = document.getElementById('roomIdInput').value.trim();
-            if(roomId) {
-                document.getElementById('pinText').innerText = roomId;
-                socket.emit('joinRoom', roomId);
-            }
+            if(roomId) { document.getElementById('pinText').innerText = roomId; socket.emit('joinRoom', roomId); }
         }
 
         socket.on('loginResponse', res => {
@@ -117,97 +120,86 @@
                 sessionStorage.setItem('clickinetPlayerRoom', document.getElementById('roomIdInput').value);
                 document.getElementById('joinBox').style.display = 'none';
                 document.getElementById('mainContainer').style.display = 'block';
-            } else {
-                alert(res.error);
-                sessionStorage.removeItem('clickinetPlayerRoom');
-            }
+            } else { alert(res.error); sessionStorage.removeItem('clickinetPlayerRoom'); }
         });
 
-        // עדכון רשימת השחקנים בלובי
+        socket.on('updateSettings', s => {
+            const sponsorEl = document.getElementById('sponsorLogo');
+            if(s.isGold && s.sponsorUrl) { sponsorEl.src = s.sponsorUrl; sponsorEl.style.display = 'block'; } 
+            else { sponsorEl.style.display = 'none'; }
+        });
+
         socket.on('updateLeaderboard', players => {
             const grid = document.getElementById('playersGrid');
             const status = document.getElementById('lobbyStatus');
             const playerCount = Object.keys(players).length;
-
             if (!isGameRunning) {
                 grid.innerHTML = '';
-                for (let phone in players) {
-                    const p = players[phone];
-                    grid.innerHTML += `<div class="player-tag">${p.name}</div>`;
-                }
+                for (let phone in players) { grid.innerHTML += `<div class="player-tag">${players[phone].name}</div>`; }
                 status.innerText = playerCount > 0 ? `מחוברים ${playerCount} שחקנים` : "ממתינים לשחקנים...";
             }
         });
 
-        // קבלת שאלה חדשה - עוברים ממסך לובי למסך משחק
+        socket.on('doublePointsState', isDouble => {
+            if(isDouble) document.body.classList.add('double-points-active');
+            else document.body.classList.remove('double-points-active');
+        });
+
         socket.on('newQuestion', q => {
             isGameRunning = true;
-            document.getElementById('lobbyView').style.display = 'none';
-            document.getElementById('gameView').style.display = 'block';
-            
+            document.getElementById('lobbyView').style.display = 'none'; document.getElementById('gameView').style.display = 'block';
             document.getElementById('questionText').innerText = q.q;
-            document.getElementById('text-1').innerText = q.a1;
-            document.getElementById('text-2').innerText = q.a2;
-            document.getElementById('text-3').innerText = q.a3;
-            document.getElementById('text-4').innerText = q.a4;
+            document.getElementById('text-1').innerText = q.a1; document.getElementById('text-2').innerText = q.a2;
+            document.getElementById('text-3').innerText = q.a3; document.getElementById('text-4').innerText = q.a4;
             
             const imgEl = document.getElementById('qImg');
-            if(q.image) {
-                imgEl.src = q.image;
-                imgEl.style.display = 'block';
-            } else {
-                imgEl.style.display = 'none';
-            }
+            if(q.image) { imgEl.src = q.image; imgEl.style.display = 'block'; } else { imgEl.style.display = 'none'; }
             
-            for(let i=1; i<=4; i++) document.getElementById('ans-'+i).classList.remove('correct-answer');
+            for(let i=1; i<=4; i++) {
+                document.getElementById('ans-'+i).classList.remove('correct-answer');
+                document.getElementById('bar-'+i).style.width = '0%';
+                document.getElementById('count-'+i).style.opacity = '0';
+            }
+        });
+
+        socket.on('displayChart', counts => {
+            let maxVotes = 0;
+            for(let i=1; i<=4; i++) { if(counts[i] > maxVotes) maxVotes = counts[i]; }
+            if(maxVotes === 0) maxVotes = 1; 
+            
+            for(let i=1; i<=4; i++) {
+                let p = (counts[i] || 0) / maxVotes * 100;
+                document.getElementById('bar-'+i).style.width = p + '%';
+                let c = document.getElementById('count-'+i);
+                c.innerText = (counts[i] || 0) + ' קולות';
+                c.style.opacity = '1';
+            }
         });
 
         socket.on('showCorrectAnswer', ansNumber => {
             const correctDiv = document.getElementById('ans-' + ansNumber);
-            if(correctDiv) {
-                correctDiv.classList.add('correct-answer');
-                if(audioEnabled) sounds.tada.play().catch(e=>{});
-            }
+            if(correctDiv) { correctDiv.classList.add('correct-answer'); if(audioEnabled) sounds.tada.play().catch(e=>{}); }
+        });
+
+        socket.on('musicState', play => {
+            if(!audioEnabled) return;
+            if(play) bgMusic.play().catch(e=>{}); else bgMusic.pause();
         });
 
         socket.on('startCountdown', sec => {
-            let t = sec;
-            const tDiv = document.getElementById('timerDisplay');
-            const tVal = document.getElementById('timeVal');
-            tDiv.style.display = 'block';
-            tVal.innerText = t;
+            let t = sec; const tDiv = document.getElementById('timerDisplay'); const tVal = document.getElementById('timeVal');
+            tDiv.style.display = 'block'; tVal.innerText = t;
             if(audioEnabled) sounds.clock.play().catch(e=>{});
-            
-            let intv = setInterval(() => {
-                t--; tVal.innerText = t;
-                if(t <= 0) { 
-                    clearInterval(intv); 
-                    tDiv.style.display = 'none'; 
-                }
-            }, 1000);
+            let intv = setInterval(() => { t--; tVal.innerText = t; if(t <= 0) { clearInterval(intv); tDiv.style.display = 'none'; } }, 1000);
         });
 
         socket.on('playEffect', type => {
-            if(type === 'shake') {
-                document.body.style.animation = 'shake 0.5s';
-                setTimeout(() => document.body.style.animation = '', 500);
-                if(audioEnabled) sounds.shake.play().catch(e=>{});
-            }
-            if(type === 'confetti' && audioEnabled) sounds.victory.play().catch(e=>{});
+            if(type === 'shake') { document.body.style.animation = 'shake 0.5s'; setTimeout(() => document.body.style.animation = '', 500); if(audioEnabled) sounds.shake.play().catch(e=>{}); }
         });
 
-        // כשהמשחק נגמר או מתאפס - חוזרים ללובי
         socket.on('gameOver', () => {
-            isGameRunning = false;
-            document.getElementById('gameView').style.display = 'none';
-            document.getElementById('lobbyView').style.display = 'flex';
+            isGameRunning = false; document.getElementById('gameView').style.display = 'none'; document.getElementById('lobbyView').style.display = 'flex';
             document.getElementById('lobbyStatus').innerText = "המשחק הסתיים! ממתינים לסיבוב הבא...";
-        });
-
-        socket.on('setBg', bg => {
-            if(bg === 'space') document.body.style.background = '#000 url("https://www.transparenttextures.com/patterns/stardust.png")';
-            else if(bg === 'fire') document.body.style.background = '#7f1d1d';
-            else document.body.style.background = '#0f172a';
         });
     </script>
 </body>
