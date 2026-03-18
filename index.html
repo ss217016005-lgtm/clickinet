@@ -7,16 +7,22 @@
     <style>
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #0f172a; color: white; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; transition: all 0.5s; position: relative;}
         
+        /* 🌐 תפריט הניווט העליון החדש! */
+        #topNav { position: absolute; top: 20px; right: 20px; z-index: 100; display: flex; gap: 10px; }
+        .nav-btn { background: rgba(30, 41, 59, 0.8); border: 1px solid #38bdf8; color: #38bdf8; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: all 0.2s; font-size: 1rem; backdrop-filter: blur(5px); }
+        .nav-btn:hover { background: #38bdf8; color: #000; transform: scale(1.05); }
+        .btn-disconnect { border-color: #ef4444; color: #ef4444; display: none; }
+        .btn-disconnect:hover { background: #ef4444; color: #fff; }
+
         #sponsorLogo { position: absolute; top: 20px; left: 20px; max-height: 80px; display: none; border-radius: 8px; box-shadow: 0 0 15px rgba(255,255,255,0.2); z-index: 100;}
         
         #joinBox { background: #1e293b; padding: 40px; border-radius: 20px; text-align: center; border: 2px solid #38bdf8; box-shadow: 0 0 30px rgba(56, 189, 248, 0.3); z-index: 10;}
-        input { padding: 15px; font-size: 1.5rem; text-align: center; border-radius: 10px; border: none; margin-bottom: 20px; width: 80%; }
-        button { background: #38bdf8; color: black; border: none; padding: 15px 40px; font-size: 1.5rem; border-radius: 10px; cursor: pointer; font-weight: bold; }
+        input { padding: 15px; font-size: 1.5rem; text-align: center; border-radius: 10px; border: none; margin-bottom: 20px; width: 80%; background: #0b0f19; color: white; }
+        button.main-btn { background: #38bdf8; color: black; border: none; padding: 15px 40px; font-size: 1.5rem; border-radius: 10px; cursor: pointer; font-weight: bold; }
         
         #mainContainer { display: none; width: 95%; height: 90vh; text-align: center; position: relative; z-index: 10;}
         .header { margin-bottom: 20px; display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; }
         
-        /* עיצוב משופר למספר הטלפון וקוד החדר! */
         .phone-display { background: #ef4444; color: white; padding: 8px 25px; border-radius: 50px; font-weight: bold; font-size: 1.6rem; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4); }
         .room-pin-display { background: #38bdf8; color: #000; padding: 8px 25px; border-radius: 50px; font-weight: bold; font-size: 1.6rem; box-shadow: 0 4px 15px rgba(56, 189, 248, 0.4); }
 
@@ -52,6 +58,12 @@
 </head>
 <body onclick="enableAudio()">
 
+    <div id="topNav">
+        <button class="nav-btn" onclick="window.open('/portal', '_blank')">🌐 לפורטל</button>
+        <button class="nav-btn" onclick="window.open('/admin', '_blank')">⚙️ ניהול משחק</button>
+        <button class="nav-btn btn-disconnect" id="disconnectBtn" onclick="disconnectRoom()">🚪 התנתק מחדר</button>
+    </div>
+
     <img id="sponsorLogo" src="" alt="Sponsor">
     <audio id="bgMusic" loop src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"></audio>
 
@@ -60,7 +72,7 @@
         <p style="color: #94a3b8; font-size: 1.3rem; margin-bottom: 30px;">הקש קוד מפיק להצגת המסך הראשי</p>
         <input type="text" id="roomIdInput" placeholder="קוד משחק...">
         <br>
-        <button onclick="joinRoom()">התחבר למסך</button>
+        <button class="main-btn" onclick="joinRoom()">התחבר למסך</button>
     </div>
 
     <div id="mainContainer">
@@ -115,11 +127,21 @@
             if(roomId) { document.getElementById('pinText').innerText = roomId; socket.emit('joinRoom', roomId); }
         }
 
+        // פונקציית ההתנתקות החדשה! 🚪
+        function disconnectRoom() {
+            if(confirm('האם אתה בטוח שברצונך להתנתק מהחדר הנוכחי?')) {
+                sessionStorage.removeItem('clickinetPlayerRoom');
+                location.reload(); // מרענן את הדף ומחזיר למסך הפתיחה
+            }
+        }
+
         socket.on('loginResponse', res => {
             if(res.success) {
                 sessionStorage.setItem('clickinetPlayerRoom', document.getElementById('roomIdInput').value);
                 document.getElementById('joinBox').style.display = 'none';
                 document.getElementById('mainContainer').style.display = 'block';
+                // מציג את כפתור ההתנתקות רק אחרי חיבור מוצלח
+                document.getElementById('disconnectBtn').style.display = 'block';
             } else { alert(res.error); sessionStorage.removeItem('clickinetPlayerRoom'); }
         });
 
