@@ -61,7 +61,8 @@ app.all('/api/answer', (req, res) => {
         const phone = input.ApiPhone || "unknown";
         const callId = input.ApiCallId || "unknown_call"; // זיהוי השיחה עצמה!
         let val = input.val_1; 
-
+// 📡 רדאר שיחות: מדפיס ליומן של ריילוי כל פעם שמישהו מתקשר
+        console.log(`📞 שיחה נכנסת! טלפון: ${phone} | הקשה: ${val} | חדר נוכחי: ${callToRoom[callId] || 'טרם נבחר'}`);
         // 🌟 אם השחקן לחץ כוכבית - זורקים אותו מהחדר כדי שיוכל להחליף
         if (val === '*') {
             delete callToRoom[callId];
