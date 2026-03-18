@@ -11,7 +11,7 @@
         button { padding: 10px 20px; font-size: 1.1rem; border-radius: 8px; border: none; background: #38bdf8; color: black; cursor: pointer; font-weight: bold; margin: 5px; }
         #dashboard { display: none; max-width: 1200px; margin: 0 auto; }
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .panel { background: #1e293b; padding: 20px; border-radius: 12px; border: 1px solid #334155; }
+        .panel { background: #1e293b; padding: 20px; border-radius: 12px; border: 1px solid #334155; margin-bottom: 20px;}
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
         th, td { border: 1px solid #334155; padding: 10px; text-align: center; }
         th { background: #0f172a; color: #38bdf8; }
@@ -21,6 +21,9 @@
         .live-idle { color: #94a3b8; }
         .form-group { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; margin-bottom: 15px; }
         .msg-box { background: rgba(56, 189, 248, 0.1); border-right: 4px solid #38bdf8; padding: 15px; margin-bottom: 10px; border-radius: 5px;}
+        
+        .ad-preview { max-width: 100%; max-height: 100px; border-radius: 8px; border: 1px dashed #eab308; margin-top: 10px; display: none; }
+        .full-width { grid-column: 1 / -1; }
     </style>
 </head>
 <body>
@@ -34,16 +37,50 @@
     <div id="dashboard">
         <h1 style="text-align: center; color: #38bdf8;">מערכת ניהול מנויים, וואוצ'רים וניטור 🌐</h1>
         
+        <div class="panel full-width" style="border-color: #eab308; box-shadow: 0 0 15px rgba(234, 179, 8, 0.2);">
+            <h2 style="margin-top:0; color:#eab308;">📢 ניהול הפורטל הציבורי (פרסומות, הודעות ואקסלים)</h2>
+            <div class="grid">
+                
+                <div>
+                    <div class="form-group">
+                        <label style="color:#38bdf8; font-weight:bold;">הודעת מערכת רצה:</label>
+                        <input type="text" id="sysMsgInput" placeholder="הקלד הודעה לפורטל הציבורי...">
+                        <button style="width: 100%; background: #38bdf8;" onclick="updatePortalMsg()">עדכן הודעה</button>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label style="color:#10b981; font-weight:bold;">העלאת אקסל שאלות לציבור:</label>
+                        <input type="text" id="publicExcelName" placeholder="שם הקובץ (למשל: 'טריוויה לחנוכה')">
+                        <input type="file" id="publicExcelFile" accept=".xlsx, .xls" style="margin-top: 5px;">
+                        <button style="width: 100%; background: #10b981; color: white;" onclick="uploadPublicExcel()">העלה קובץ לפורטל</button>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="form-group">
+                        <label style="color:#f59e0b; font-weight:bold;">ניהול פרסומת (באנר):</label>
+                        <input type="text" id="adLinkInput" placeholder="קישור ללחיצה (לאן הפרסומת תוביל?)">
+                        <input type="file" id="adImageFile" accept="image/*" style="margin-top: 5px;">
+                        <button style="width: 100%; background: #f59e0b; color: black;" onclick="updatePortalAd()">עדכן פרסומת</button>
+                        <button class="btn-danger" style="width: 100%; margin-top:5px;" onclick="clearPortalAd()">מחק פרסומת מהאתר</button>
+                        <img id="currentAdPreview" class="ad-preview" src="">
+                    </div>
+                </div>
+            </div>
+
+            <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin-top: 15px;">
+                <h3 style="margin-top:0; color:#cbd5e1;">קבצי אקסל זמינים להורדה באתר:</h3>
+                <div id="publicExcelsList"></div>
+            </div>
+        </div>
+
         <div class="grid">
-            
             <div class="panel">
                 <h2 style="margin-top:0; color:#10b981;">🎫 יצירת קוד אישור (Voucher ללקוח)</h2>
-                <p style="font-size: 0.9rem; color:#94a3b8;">הלקוח יזין את הקוד הזה בפורטל ויקבל PIN אוטומטית.</p>
                 <div class="form-group">
                     <input type="text" id="vCode" placeholder="קוד אישור (למשל: 12224 או VIP2026)">
                 </div>
                 <div class="form-group">
-                    <label>סוג המנוי שיקבל:</label><br>
                     <select id="vType" style="padding: 10px; width: 100%; font-size: 1.1rem; border-radius: 8px; background: #1e293b; color: white;">
                         <option value="regular">רגיל (חינם - עד 10 שחקנים)</option>
                         <option value="premium">פרימיום (3 משחקים)</option>
@@ -62,7 +99,7 @@
             </div>
 
             <div class="panel">
-                <h2 style="margin-top:0; color:#cbd5e1;">➕ יצירה ישירה (ללא פורטל)</h2>
+                <h2 style="margin-top:0; color:#cbd5e1;">➕ יצירת PIN ישירה (ללא פורטל)</h2>
                 <div class="form-group">
                     <input type="number" id="pinStart" placeholder="קוד התחלה (1000)"><br>
                     <input type="number" id="pinEnd" placeholder="קוד סיום (השאר ריק ליחיד)">
@@ -74,9 +111,7 @@
                         <option value="gold" style="background:#eab308; color:#000; font-weight:bold;">👑 פרימיום זהב</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <input type="date" id="expireDate">
-                </div>
+                <div class="form-group"><input type="date" id="expireDate"></div>
                 <button style="width: 100%;" onclick="createPins()">ייצר קודים עכשיו</button>
             </div>
 
@@ -87,7 +122,7 @@
             </div>
         </div>
 
-        <div class="grid" style="margin-top: 20px;">
+        <div class="grid">
             <div class="panel">
                 <h2 style="margin-top:0;">🎫 וואוצ'רים פעילים</h2>
                 <table>
@@ -118,65 +153,81 @@
         socket.on('superData', (data) => {
             document.getElementById('loginArea').style.display = 'none'; document.getElementById('dashboard').style.display = 'block';
             
+            // עדכון נתוני פורטל
+            document.getElementById('sysMsgInput').value = data.portalMsg || "";
+            if(data.portalAd && data.portalAd.img) {
+                const imgEl = document.getElementById('currentAdPreview');
+                imgEl.src = data.portalAd.img; imgEl.style.display = 'block';
+                document.getElementById('adLinkInput').value = data.portalAd.link || "";
+            } else { document.getElementById('currentAdPreview').style.display = 'none'; }
+
+            const excelsList = document.getElementById('publicExcelsList'); excelsList.innerHTML = '';
+            if(!data.publicExcels || data.publicExcels.length === 0) excelsList.innerHTML = '<p style="color:#94a3b8;">אין קבצים ציבוריים.</p>';
+            (data.publicExcels || []).forEach((ex, i) => {
+                excelsList.innerHTML += `<div style="display:flex; justify-content:space-between; background:#334155; padding:10px; margin-bottom:5px; border-radius:5px;">
+                    <span>📄 ${ex.name}</span> <button class="btn-danger" style="margin:0;" onclick="deletePublicExcel(${i})">מחק</button>
+                </div>`;
+            });
+
+            // פינים
             const pinsTbody = document.getElementById('pinsBody'); pinsTbody.innerHTML = '';
             for (let pin in data.pins) {
-                let p = data.pins[pin];
-                let typeStr = p.type === 'gold' ? '👑 זהב' : (p.type === 'premium' ? '💎 פרימיום' : 'רגיל');
+                let p = data.pins[pin]; let typeStr = p.type === 'gold' ? '👑 זהב' : (p.type === 'premium' ? '💎 פרימיום' : 'רגיל');
                 let expDateStr = p.expiresAt ? new Date(p.expiresAt).toLocaleDateString('he-IL') : 'ללא';
                 pinsTbody.innerHTML += `<tr><td><b>${pin}</b></td><td>${typeStr}</td><td>${p.type === 'gold'?'∞':p.gamesLeft}</td><td>${expDateStr}</td><td><button class="btn-danger" onclick="deletePin('${pin}')">X</button></td></tr>`;
             }
 
+            // וואוצ'רים
             const vouchTbody = document.getElementById('vouchersBody'); vouchTbody.innerHTML = '';
             for (let code in data.vouchers) {
-                let v = data.vouchers[code];
-                let typeStr = v.type === 'gold' ? '👑 זהב' : (v.type === 'premium' ? '💎 פרימיום' : 'רגיל');
+                let v = data.vouchers[code]; let typeStr = v.type === 'gold' ? '👑 זהב' : (v.type === 'premium' ? '💎 פרימיום' : 'רגיל');
                 let status = v.used ? `<span style="color:#ef4444">שומש</span>` : `<span style="color:#10b981">פנוי</span>`;
                 vouchTbody.innerHTML += `<tr><td><b>${code}</b></td><td>${typeStr}</td><td>${v.days}</td><td>${status}</td><td>${v.generatedPin || '---'}</td><td><button class="btn-danger" onclick="deleteVoucher('${code}')">X</button></td></tr>`;
             }
 
+            // הודעות
             const msgArea = document.getElementById('messagesArea'); msgArea.innerHTML = '';
             if(!data.messages || data.messages.length === 0) msgArea.innerHTML = '<p style="text-align:center; color:#94a3b8;">אין הודעות חדשות.</p>';
             (data.messages || []).forEach((m, index) => {
-                msgArea.innerHTML += `<div class="msg-box">
-                    <div style="font-size:0.8rem; color:#94a3b8;">${m.date} | מ-${m.name}</div>
-                    <div style="margin: 8px 0;">${m.text}</div>
-                    <button class="btn-danger" onclick="deleteMsg(${index})">מחק הודעה</button>
-                </div>`;
+                msgArea.innerHTML += `<div class="msg-box"><div style="font-size:0.8rem; color:#94a3b8;">${m.date} | מ-${m.name}</div><div style="margin: 8px 0;">${m.text}</div><button class="btn-danger" onclick="deleteMsg(${index})">מחק הודעה</button></div>`;
             });
         });
 
-        function createVoucher() {
-            const code = document.getElementById('vCode').value.trim();
-            const type = document.getElementById('vType').value;
-            const days = document.getElementById('vDays').value;
-            if(!code || !days) return alert("מלא קוד ומספר ימים!");
-            socket.emit('createVoucher', { code, type, days });
-            document.getElementById('vCode').value = '';
+        // 🎛️ פעולות עריכת פורטל
+        function updatePortalMsg() { socket.emit('updatePortalMsg', document.getElementById('sysMsgInput').value); alert("עודכן בהצלחה!"); }
+        
+        function updatePortalAd() {
+            const link = document.getElementById('adLinkInput').value;
+            const fileInput = document.getElementById('adImageFile');
+            if(fileInput.files.length > 0) {
+                const reader = new FileReader();
+                reader.onload = e => { socket.emit('updatePortalAd', { imgBase64: e.target.result, link: link }); alert('פרסומת עלתה בהצלחה!'); fileInput.value=''; };
+                reader.readAsDataURL(fileInput.files[0]);
+            } else { socket.emit('updatePortalAd', { link: link }); alert('קישור לפרסומת עודכן!'); }
         }
-
-        function createPins() {
-            const start = document.getElementById('pinStart').value; const end = document.getElementById('pinEnd').value; const type = document.getElementById('pinType').value; const expireDate = document.getElementById('expireDate').value;
-            if (!start) return; let expiresAt = new Date(expireDate).getTime(); expiresAt += (23 * 60 * 60 * 1000) + (59 * 60 * 1000); 
-            socket.emit('createBulkPins', { start, end, type, expiresAt }); document.getElementById('pinStart').value = ''; document.getElementById('pinEnd').value = '';
+        function clearPortalAd() { if(confirm('למחוק את הפרסומת לחלוטין מהפורטל?')) socket.emit('updatePortalAd', { clear: true }); }
+        
+        function uploadPublicExcel() {
+            const name = document.getElementById('publicExcelName').value;
+            const fileInput = document.getElementById('publicExcelFile');
+            if(!name || fileInput.files.length === 0) return alert("הזן שם לקובץ ובחר קובץ אקסל!");
+            const reader = new FileReader();
+            reader.onload = e => { socket.emit('uploadPublicExcel', { name: name, base64: e.target.result }); alert('האקסל הועלה לאתר הציבורי!'); document.getElementById('publicExcelName').value=''; fileInput.value=''; };
+            reader.readAsDataURL(fileInput.files[0]);
         }
+        function deletePublicExcel(index) { if(confirm('למחוק קובץ זה מהאתר?')) socket.emit('deletePublicExcel', index); }
 
+        // --- פעולות רגילות ---
+        function createVoucher() { const code = document.getElementById('vCode').value.trim(); const type = document.getElementById('vType').value; const days = document.getElementById('vDays').value; if(!code || !days) return alert("מלא קוד ומספר ימים!"); socket.emit('createVoucher', { code, type, days }); document.getElementById('vCode').value = ''; }
+        function createPins() { const start = document.getElementById('pinStart').value; const end = document.getElementById('pinEnd').value; const type = document.getElementById('pinType').value; const expireDate = document.getElementById('expireDate').value; if (!start) return; let expiresAt = new Date(expireDate).getTime(); expiresAt += (23 * 60 * 60 * 1000) + (59 * 60 * 1000); socket.emit('createBulkPins', { start, end, type, expiresAt }); document.getElementById('pinStart').value = ''; document.getElementById('pinEnd').value = ''; }
         function deletePin(pin) { if(confirm('למחוק?')) socket.emit('deletePin', pin); }
         function deleteVoucher(code) { if(confirm('למחוק וואוצ\'ר?')) socket.emit('deleteVoucher', code); }
         function deleteMsg(index) { if(confirm('למחוק הודעה?')) socket.emit('deleteMessage', index); }
 
-        // 🛠️ התיקון לחיווי ויזואלי של הכפתור
-        function fetchLiveStats() { 
-            document.getElementById('liveStatsArea').innerHTML = '<p style="text-align:center; color:#38bdf8;">טוען נתונים מהשרת...</p>';
-            socket.emit('fetchLiveStats'); 
-        }
-
+        function fetchLiveStats() { document.getElementById('liveStatsArea').innerHTML = '<p style="text-align:center; color:#38bdf8;">טוען נתונים...</p>'; socket.emit('fetchLiveStats'); }
         socket.on('liveStatsData', (stats) => {
-            const area = document.getElementById('liveStatsArea'); 
-            let count = 0;
-            let time = new Date().toLocaleTimeString('he-IL'); // לוקח את השעה המדויקת עכשיו
-            
-            area.innerHTML = `<div style="text-align:center; font-size:0.8rem; color:#94a3b8; margin-bottom:10px;">עודכן לאחרונה: ${time}</div>`;
-            
+            const area = document.getElementById('liveStatsArea'); let count = 0; let time = new Date().toLocaleTimeString('he-IL'); 
+            area.innerHTML = `<div style="text-align:center; font-size:0.8rem; color:#94a3b8; margin-bottom:10px;">עודכן: ${time}</div>`;
             for (let r in stats) {
                 count++; let s = stats[r]; let statusClass = s.isActive ? 'live-active' : 'live-idle'; let statusText = s.isActive ? '▶️ פעיל' : '⏸️ בהכנה';
                 area.innerHTML += `<div class="live-room"><div>חדר: <strong style="color: #38bdf8;">${r}</strong> <span class="${statusClass}" style="float: left; font-size: 0.9rem;">${statusText}</span></div><div>👥 משתתפים: <strong>${s.players}</strong> | 📝 שאלות: <strong>${s.qCount}</strong></div></div>`;
