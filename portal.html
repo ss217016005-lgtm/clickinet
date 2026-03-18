@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>קליקינט | פורטל לקוחות</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌐</text></svg>">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #0b0f19; color: #f8fafc; margin: 0; padding: 0; }
+        header { background: #1e293b; padding: 20px; text-align: center; border-bottom: 2px solid #38bdf8; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        h1 { color: #38bdf8; margin: 0; font-size: 2.5rem; text-shadow: 0 0 10px rgba(56, 189, 248, 0.4); }
+        .container { max-width: 1000px; margin: 30px auto; padding: 0 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .card { background: #1e293b; padding: 25px; border-radius: 15px; border: 1px solid #334155; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); }
+        .full-width { grid-column: 1 / -1; }
+        h2 { border-bottom: 2px solid #10b981; padding-bottom: 10px; margin-top: 0; color: #10b981; }
+        input, textarea { width: calc(100% - 24px); padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; font-size: 1.1rem; }
+        button { background: #38bdf8; color: black; border: none; padding: 12px 20px; font-size: 1.1rem; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.2s; }
+        button:hover { transform: scale(1.02); }
+        .btn-success { background: #10b981; color: white; }
+        
+        .result-box { display: none; background: #0f172a; border: 2px dashed #10b981; padding: 20px; text-align: center; border-radius: 10px; margin-top: 15px; }
+        .pin-display { font-size: 3rem; color: #eab308; font-weight: bold; letter-spacing: 5px; margin: 10px 0; }
+        
+        .guide-text { line-height: 1.6; color: #cbd5e1; }
+        .guide-text h3 { color: #38bdf8; margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>ברוכים הבאים לפורטל קליקינט</h1>
+        <p style="color: #94a3b8; font-size: 1.2rem; margin-top: 5px;">כאן תוכלו למשוך קודי הפעלה, להוריד תבניות, ולקרוא את המדריך</p>
+    </header>
+
+    <div class="container">
+        
+        <div class="card">
+            <h2>🎫 הפעלת קוד אישור (Voucher)</h2>
+            <p>רכשתם מנוי או קיבלתם קוד אישור מאהל יהודה? הקישו אותו כאן כדי לקבל את קוד המפיק (PIN) האישי שלכם:</p>
+            <input type="text" id="voucherCode" placeholder="הקש קוד אישור כאן...">
+            <button class="btn-success" onclick="redeem()">משוך קוד מפיק עכשיו</button>
+            
+            <div id="voucherResult" class="result-box">
+                <p style="margin: 0; color: #10b981; font-size: 1.2rem;">האישור עבר בהצלחה! קוד המפיק שלך הוא:</p>
+                <div class="pin-display" id="generatedPin">12345</div>
+                <p style="margin: 0; font-size: 0.9rem; color: #94a3b8;">סוג מנוי: <span id="vType"></span> | תקף ל-<span id="vDays"></span> ימים.</p>
+                <p style="color: #ef4444; font-weight: bold; margin-top: 10px;">שמור את הקוד הזה! לא ניתן לשחזר אותו.</p>
+                <a href="/admin" target="_blank"><button style="margin-top: 10px;">מעבר לחדר הבקרה</button></a>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>✉️ צור קשר / השאר הודעה</h2>
+            <p>צריכים עזרה? יש לכם תקלה או בקשה מיוחדת? שלחו הודעה למנהל המערכת:</p>
+            <input type="text" id="msgName" placeholder="השם שלך או מספר טלפון לחזרה">
+            <textarea id="msgText" rows="4" placeholder="תוכן ההודעה..."></textarea>
+            <button onclick="sendMsg()">שלח הודעה</button>
+        </div>
+
+        <div class="card full-width">
+            <h2>📘 המדריך למפעיל – קליקינט</h2>
+            <div class="guide-text">
+                <h3>🎛️ 1. כניסה לחדר הבקרה וטעינת שאלות</h3>
+                <p>היכנסו לכתובת <b>/admin</b> והקישו את קוד המפיק שלכם. בפאנל "מחסנית השאלות" תוכלו להזין שאלות ידנית או להעלות קובץ אקסל (מומלץ). מנויי "זהב" יכולים גם לצרף תמונה לכל שאלה.</p>
+
+                <h3>⬇️ 2. הורדת תבנית אקסל להזנת שאלות</h3>
+                <p>כדי שתוכלו להעלות שאלות במהירות, הכנו עבורכם קובץ אקסל ריק המסודר לפי העמודות שהמערכת דורשת.</p>
+                <button style="width: auto; background: #eab308; color: #000;" onclick="downloadTemplate()">📥 הורד תבנית אקסל לדוגמה</button>
+
+                <h3>📺 3. חיבור הקהל (הלובי)</h3>
+                <p>פתחו במסך הגדול באולם את הכתובת הראשי של האתר. בקשו מהקהל לחייג ל-<b>077-2296674</b> ולהקיש את קוד המשחק שלכם. השמות שלהם יתחילו לקפוץ על המסך!</p>
+
+                <h3>🎮 4. ניהול המשחק</h3>
+                <p>בחדר הבקרה, לחצו על "התחל משחק". השתמשו בכפתורי "פתח שעון", "הצג גרף" ו"חשוף תשובה" כדי לנהל את המתח, או לחצו על <b>"טייס אוטומטי"</b> כדי שהמערכת תעשה הכל לבד.</p>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        function redeem() {
+            const code = document.getElementById('voucherCode').value.trim();
+            if(!code) return alert("נא להקיש קוד אישור!");
+            socket.emit('redeemVoucher', code);
+        }
+
+        socket.on('voucherResult', res => {
+            if(res.success) {
+                document.getElementById('generatedPin').innerText = res.pin;
+                let t = res.type === 'gold' ? '👑 פרימיום זהב' : (res.type === 'premium' ? '💎 פרימיום' : 'רגיל');
+                document.getElementById('vType').innerText = t;
+                document.getElementById('vDays').innerText = res.days;
+                document.getElementById('voucherResult').style.display = 'block';
+            } else {
+                alert(res.error);
+            }
+        });
+
+        function sendMsg() {
+            const name = document.getElementById('msgName').value.trim();
+            const text = document.getElementById('msgText').value.trim();
+            if(!name || !text) return alert("נא למלא את כל השדות!");
+            socket.emit('submitMessage', { name, text });
+        }
+
+        socket.on('messageResult', res => {
+            if(res.success) {
+                alert('ההודעה נשלחה בהצלחה למנהל המערכת!');
+                document.getElementById('msgName').value = '';
+                document.getElementById('msgText').value = '';
+            }
+        });
+
+        function downloadTemplate() {
+            let data = [
+                ["שאלה", "תשובה 1", "תשובה 2", "תשובה 3", "תשובה 4", "מספר נכונה (1-4)"],
+                ["מה בירת ישראל?", "תל אביב", "ירושלים", "חיפה", "אילת", "2"],
+                ["כמה זה 5+5?", "8", "12", "10", "15", "3"]
+            ];
+            let ws = XLSX.utils.aoa_to_sheet(data);
+            let wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "תבנית קליקינט");
+            XLSX.writeFile(wb, `Clickinet_Template.xlsx`);
+        }
+    </script>
+</body>
+</html>
