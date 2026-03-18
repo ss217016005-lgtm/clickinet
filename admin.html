@@ -92,7 +92,9 @@
                 <input type="number" id="correct" placeholder="נכונה (1-4)" min="1" max="4">
                 <button class="btn-full btn-success" onclick="addQuestion()">➕ הוסף למחסנית</button>
                 
-                <div style="margin-top: 15px; max-height: 150px; overflow-y: auto; background:rgba(0,0,0,0.3); padding:10px; border-radius:8px;" id="qListItems"></div>
+                <p style="text-align: center; margin-top: 15px; margin-bottom: 5px; color:#cbd5e1;">שאלות במחסנית: <span id="qCount" style="color:#38bdf8; font-weight:bold; font-size: 1.2rem;">0</span></p>
+                <div style="max-height: 150px; overflow-y: auto; background:rgba(0,0,0,0.3); padding:10px; border-radius:8px;" id="qListItems"></div>
+                
                 <button class="btn-full btn-danger" style="background: transparent; border: 1px solid #ef4444; color: #ef4444; margin-top:5px;" onclick="clearCurrentQuestions()">🗑️ רוקן את כל המחסנית</button>
 
                 <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; margin-top: 15px; border: 1px dashed #38bdf8;">
@@ -205,6 +207,7 @@
             qs.forEach((q, i) => {
                 list.innerHTML += `<div class="q-list-item"><span>${i+1}. ${q.q}</span> <button class="btn-danger" style="padding:4px 8px; margin:0;" onclick="deleteSingleQ(${i})">❌</button></div>`;
             });
+            // 🛠️ הנה השורה שכבר לא תעשה שגיאה
             document.getElementById('qCount').innerText = qs.length;
         });
         function deleteSingleQ(index) { socket.emit('deleteSingleQuestion', index); }
@@ -218,7 +221,6 @@
                 let breakdown = p.lastBreakdown || '';
                 let scoreColor = breakdown.includes('✅') ? '#10b981' : (breakdown.includes('❌') ? '#ef4444' : '#cbd5e1');
                 
-                // הנה השדות להקלדת שם ושמירה!
                 adminList.innerHTML += `<div class="player-edit-row">
                     <span class="player-phone">${phone}</span>
                     <input type="text" id="name_${phone}" value="${p.name}">
@@ -243,7 +245,7 @@
             XLSX.writeFile(wb, `Clickinet_Results_${myRoomId}.xlsx`);
         }
 
-        // --- הנה פונקציית האקסל שחזרה במלואה! ---
+        // --- הנה פונקציית העלאת האקסל! עכשיו היא תעבוד מושלם ---
         function uploadExcel() {
             const file = document.getElementById('excelFile').files[0];
             if (!file) return alert('נא לבחור קובץ אקסל קודם!');
@@ -264,7 +266,7 @@
                     socket.emit('addBulkQuestions', newQuestions);
                     alert('הועלו ' + newQuestions.length + ' שאלות בהצלחה למחסנית!');
                     document.getElementById('excelFile').value = '';
-                } else { alert('לא נמצאו שאלות תקינות בקובץ.'); }
+                } else { alert('לא נמצאו שאלות תקינות בקובץ. אנא ודא שהקובץ תואם לתבנית.'); }
             };
             reader.readAsArrayBuffer(file);
         }
