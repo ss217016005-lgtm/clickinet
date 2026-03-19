@@ -32,11 +32,9 @@ try {
 
 function saveDB() { try { fs.writeFileSync(DB_PATH, JSON.stringify(db)); } catch(e){} }
 
-// מנועי זיכרון לשני המשחקים במקביל
-let rooms = {}; // חדרים של קליקינט טריוויה
+let rooms = {}; 
 let callToRoom = {}; 
-
-let arenaRooms = {}; // חדרים של הזירה המשפחתית
+let arenaRooms = {}; 
 let arenaCallToRoom = {}; 
 
 function getRoom(roomId) {
@@ -53,28 +51,23 @@ function getRoom(roomId) {
     return rooms[roomId];
 }
 
-// 📈 ניתובים עם מונה כניסות לאתר
 app.get('/', (req, res) => { db.analytics.audience++; saveDB(); emitSuperData(); res.sendFile(__dirname + '/index.html'); });
 app.get('/admin', (req, res) => { db.analytics.admin++; saveDB(); emitSuperData(); res.sendFile(__dirname + '/admin.html'); });
 app.get('/portal', (req, res) => { db.analytics.portal++; saveDB(); emitSuperData(); res.sendFile(__dirname + '/portal.html'); });
-app.get('/arena', (req, res) => { db.analytics.arena = (db.analytics.arena || 0) + 1; saveDB(); emitSuperData(); res.sendFile(__dirname + '/arena.html'); });
-app.get('/desk', (req, res) => { db.analytics.desk = (db.analytics.desk || 0) + 1; saveDB(); emitSuperData(); res.sendFile(__dirname + '/desk.html'); });
+app.get('/arena', (req, res) => { db.analytics.arena++; saveDB(); emitSuperData(); res.sendFile(__dirname + '/arena.html'); });
+app.get('/desk', (req, res) => { db.analytics.desk++; saveDB(); emitSuperData(); res.sendFile(__dirname + '/desk.html'); });
 app.get('/super', (req, res) => res.sendFile(__dirname + '/superadmin.html')); 
 
-// ==========================================
-// 🔴 מנוע API - משחק מס' 1: קליקינט (טריוויה 1-4)
-// ==========================================
+// API קליקינט (טריוויה)
 app.all('/api/answer', (req, res) => {
     res.set('Content-Type', 'text/plain; charset=utf-8');
     try {
         const exactHitTime = Date.now(); const input = { ...req.query, ...req.body };
         const phone = input.ApiPhone || "unknown"; const callId = input.ApiCallId || "unknown_call"; 
-        
         let valRaw = input.val_1; let val = "";
-        if (Array.isArray(valRaw)) { val = valRaw[valRaw.length - 1]; } else if (typeof valRaw === 'string') { val = valRaw.split(',').pop().trim(); }
+        if (Array.isArray(valRaw)) val = valRaw[valRaw.length - 1]; else if (typeof valRaw === 'string') val = valRaw.split(',').pop().trim();
         
-        console.log(`📞 קליקינט - טלפון: ${phone} | הקשה אחרונה: ${val} | חדר: ${callToRoom[callId] || 'אין'}`);
-        
+        console.log(`📞 שיחה נכנסת! טלפון: ${phone} | הקשה: ${val} | חדר נוכחי: ${callToRoom[callId] || 'טרם נבחר'}`);
         if (val === '*') { delete callToRoom[callId]; return res.send("read=t-נא להקיש קוד משחק וסולמית=val_1,no,10,1,15,no,no"); }
 
         let roomId = callToRoom[callId];
@@ -91,7 +84,7 @@ app.all('/api/answer', (req, res) => {
         const room = getRoom(roomId); let player = room.activePlayers[phone];
         if (!player) { room.activePlayers[phone] = { name: db.phonebooks[roomId]?.[phone] || "שחקן חדש", score: 0, lastAnswered: -1, ping: 0, streak: 0, lastBreakdown: "" }; player = room.activePlayers[phone]; io.to(roomId).emit('updateLeaderboard', room.activePlayers); }
         let totalPlayers = Object.keys(room.activePlayers).length;
-        if (!room.gameSettings.isPremium && totalPlayers > 10) return res.send(`id_list_message=t-המשחק מוגבל לעשרה שחקנים&go_to_folder=hangup`);
+        if (!room.gameSettings.isPremium && totalPlayers > 10) return res.send(`id_list_message=t-המשחק החינמי מוגבל לעשרה שחקנים&go_to_folder=hangup`);
         if (!val || val === '') return res.send(`read=t-ממתין=val_1,no,1,1,10,no,no`);
 
         if (val && val !== '') {
@@ -115,19 +108,14 @@ app.all('/api/answer', (req, res) => {
     } catch(err) { res.send("id_list_message=t-שגיאה וניתוק&go_to_folder=hangup"); }
 });
 
-// ==========================================
-// ⚔️ מנוע API - משחק מס' 2: הזירה המשפחתית (דירוג 1-10)
-// ==========================================
+// API זירה משפחתית
 app.all('/api/arena', (req, res) => {
     res.set('Content-Type', 'text/plain; charset=utf-8');
     try {
         const input = { ...req.query, ...req.body };
         const phone = input.ApiPhone || "unknown"; const callId = input.ApiCallId || "unknown_call"; 
-        
         let valRaw = input.val_1; let val = "";
         if (Array.isArray(valRaw)) val = valRaw[valRaw.length - 1]; else if (typeof valRaw === 'string') val = valRaw.split(',').pop().trim();
-        
-        console.log(`⚔️ שיחה לזירה! טלפון: ${phone} | הקשה אחרונה: ${val} | חדר: ${arenaCallToRoom[callId] || 'טרם נבחר'}`);
         
         if (val === '*') { delete arenaCallToRoom[callId]; return res.send("read=t-הקש קוד משחק וסולמית=val_1,no,10,1,15,no,no"); }
 
@@ -135,7 +123,6 @@ app.all('/api/arena', (req, res) => {
         if (!roomId) {
             if (val !== undefined && val !== '') {
                 if (!db.pins[val]) return res.send(`read=t-קוד שגוי נא לנסות שוב=val_1,no,10,1,15,no,no`);
-                
                 arenaCallToRoom[callId] = val; 
                 if (!arenaRooms[val]) arenaRooms[val] = { players: {}, phase: 'lobby' }; 
                 return res.send(`id_list_message=t-מחובר לזירה&read=t-ממתין=val_1,no,10,1,10,no,no`); 
@@ -143,24 +130,16 @@ app.all('/api/arena', (req, res) => {
         }
 
         const room = arenaRooms[roomId];
-        if (!room.players[phone]) {
-            room.players[phone] = { name: db.phonebooks[roomId]?.[phone] || "שחקן חדש", phone: phone, score: 0, currentVote: 0 };
-            io.to('arena_'+roomId).emit('arenaUpdatePlayers', room.players);
-        }
-
+        if (!room.players[phone]) { room.players[phone] = { name: db.phonebooks[roomId]?.[phone] || "שחקן חדש", phone: phone, score: 0, currentVote: 0 }; io.to('arena_'+roomId).emit('arenaUpdatePlayers', room.players); }
         if (!val || val === '') return res.send(`read=t-ממתין=val_1,no,10,1,10,no,no`);
 
         let numVal = parseInt(val);
         if (!isNaN(numVal) && numVal >= 1 && numVal <= 10) {
             if (room.phase === 'rating') {
-                room.players[phone].currentVote = numVal;
-                io.to('arena_'+roomId).emit('arenaVoteReceived', { phone: phone, vote: numVal });
+                room.players[phone].currentVote = numVal; io.to('arena_'+roomId).emit('arenaVoteReceived', { phone: phone, vote: numVal });
                 return res.send(`id_list_message=t-הדירוג נקלט&read=t-ממתין=val_1,no,10,1,10,no,no`);
-            } else {
-                return res.send(`id_list_message=t-ההצבעה סגורה כעת&read=t-ממתין=val_1,no,10,1,10,no,no`);
-            }
+            } else { return res.send(`id_list_message=t-ההצבעה סגורה כעת&read=t-ממתין=val_1,no,10,1,10,no,no`); }
         }
-        
         return res.send(`read=t-ממתין=val_1,no,10,1,10,no,no`);
     } catch(err) { res.send("id_list_message=t-שגיאה וניתוק&go_to_folder=hangup"); }
 });
@@ -170,13 +149,13 @@ function emitPortalData() { io.emit('portalData', { msg: db.portalMsg, ad: db.po
 
 io.on('connection', (socket) => {
     
-    // --- האזור האישי (Desk) ---
+    // --- Desk ---
     socket.on('deskLogin', (pass) => { if (pass === "TCRHNHCUHTR") { socket.emit('deskData', db.myDesk); } else { socket.emit('deskError'); } });
     socket.on('deskUpdateData', (newData) => { db.myDesk.links = newData.links || db.myDesk.links; db.myDesk.passwords = newData.passwords || db.myDesk.passwords; db.myDesk.tasks = newData.tasks || db.myDesk.tasks; saveDB(); socket.emit('deskData', db.myDesk); });
     socket.on('deskUploadFile', data => { if(data.base64) { const base64Data = data.base64.replace(/^data:.*?;base64,/, ""); const fileName = 'desk_file_' + Date.now() + '_' + data.name; fs.writeFileSync('uploads/' + fileName, base64Data, 'base64'); db.myDesk.files.push({ name: data.name, url: '/uploads/' + fileName }); saveDB(); socket.emit('deskData', db.myDesk); } });
     socket.on('deskDeleteFile', index => { if(db.myDesk.files[index]) { const filePath = 'uploads/' + db.myDesk.files[index].url.split('/').pop(); if (fs.existsSync(filePath)) { fs.unlinkSync(filePath); } db.myDesk.files.splice(index, 1); saveDB(); socket.emit('deskData', db.myDesk); } });
 
-    // --- שאר הפונקציות (פורטל, קליקינט ומנהל על) ---
+    // --- Portal & SuperAdmin ---
     socket.on('getPortalData', () => { socket.emit('portalData', { msg: db.portalMsg, ad: db.portalAd, excels: db.publicExcels }); });
     socket.on('superLogin', (pass) => { if (pass === "Ahal2026!") emitSuperData(); else socket.emit('superError'); });
     socket.on('updatePortalMsg', msg => { db.portalMsg = msg; saveDB(); emitPortalData(); emitSuperData(); });
@@ -192,8 +171,17 @@ io.on('connection', (socket) => {
     socket.on('submitMessage', msg => { if(!db.messages) db.messages = []; db.messages.push({ date: new Date().toLocaleString('he-IL'), name: msg.name, text: msg.text }); saveDB(); socket.emit('messageResult', { success: true }); emitSuperData(); });
     socket.on('deleteMessage', index => { if(db.messages && db.messages[index]) { db.messages.splice(index, 1); saveDB(); emitSuperData(); } });
 
-    socket.on('fetchLiveStats', () => { let stats = {}; for (let r in rooms) { let activeCount = Object.keys(rooms[r].activePlayers).length; if (activeCount > 0 || rooms[r].gameActive || rooms[r].questions.length > 0) { stats[r] = { players: activeCount, isActive: rooms[r].gameActive, qCount: rooms[r].questions.length, currentQ: rooms[r].currentQuestion + 1 }; } } socket.emit('liveStatsData', stats); });
+    // 👁️ מנוע החמ"ל - נתונים מלאים למנהל העל!
+    socket.on('fetchLiveStats', () => { 
+        let stats = {}; 
+        for (let r in rooms) { let activeCount = Object.keys(rooms[r].activePlayers).length; if (activeCount > 0 || rooms[r].gameActive || rooms[r].questions.length > 0) { stats[r] = { type: 'trivia', players: activeCount, isActive: rooms[r].gameActive, qCount: rooms[r].questions.length, currentQ: rooms[r].currentQuestion + 1, playersData: rooms[r].activePlayers }; } }
+        for (let r in arenaRooms) { let activeCount = Object.keys(arenaRooms[r].players).length; if (activeCount > 0 || arenaRooms[r].phase !== 'lobby') { stats[r] = { type: 'arena', players: activeCount, isActive: (arenaRooms[r].phase !== 'lobby'), phase: arenaRooms[r].phase, playersData: arenaRooms[r].players }; } }
+        
+        let calls = { trivia: callToRoom, arena: arenaCallToRoom };
+        socket.emit('liveStatsData', { stats: stats, calls: calls }); 
+    });
 
+    // --- חדרים (קליקינט והזירה) ---
     socket.on('joinRoom', (roomId) => { if (!db.pins[roomId]) return socket.emit('loginResponse', { success: false, error: 'קוד לא קיים!' }); if (db.pins[roomId].expiresAt && Date.now() > db.pins[roomId].expiresAt) return socket.emit('loginResponse', { success: false, error: 'הקוד פג תוקף!' }); socket.join(roomId); socket.roomId = roomId; const room = getRoom(roomId); let gamesDisplay = (db.pins[roomId].type === 'gold') ? 'ללא הגבלה 👑' : db.pins[roomId].gamesLeft; socket.emit('loginResponse', { success: true, gamesLeft: gamesDisplay }); socket.emit('updateSettings', room.gameSettings); socket.emit('updateLeaderboard', room.activePlayers); socket.emit('lockState', room.answersLocked); socket.emit('updateQuestions', room.questions); socket.emit('doublePointsState', room.isDoublePoints); });
     socket.on('startGame', () => { if(!socket.roomId) return; let room = rooms[socket.roomId]; if(room.questions.length === 0) return; if (db.pins[socket.roomId].type !== 'gold') { db.pins[socket.roomId].gamesLeft--; saveDB(); } let gamesDisplay = (db.pins[socket.roomId].type === 'gold') ? 'ללא הגבלה 👑' : db.pins[socket.roomId].gamesLeft; io.to(socket.roomId).emit('updateGamesLeft', gamesDisplay); room.gameActive = true; room.currentQuestion = 0; room.answersLocked = true; room.isDoublePoints = false; for(let p in room.activePlayers) { room.activePlayers[p].score = 0; room.activePlayers[p].lastAnswered = -1; room.activePlayers[p].streak = 0; room.activePlayers[p].currentChoice = null; } io.to(socket.roomId).emit('doublePointsState', false); io.to(socket.roomId).emit('newQuestion', room.questions[room.currentQuestion]); io.to(socket.roomId).emit('lockState', true); io.to(socket.roomId).emit('updateLeaderboard', room.activePlayers); });
     socket.on('addSingleQuestion', q => { if(socket.roomId) { if (q.imgBase64) { const base64Data = q.imgBase64.replace(/^data:image\/\w+;base64,/, ""); const fileName = 'img_' + Date.now() + '.png'; fs.writeFileSync('uploads/' + fileName, base64Data, 'base64'); q.image = '/uploads/' + fileName; delete q.imgBase64; } rooms[socket.roomId].questions.push(q); io.to(socket.roomId).emit('updateQuestions', rooms[socket.roomId].questions); } });
@@ -217,27 +205,12 @@ io.on('connection', (socket) => {
     socket.on('showVictoryScreen', () => { if(socket.roomId) { let room = rooms[socket.roomId]; room.gameActive = false; room.answersLocked = true; io.to(socket.roomId).emit('lockState', true); const topPlayers = Object.values(room.activePlayers).sort((a,b) => b.score - a.score).slice(0, 3); io.to(socket.roomId).emit('victoryPodium', topPlayers); } });
     socket.on('updatePlayerName', ({ phone, newName }) => { if(socket.roomId) { db.phonebooks[socket.roomId][phone] = newName; saveDB(); if (rooms[socket.roomId].activePlayers[phone]) rooms[socket.roomId].activePlayers[phone].name = newName; io.to(socket.roomId).emit('updateLeaderboard', rooms[socket.roomId].activePlayers); } });
 
-    // ==========================================
-    // ⚔️ סוקטים חדשים - הזירה המשפחתית
-    // ==========================================
-    socket.on('joinArenaRoom', roomId => {
-        if (!db.pins[roomId]) return socket.emit('loginResponse', { success: false, error: 'קוד מפיק לא קיים!' });
-        if (db.pins[roomId].expiresAt && Date.now() > db.pins[roomId].expiresAt) return socket.emit('loginResponse', { success: false, error: 'הקוד פג תוקף!' });
-        socket.join('arena_' + roomId);
-        if (!arenaRooms[roomId]) arenaRooms[roomId] = { players: {}, phase: 'lobby' };
-        socket.emit('loginResponse', { success: true });
-        socket.emit('arenaUpdatePlayers', arenaRooms[roomId].players);
-    });
-
+    // --- זירה משפחתית ---
+    socket.on('joinArenaRoom', roomId => { if (!db.pins[roomId]) return socket.emit('loginResponse', { success: false, error: 'קוד מפיק לא קיים!' }); if (db.pins[roomId].expiresAt && Date.now() > db.pins[roomId].expiresAt) return socket.emit('loginResponse', { success: false, error: 'הקוד פג תוקף!' }); socket.join('arena_' + roomId); if (!arenaRooms[roomId]) arenaRooms[roomId] = { players: {}, phase: 'lobby' }; socket.emit('loginResponse', { success: true }); socket.emit('arenaUpdatePlayers', arenaRooms[roomId].players); });
     socket.on('arenaSetPhase', data => { if(arenaRooms[data.roomId]) arenaRooms[data.roomId].phase = data.phase; });
     socket.on('arenaUpdateScores', data => { if(arenaRooms[data.roomId]) arenaRooms[data.roomId].players = data.players; });
-    socket.on('arenaUpdatePlayerName', data => {
-        if(arenaRooms[data.roomId]) {
-            db.phonebooks[data.roomId] = db.phonebooks[data.roomId] || {}; db.phonebooks[data.roomId][data.phone] = data.name; saveDB();
-            if(arenaRooms[data.roomId].players[data.phone]) arenaRooms[data.roomId].players[data.phone].name = data.name;
-        }
-    });
+    socket.on('arenaUpdatePlayerName', data => { if(arenaRooms[data.roomId]) { db.phonebooks[data.roomId] = db.phonebooks[data.roomId] || {}; db.phonebooks[data.roomId][data.phone] = data.name; saveDB(); if(arenaRooms[data.roomId].players[data.phone]) arenaRooms[data.roomId].players[data.phone].name = data.name; } });
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V62.0 (The Grand Merge) is ONLINE ==="));
+http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V63.0 (Shin-Bet War Room) is ONLINE ==="));
