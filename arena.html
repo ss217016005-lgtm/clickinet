@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>הזירה המשפחתית | אהל יהודה</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚔️</text></svg>">
+    <style>
+        :root {
+            --primary: #2c3e50; --accent: #e67e22; --bg: #f5f6fa;
+            --glass: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(245, 246, 250, 0.8));
+            --gold: #f1c40f; --silver: #bdc3c7; --bronze: #cd7f32;
+        }
+
+        body {
+            font-size: clamp(16px, 1.5vw + 10px, 22px);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #2c3e50, #4ca1af);
+            color: #333; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow-x: hidden;
+        }
+
+        /* 🔐 מסך התחברות */
+        #loginOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0b0f19; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white;}
+        .login-input { width: 300px; padding: 15px; font-size: 1.5rem; text-align: center; margin-bottom: 20px; border-radius: 10px; border: none; }
+        .login-btn { background: var(--accent); color: white; border: none; padding: 15px 40px; font-size: 1.5rem; border-radius: 10px; cursor: pointer; font-weight: bold; }
+
+        .container {
+            width: 90%; max-width: 900px; min-height: 500px;
+            background: var(--glass) !important;
+            transition: background 0.8s ease;
+            backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            padding: 40px; border-radius: 30px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.4);
+            text-align: center; position: relative; display: flex; flex-direction: column; justify-content: center; margin: 20px auto;
+        }
+
+        .hidden { display: none !important; }
+
+        button { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 10px; font-size: 1.1rem; cursor: pointer; margin: 10px; transition: 0.3s; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        button:hover { transform: scale(1.05); filter: brightness(1.1); }
+        input[type="text"] { padding: 12px; margin: 5px; border-radius: 8px; border: 1px solid #ccc; width: 80%; font-size: 1rem; }
+
+        /* כרטיסי לובי ושחקנים */
+        .player-edit-row { display: flex; gap: 10px; align-items: center; background: rgba(0,0,0,0.05); padding: 10px; border-radius: 10px; margin-bottom: 10px; width: 100%; box-sizing: border-box;}
+        .player-edit-row input { flex-grow: 1; margin: 0; width: auto; }
+        .phone-badge { background: var(--primary); color: white; padding: 5px 10px; border-radius: 5px; font-size: 0.9rem;}
+
+        /* אזור דירוג טלפוני */
+        .vote-row { display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.05); padding: 15px; border-radius: 10px; margin-bottom: 10px; }
+        .vote-status { font-weight: bold; font-size: 1.2rem; color: var(--primary); background: white; padding: 5px 15px; border-radius: 20px; box-shadow: inset 0 2px 5px rgba(0,0,0,0.1); width: 120px;}
+        .voted-yes { background: #2ecc71; color: white; }
+
+        .score-display { font-weight: bold; font-size: 1.2rem; color: var(--primary); width: 30px; }
+        
+        .podium-container { display: flex; justify-content: center; align-items: flex-end; gap: 15px; margin: 30px 0; height: 180px; }
+        .podium-place { background: var(--primary); color: white; border-radius: 10px 10px 0 0; width: 100px; display: flex; flex-direction: column; justify-content: flex-start; padding-top: 15px; box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.2); transition: all 0.5s ease; }
+        .podium-1 { height: 160px; background: linear-gradient(to top, var(--primary), var(--gold)); order: 2; z-index: 3; }
+        .podium-2 { height: 120px; background: linear-gradient(to top, var(--primary), var(--silver)); order: 1; z-index: 2; }
+        .podium-3 { height: 90px; background: linear-gradient(to top, var(--primary), var(--bronze)); order: 3; z-index: 1; }
+        .podium-name { font-weight: bold; font-size: 1.1rem; }
+        .podium-score { font-size: 0.9rem; opacity: 0.9; }
+
+        .rest-players { text-align: right; background: rgba(255, 255, 255, 0.5); padding: 15px; border-radius: 10px; margin-top: 20px; max-height: 150px; overflow-y: auto; }
+        .rest-item { display: flex; justify-content: space-between; border-bottom: 1px solid #ddd; padding: 8px 0; font-size: 0.9rem; }
+
+        #back-btn { position: absolute; top: 15px; right: 15px; background: transparent; color: var(--primary); border: 2px solid var(--primary); padding: 5px 15px; font-size: 0.9rem; margin: 0; box-shadow: none; }
+        #back-btn:hover { background: rgba(0, 0, 0, 0.05); }
+
+        .mode-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; margin-top: 30px; width: 100%; }
+        .mode-card { border-radius: 20px; padding: 25px; cursor: pointer; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15); width: 180px; height: 160px; border: 3px solid rgba(255, 255, 255, 0.2); color: white; text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3); flex-shrink: 0; }
+        .mode-card:hover { transform: scale(1.08) translateY(-5px); box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3); filter: brightness(1.1); }
+        .mode-card i { font-size: 3rem; margin-bottom: 12px; filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.2)); }
+        .mode-card span { font-weight: 800; font-size: 1.1rem; letter-spacing: 0.5px; }
+
+        .card-family { background: linear-gradient(135deg, #ff6b6b, #ee5253); }
+        .card-nature { background: linear-gradient(135deg, #20bf6b, #0fb9b1); }
+        .card-general { background: linear-gradient(135deg, #45aaf2, #2d98da); }
+        .card-funny { background: linear-gradient(135deg, #f7b731, #fa8231); }
+        .card-custom { background: linear-gradient(135deg, #a55eea, #8854d0); }
+
+        @media (max-width: 600px) {
+            .mode-card { width: calc(48% - 10px); height: 140px; padding: 15px; }
+            .mode-card i { font-size: 2.2rem; } .mode-card span { font-size: 0.9rem; }
+        }
+
+        input[type="text"]:focus { border-color: var(--accent); box-shadow: 0 0 10px rgba(230, 126, 34, 0.2); outline: none; background: white; }
+        #custom-questions-list { display: flex; flex-direction: column; gap: 15px; padding: 15px; background: rgba(255, 255, 255, 0.3); border-radius: 20px; margin-bottom: 20px; }
+        .custom-q-wrapper { display: flex; flex-direction: column; gap: 8px; background: white; padding: 15px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); border: 1px solid rgba(0, 0, 0, 0.05); }
+        .q-number { background: var(--accent); color: white; min-width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: bold; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+        .custom-a { border: 1px dashed var(--accent) !important; background: #fffcf9 !important; font-size: 0.9rem !important; }
+        #players-list { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-bottom: 20px; max-height: 250px; overflow-y:auto; padding: 10px;}
+        #prize-input { border: 2px dashed var(--gold); background: #fffdf2; font-weight: bold; text-align: center; }
+
+        .studio-promo-btn { background: linear-gradient(135deg, #0984e3, #6c5ce7) !important; color: white !important; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 12px; padding: 18px 25px !important; border-radius: 16px !important; text-decoration: none; margin: 25px auto 10px; width: fit-content; box-shadow: 0 10px 20px rgba(108, 92, 231, 0.2); transition: all 0.3s ease; border: 2px solid rgba(255, 255, 255, 0.1); }
+        .studio-promo-btn:hover { transform: translateY(-3px); box-shadow: 0 15px 25px rgba(108, 92, 231, 0.3); filter: brightness(1.1); }
+        .studio-promo-btn i { font-style: normal; font-size: 1.4rem; }
+    </style>
+</head>
+
+<body>
+    
+    <div id="loginOverlay">
+        <h1 style="font-size: 3.5rem; margin: 0; color: #e67e22;">הזירה המשפחתית ⚔️</h1>
+        <p style="color: #94a3b8; font-size: 1.3rem; margin-bottom: 30px;">הקש קוד מפיק לפתיחת הזירה</p>
+        <input type="text" id="roomIdInput" class="login-input" placeholder="קוד משחק...">
+        <button class="login-btn" onclick="joinRoom()">פתח זירה!</button>
+    </div>
+
+    <div class="container" id="mainContainer" style="display:none;">
+        <button id="back-btn" class="hidden" onclick="goBack()">🔙 חזור</button>
+        <div style="position:absolute; top:15px; left:15px; font-weight:bold; color:var(--primary); background:rgba(255,255,255,0.6); padding:5px 10px; border-radius:8px;">קוד משחק: <span id="displayPin"></span></div>
+
+        <div id="screen-intro" class="screen">
+            <h1>⚔️ הזירה המשפחתית</h1>
+            <p style="font-size: 1.2rem; font-weight: bold; color: var(--primary);">הכנו את החרבות, הקרב על התואר מתחיל!</p>
+
+            <div style="text-align: right; background: rgba(255,255,255,0.4); padding: 20px; border-radius: 15px; margin: 20px 0; border-right: 5px solid var(--accent);">
+                <p><b>איך נלחמים?</b> (הפעלה דרך הטלפון!)</p>
+                <ul style="list-style: none; padding: 0; line-height: 1.6;">
+                    <li>📞 <b>התחברות:</b> כולם מחייגים לקו ומקישים את הקוד.</li>
+                    <li>⚔️ <b>התור שלכם:</b> בכל סיבוב שחקן מקבל שאלה ועונה עליה בקול רם.</li>
+                    <li>⭐ <b>הדירוג (בטלפון):</b> שאר המשתתפים מקישים בטלפון ניקוד מ-1 עד 10 על התשובה!</li>
+                    <li>🏆 <b>הניצחון:</b> הניקוד הגבוה ביותר מזכה בפרס שקבעתם.</li>
+                </ul>
+            </div>
+            <button onclick="showScreen('screen-mode')">קדימה, לזירה! 🚀</button>
+        </div>
+
+        <div id="screen-mode" class="screen hidden">
+            <h2>🛡️ בחר את סוג הקרב</h2>
+            <p>באיזה תחום אתם הכי חזקים?</p>
+            <div class="mode-grid">
+                <div class="mode-card card-family" onclick="setMode('family')"><i>👪</i><span>משפחה</span></div>
+                <div class="mode-card card-nature" onclick="setMode('nature')"><i>🌿</i><span>טבע</span></div>
+                <div class="mode-card card-general" onclick="setMode('general')"><i>💡</i><span>ידע כללי</span></div>
+                <div class="mode-card card-funny" onclick="setMode('funny')"><i>😂</i><span>צחוקים</span></div>
+                <div class="mode-card card-custom" onclick="showCustomInput()"><i>🖋️</i><span>מותאם אישית</span></div>
+            </div>
+        </div>
+
+        <div id="screen-custom" class="screen hidden">
+            <h2 style="color: var(--primary);">🖋️ זירת התוכן שלכם</h2>
+            <p>כתבו 40 שאלות שיגרמו לכולם להזיע...</p>
+            <div id="custom-questions-list" style="max-height: 400px; overflow-y: auto;"></div>
+            <button onclick="saveCustomQuestions()" style="width:100%; font-size:1.2rem;">סיימנו, לשדה הקרב! ⚔️</button>
+        </div>
+
+        <div id="screen-players" class="screen hidden">
+            <h2 style="color: var(--primary);">👥 גיוס לוחמים</h2>
+            <p>בקשו מכולם לחייג לקו ולהקיש את קוד המשחק!</p>
+            
+            <div id="players-list">
+                <p style="color: #666;">ממתין לחיבור טלפונים...</p>
+            </div>
+
+            <div style="margin-top: 30px; padding: 20px; background: rgba(241, 196, 15, 0.1); border-radius: 15px;">
+                <label style="display: block; margin-bottom: 10px; font-weight: bold;">🏆 על מה נלחמים? (הפרס)</label>
+                <input type="text" id="prize-input" placeholder="למשל: פטור מכלים / קינוח לבחירה" />
+            </div>
+            <br>
+            <button onclick="startGame()" style="width: 100%; font-size: 1.4rem;">התחל משחק! 🚀</button>
+        </div>
+
+        <div id="screen-game" class="screen hidden">
+            <div id="turn-indicator" style="font-size: 1.5rem; margin-bottom: 10px; font-weight: bold; color: var(--accent); background: white; padding: 10px; border-radius: 10px; display: inline-block; border: 2px solid var(--accent);"></div>
+
+            <div id="phase-question">
+                <h2 id="current-question" style="min-height: 80px; margin-top:30px; font-size: 2rem;"></h2>
+                <button onclick="goToRatingPhase()" style="margin-top: 30px; font-size: 1.3rem;">עניתי!</button>
+            </div>
+
+            <div id="phase-rating" class="hidden">
+                <h3 style="color: var(--primary); font-size: 1.8rem; margin-top:0;">איך הייתה התשובה?</h3>
+                <p style="font-weight:bold;">שאר השחקנים, הקישו עכשיו בטלפון ציון מ-1 עד 10!</p>
+                <div id="rating-inputs" style="max-height: 250px; overflow-y: auto; padding: 10px;"></div>
+                <button onclick="submitRatings()" style="margin-top: 20px; width:100%;">חשב ניקוד ומעבר הלאה</button>
+            </div>
+        </div>
+
+        <div id="screen-leaderboard" class="screen hidden">
+            <h2 id="leaderboard-title">📊 מצב הביניים</h2>
+            <div class="podium-container" id="podium-area"></div>
+            <div class="rest-players hidden" id="rest-area">
+                <h4>שאר השחקנים:</h4>
+                <div id="rest-list"></div>
+            </div>
+            <button id="leaderboard-btn" onclick="continueGame()">המשך לשאלה הבאה</button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let myRoomId = "";
+        let playersMap = {}; // ניהול שחקנים דרך השרת
+        let playersArray = []; // המרה למערך לשמירה על סדר התורים
+        let selectedQuestions = [];
+        let currentQuestionIndex = 0;
+        let prize = "";
+        let totalQuestionsLimit = 40;
+        let historyStack = [];
+
+        // --- חיבור לשרת (Socket.io) ---
+        function joinRoom() {
+            const input = document.getElementById('roomIdInput').value.trim();
+            if (!input) return;
+            myRoomId = input; socket.emit('joinArenaRoom', myRoomId);
+        }
+
+        socket.on('loginResponse', res => {
+            if (res.success) {
+                document.getElementById('loginOverlay').style.display = 'none';
+                document.getElementById('mainContainer').style.display = 'flex';
+                document.getElementById('displayPin').innerText = myRoomId;
+            } else { alert(res.error); }
+        });
+
+        // קליטת שחקנים מהטלפון בזמן אמת!
+        socket.on('arenaUpdatePlayers', pObj => {
+            playersMap = pObj;
+            renderLobbyPlayers();
+        });
+
+        function renderLobbyPlayers() {
+            const list = document.getElementById('players-list');
+            list.innerHTML = '';
+            const pKeys = Object.keys(playersMap);
+            if(pKeys.length === 0) { list.innerHTML = '<p style="color: #666;">ממתין לחיבור טלפונים לחייג: 077-2296674</p>'; return; }
+            
+            pKeys.forEach(phone => {
+                let p = playersMap[phone];
+                list.innerHTML += `
+                <div class="player-edit-row">
+                    <span class="phone-badge">${phone}</span>
+                    <input type="text" id="name_${phone}" value="${p.name}" onblur="updateName('${phone}')">
+                </div>`;
+            });
+        }
+
+        function updateName(phone) {
+            const newName = document.getElementById('name_' + phone).value;
+            socket.emit('arenaUpdatePlayerName', { roomId: myRoomId, phone: phone, name: newName });
+        }
+
+        // קבלת דירוג 1-10 מהטלפון בלייב
+        socket.on('arenaVoteReceived', data => {
+            if (playersMap[data.phone]) {
+                playersMap[data.phone].currentVote = data.vote;
+                const statusBox = document.getElementById('status_' + data.phone);
+                if(statusBox) {
+                    statusBox.innerText = "הצביע: " + data.vote;
+                    statusBox.classList.add('voted-yes');
+                    playSound("click");
+                }
+            }
+        });
+
+        // --- מאגר שאלות (מקוצר לתצוגה, שים פה את כל השאלות שהבאת!) ---
+        const questionBank = {
+            family: [
+                { q: "מי במשפחה תמיד קם ראשון בשבת בבוקר?", a: "המשכים המשפחתי" },
+                { q: "מי הכי סביר שייצא מהבית ויחזור כי הוא שכח משהו?", a: "המפוזר/ת המקסים/ה" },
+                { q: "מהו המאכל שכולם מחכים לו בערב שבת?", a: "המנה המנצחת של הבית" },
+                { q: "מי במשפחה זקוק להכי הרבה שעות שינה?", a: "הישנוני/ת של הבית" }
+            ],
+            nature: [
+                { q: "איזו חיה ישנה בעמידה?", a: "סוס או פיל" },
+                { q: "מהו העץ הלאומי של ישראל?", a: "זית" }
+            ],
+            general: [
+                { q: "איזה חודש בלוח העברי תמיד מונה 29 ימים?", a: "טבת (או תמוז/אלול)" },
+                { q: "כמה שעות יש בשבוע שלם?", a: "168 שעות" }
+            ],
+            funny: [
+                { q: "מה יש לו שיניים אבל הוא לא יכול לנשוך?", a: "מסרק" },
+                { q: "מה נהיה רטוב יותר ככל שהוא מייבש יותר?", a: "מגבת" }
+            ]
+        };
+
+        // --- סאונד ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.connect(gain); gain.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
+            if (type === "click") { osc.type = "sine"; osc.frequency.setValueAtTime(800, now); osc.frequency.exponentialRampToValueAtTime(400, now + 0.1); gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1); osc.start(now); osc.stop(now + 0.1); }
+            else if (type === "success") { osc.type = "triangle"; osc.frequency.setValueAtTime(440, now); osc.frequency.exponentialRampToValueAtTime(880, now + 0.4); gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.1, now + 0.1); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5); osc.start(now); osc.stop(now + 0.5); }
+            else if (type === "win") { const notes = [440, 554.37, 659.25, 880]; notes.forEach((freq, i) => { const o = audioCtx.createOscillator(); const g = audioCtx.createGain(); o.type = "sine"; o.connect(g); g.connect(audioCtx.destination); const start = now + (i * 0.15); o.frequency.setValueAtTime(freq, start); o.frequency.exponentialRampToValueAtTime(freq * 1.02, start + 0.8); g.gain.setValueAtTime(0, start); g.gain.linearRampToValueAtTime(0.05, start + 0.1); g.gain.exponentialRampToValueAtTime(0.001, start + 1.2); o.start(start); o.stop(start + 1.2); }); }
+        }
+
+        // --- לוגיקת מסכים ---
+        function showScreen(id, saveHistory = true) {
+            playSound("click");
+            if (saveHistory) { const current = document.querySelector('.screen:not(.hidden)'); if (current) historyStack.push({ id: current.id, qIndex: currentQuestionIndex }); }
+            document.querySelectorAll('.screen').forEach(div => div.classList.add('hidden')); document.getElementById(id).classList.remove('hidden');
+            const backBtn = document.getElementById('back-btn'); if (id === 'screen-intro' || historyStack.length === 0) backBtn.classList.add('hidden'); else backBtn.classList.remove('hidden');
+        }
+
+        function goBack() {
+            if (historyStack.length > 0) {
+                playSound("click"); const lastState = historyStack.pop(); currentQuestionIndex = lastState.qIndex;
+                if (lastState.id === 'screen-game') { document.getElementById('phase-question').classList.remove('hidden'); document.getElementById('phase-rating').classList.add('hidden'); showQuestionUI(); }
+                showScreen(lastState.id, false);
+            }
+        }
+
+        function setMode(mode) {
+            let gradient = "";
+            switch (mode) {
+                case 'family': gradient = "linear-gradient(135deg, rgba(255, 107, 107, 0.4), rgba(255, 255, 255, 0.85))"; break;
+                case 'nature': gradient = "linear-gradient(135deg, rgba(46, 204, 113, 0.35), rgba(255, 255, 255, 0.85))"; break;
+                case 'general': gradient = "linear-gradient(135deg, rgba(52, 152, 219, 0.35), rgba(255, 255, 255, 0.85))"; break;
+                case 'funny': gradient = "linear-gradient(135deg, rgba(243, 156, 18, 0.35), rgba(255, 255, 255, 0.85))"; break;
+                default: gradient = "linear-gradient(135deg, rgba(155, 89, 182, 0.35), rgba(255, 255, 255, 0.85))";
+            }
+            document.documentElement.style.setProperty('--glass', gradient);
+            selectedQuestions = [...(questionBank[mode] || [{q:"שאלה נוספת", a:"תשובה"}])];
+            showScreen('screen-players');
+        }
+
+        function showCustomInput() {
+            const list = document.getElementById('custom-questions-list'); list.innerHTML = '';
+            for (let i = 1; i <= 20; i++) { list.innerHTML += `<div class="custom-q-wrapper"><div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;"><span class="q-number">${i}</span><input type="text" class="custom-q" placeholder="השאלה שלך..." style="flex: 1;"></div><div style="padding-right: 35px;"><input type="text" class="custom-a" placeholder="התשובה النכונה..." style="width: 100%;"></div></div>`; }
+            showScreen('screen-custom');
+        }
+
+        function saveCustomQuestions() {
+            const qInputs = document.querySelectorAll('.custom-q'); const aInputs = document.querySelectorAll('.custom-a');
+            selectedQuestions = Array.from(qInputs).map((input, i) => ({ q: input.value.trim() || "שאלה", a: aInputs[i].value.trim() || "תשובה" })).filter(item => item.q !== "שאלה");
+            if(selectedQuestions.length===0) selectedQuestions=[{q:"מי גיבור?", a:"אני"}];
+            showScreen('screen-players');
+        }
+
+        function startGame() {
+            playersArray = Object.values(playersMap);
+            prize = document.getElementById('prize-input').value || "תהילת עולם";
+            if (playersArray.length < 2) return alert("צריך לחבר לפחות 2 טלפונים כדי לשחק!");
+
+            const numPlayers = playersArray.length; let roundsPerPlayer;
+            if (numPlayers === 2) roundsPerPlayer = 10; else if (numPlayers <= 5) roundsPerPlayer = 5; else roundsPerPlayer = 3; 
+            totalQuestionsLimit = numPlayers * roundsPerPlayer;
+
+            let baseQuestions = [...selectedQuestions];
+            while (selectedQuestions.length < totalQuestionsLimit) { selectedQuestions.push(...baseQuestions); }
+            selectedQuestions = selectedQuestions.slice(0, totalQuestionsLimit);
+
+            // פותח לשרת את האופציה להפסיק לקבל דירוגים
+            socket.emit('arenaSetPhase', { roomId: myRoomId, phase: 'playing' });
+
+            currentQuestionIndex = 0; 
+            showScreen('screen-game');
+            document.getElementById('phase-question').classList.remove('hidden'); document.getElementById('phase-rating').classList.add('hidden');
+            showQuestionUI();
+        }
+
+        function showQuestionUI() {
+            socket.emit('arenaSetPhase', { roomId: myRoomId, phase: 'playing' }); // נועל את מנוע ההצבעות
+            const player = playersArray[currentQuestionIndex % playersArray.length];
+            document.getElementById('turn-indicator').innerText = `התור של: ${player.name} 🎯`;
+            let qText = selectedQuestions[currentQuestionIndex].q || selectedQuestions[currentQuestionIndex];
+            document.getElementById('current-question').innerText = qText;
+        }
+
+        function goToRatingPhase() {
+            playSound("click");
+            // פותח בשרת את האופציה לקבל הקשות 1-10!
+            socket.emit('arenaSetPhase', { roomId: myRoomId, phase: 'rating' });
+            
+            document.getElementById('phase-question').classList.add('hidden'); document.getElementById('phase-rating').classList.remove('hidden');
+            const currentQ = selectedQuestions[currentQuestionIndex]; const answerText = currentQ.a || "אין תשובה מוגדרת לשאלה זו";
+            const ratingsDiv = document.getElementById('rating-inputs');
+
+            // מאפס את כל ההצבעות
+            Object.values(playersMap).forEach(p => p.currentVote = 0);
+
+            let html = `<div style="background: rgba(230, 126, 34, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 20px; border-right: 5px solid var(--accent); text-align: right;"><b style="color: var(--primary);">התשובה המקורית:</b><br><span style="font-size: 1.1rem;">${answerText}</span></div>`;
+            
+            // בונה את רשימת השחקנים שממתינים לדירוג שלהם מהטלפון
+            const currentPlayerPhone = playersArray[currentQuestionIndex % playersArray.length].phone;
+            
+            Object.keys(playersMap).forEach(phone => {
+                if(phone !== currentPlayerPhone) {
+                    html += `
+                    <div class="vote-row">
+                        <span style="font-size:1.2rem;"><b>${playersMap[phone].name}</b></span>
+                        <div class="vote-status" id="status_${phone}">⏳ ממתין...</div>
+                    </div>`;
+                }
+            });
+            ratingsDiv.innerHTML = html;
+        }
+
+        function submitRatings() {
+            playSound("success");
+            socket.emit('arenaSetPhase', { roomId: myRoomId, phase: 'playing' }); // נועל בחזרה
+
+            // חישוב הניקוד מכל הטלפונים שהצביעו!
+            let totalTurnScore = 0;
+            const currentPlayerPhone = playersArray[currentQuestionIndex % playersArray.length].phone;
+            
+            Object.keys(playersMap).forEach(phone => {
+                if(phone !== currentPlayerPhone) {
+                    totalTurnScore += (playersMap[phone].currentVote || 0);
+                }
+            });
+
+            // עדכון הניקוד
+            playersMap[currentPlayerPhone].score += totalTurnScore;
+            
+            // שולח לשרת לשמור
+            socket.emit('arenaUpdateScores', { roomId: myRoomId, players: playersMap });
+            
+            // עדכון המערך המקומי לתצוגה
+            playersArray = Object.values(playersMap);
+
+            currentQuestionIndex++;
+            const isEndOfThirdRound = currentQuestionIndex % (playersArray.length * 3) === 0;
+
+            if (currentQuestionIndex >= totalQuestionsLimit) { showLeaderboard(true); } 
+            else if (isEndOfThirdRound) { showLeaderboard(false); } 
+            else { document.getElementById('phase-question').classList.remove('hidden'); document.getElementById('phase-rating').classList.add('hidden'); showQuestionUI(); }
+        }
+
+        function showLeaderboard(isFinal = false) {
+            if (isFinal) playSound("win"); else playSound("success");
+            showScreen('screen-leaderboard');
+            const sorted = [...playersArray].sort((a, b) => b.score - a.score);
+            document.getElementById('leaderboard-title').innerText = isFinal ? "🏆 תוצאות סופיות!" : "📊 מצב הביניים";
+
+            const podiumArea = document.getElementById('podium-area'); podiumArea.innerHTML = "";
+            const top3 = sorted.slice(0, 3);
+            top3.forEach((p, i) => { const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"; const div = document.createElement('div'); div.className = `podium-place podium-${i + 1}`; div.innerHTML = `<span style="font-size:2rem">${medal}</span><div class="podium-name">${p.name}</div><div class="podium-score">${Math.floor(p.score)} נק'</div>`; podiumArea.appendChild(div); });
+
+            const restArea = document.getElementById('rest-area'); const restList = document.getElementById('rest-list');
+            if (sorted.length > 3) { restArea.classList.remove('hidden'); restList.innerHTML = sorted.slice(3).map((p, i) => `<div class="rest-item"><span>${i + 4}. ${p.name}</span><span>${Math.floor(p.score)} נקודות</span></div>`).join(''); } 
+            else { restArea.classList.add('hidden'); }
+
+            const btn = document.getElementById('leaderboard-btn');
+            if (isFinal) {
+                podiumArea.insertAdjacentHTML('afterend', `<div style="margin-top: 30px; animation: fadeIn 1s ease;"><h3 style="color:var(--accent); margin-bottom: 20px;">🎉 הזוכה בפרס (${prize}) הוא: ${sorted[0].name}!</h3><hr style="border: 0; border-top: 1px solid rgba(0,0,0,0.1); margin: 25px 0;"><a href="https://studio.thelobby.co.il/" target="_blank" class="studio-promo-btn"><i>🛠️</i><span>גלו את כל הכלים ב-Lobby Studio</span></a></div>`);
+                btn.innerText = "🎮 משחק חדש"; btn.onclick = () => location.reload();
+            } else { btn.innerText = "המשך לשאלה הבאה"; btn.onclick = () => { document.getElementById('phase-question').classList.remove('hidden'); document.getElementById('phase-rating').classList.add('hidden'); showScreen('screen-game'); showQuestionUI(); }; }
+        }
+    </script>
+</body>
+</html>
