@@ -7,7 +7,7 @@
     <style>
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #0b0f19; color: #f8fafc; margin: 0; padding: 20px; }
         .login-box { text-align: center; margin-top: 100px; }
-        input, textarea { padding: 10px; font-size: 1.1rem; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: white; margin: 5px; width: calc(100% - 25px); }
+        input, textarea, select { padding: 10px; font-size: 1.1rem; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: white; margin: 5px; width: calc(100% - 25px); }
         button { padding: 10px 20px; font-size: 1.1rem; border-radius: 8px; border: none; background: #38bdf8; color: black; cursor: pointer; font-weight: bold; margin: 5px; transition: 0.2s;}
         button:hover { filter: brightness(1.1); }
         #dashboard { display: none; max-width: 1400px; margin: 0 auto; }
@@ -29,11 +29,8 @@
         .stat-box { background: #0f172a; padding: 15px; border-radius: 10px; text-align: center; flex: 1; border: 1px solid #475569; }
         .stat-num { font-size: 2.5rem; font-weight: bold; margin-top: 5px; }
         
-        /* Modal ריגול */
         #spyModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center;}
         .spy-content { background: #1e293b; padding: 30px; border-radius: 15px; width: 80%; max-width: 600px; border: 2px solid #8b5cf6; box-shadow: 0 0 30px rgba(139, 92, 246, 0.5); max-height: 80vh; overflow-y: auto;}
-        
-        /* עורך טקסט חכם */
         .editor-toolbar button { padding: 5px 10px; font-size: 0.9rem; margin: 2px; width: auto; background: #334155; color: white;}
     </style>
 </head>
@@ -46,16 +43,15 @@
     </div>
 
     <div id="dashboard">
-        <h1 style="text-align: center; color: #38bdf8;">🛡️ מערכת ניטור ושליטה ארצית (שב"כ)</h1>
+        <h1 style="text-align: center; color: #38bdf8;">🛡️ מערכת ניטור ושליטה ארצית</h1>
         
-        <div class="panel" style="border-color: #38bdf8;">
+        <div class="panel" style="border-color: #38bdf8; margin-bottom: 20px;">
             <h2 style="margin-top:0; color:#38bdf8; text-align: center;">📊 מונה כניסות לאתר (Analytics)</h2>
             <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
                 <div class="stat-box"><div style="color:#94a3b8;">🌐 פורטל</div><div class="stat-num" id="countPortal" style="color:#10b981;">0</div></div>
                 <div class="stat-box"><div style="color:#94a3b8;">📺 טריוויה</div><div class="stat-num" id="countAudience" style="color:#eab308;">0</div></div>
                 <div class="stat-box"><div style="color:#94a3b8;">⚔️ זירה</div><div class="stat-num" id="countArena" style="color:#ef4444;">0</div></div>
                 <div class="stat-box"><div style="color:#94a3b8;">⚙️ ח.בקרה</div><div class="stat-num" id="countAdmin" style="color:#3b82f6;">0</div></div>
-                <div class="stat-box"><div style="color:#94a3b8;">💼 אזור אישי</div><div class="stat-num" id="countDesk" style="color:#8b5cf6;">0</div></div>
             </div>
         </div>
 
@@ -117,11 +113,30 @@
                     <div style="flex:1; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px;">
                         <h4>קוד מפיק ישיר (PIN)</h4>
                         <input type="number" id="pinStart" placeholder="קוד התחלה (1000)">
+                        <input type="number" id="pinEnd" placeholder="קוד סיום (להוספת כמות מרובה)">
                         <select id="pinType"><option value="regular">רגיל</option><option value="premium">פרימיום</option><option value="gold">👑 זהב</option></select>
                         <input type="date" id="expireDate">
-                        <button style="width: 100%;" onclick="createPins()">ייצר קוד</button>
+                        <button style="width: 100%;" onclick="createPins()">ייצר קודים</button>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="panel">
+                <h2 style="margin-top:0;">🎫 וואוצ'רים פעילים</h2>
+                <table>
+                    <thead><tr><th>קוד</th><th>סוג</th><th>ימים</th><th>סטטוס</th><th>נמשך ל-PIN</th><th>מחק</th></tr></thead>
+                    <tbody id="vouchersBody"></tbody>
+                </table>
+            </div>
+
+            <div class="panel">
+                <h2 style="margin-top:0;">📋 קודי מפיק (PIN) קיימים</h2>
+                <table>
+                    <thead><tr><th>קוד (PIN)</th><th>סוג</th><th>משחקים</th><th>פג תוקף ב-</th><th>מחק</th></tr></thead>
+                    <tbody id="pinsBody"></tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -137,7 +152,7 @@
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        let latestRoomData = {}; // שומר את הנתונים המלאים למצב ריגול
+        let latestRoomData = {}; 
 
         window.onload = () => { let d = new Date(); d.setDate(d.getDate() + 2); document.getElementById('expireDate').valueAsDate = d; };
 
@@ -152,12 +167,10 @@
                 document.getElementById('countAudience').innerText = data.analytics.audience || 0;
                 document.getElementById('countArena').innerText = data.analytics.arena || 0;
                 document.getElementById('countAdmin').innerText = data.analytics.admin || 0;
-                document.getElementById('countDesk').innerText = data.analytics.desk || 0;
             }
 
             document.getElementById('sysMsgInput').value = data.portalMsg || "";
             
-            // הפרדת הודעות לדיווחים!
             const msgArea = document.getElementById('messagesArea');
             const reportsArea = document.getElementById('reportsArea');
             msgArea.innerHTML = ''; reportsArea.innerHTML = '';
@@ -167,20 +180,28 @@
                 let isReport = m.text.includes('[🚨 דיווח תקלה]');
                 let cleanText = m.text.replace('[🚨 דיווח תקלה]:', '').replace('[🚨 דיווח תקלה]', '').trim();
                 
-                let html = `<div class="msg-box ${isReport ? 'report-box' : ''}">
-                    <div style="font-size:0.8rem; color:#94a3b8;">${m.date} | מ-${m.name}</div>
-                    <div style="margin: 8px 0;">${cleanText}</div>
-                    <button class="btn-danger" onclick="deleteMsg(${index})">מחק</button>
-                </div>`;
-                
-                if (isReport) { reportsArea.innerHTML += html; repCount++; }
-                else { msgArea.innerHTML += html; msgCount++; }
+                let html = `<div class="msg-box ${isReport ? 'report-box' : ''}"><div style="font-size:0.8rem; color:#94a3b8;">${m.date} | מ-${m.name}</div><div style="margin: 8px 0;">${cleanText}</div><button class="btn-danger" onclick="deleteMsg(${index})">מחק</button></div>`;
+                if (isReport) { reportsArea.innerHTML += html; repCount++; } else { msgArea.innerHTML += html; msgCount++; }
             });
             if(msgCount===0) msgArea.innerHTML = '<p style="color:#94a3b8;">אין הודעות רגילות.</p>';
-            if(repCount===0) reportsArea.innerHTML = '<p style="color:#94a3b8;">אין דיווחי תקלות. (איזה יופי!)</p>';
+            if(repCount===0) reportsArea.innerHTML = '<p style="color:#94a3b8;">אין דיווחי תקלות.</p>';
+
+            // עדכון טבלאות
+            const pinsTbody = document.getElementById('pinsBody'); pinsTbody.innerHTML = '';
+            for (let pin in data.pins) {
+                let p = data.pins[pin]; let typeStr = p.type === 'gold' ? '👑 זהב' : (p.type === 'premium' ? '💎 פרימיום' : 'רגיל');
+                let expDateStr = p.expiresAt ? new Date(p.expiresAt).toLocaleDateString('he-IL') : 'ללא';
+                pinsTbody.innerHTML += `<tr><td><b>${pin}</b></td><td>${typeStr}</td><td>${p.type === 'gold'?'∞':p.gamesLeft}</td><td>${expDateStr}</td><td><button class="btn-danger" onclick="deletePin('${pin}')">X</button></td></tr>`;
+            }
+
+            const vouchTbody = document.getElementById('vouchersBody'); vouchTbody.innerHTML = '';
+            for (let code in data.vouchers) {
+                let v = data.vouchers[code]; let typeStr = v.type === 'gold' ? '👑 זהב' : (v.type === 'premium' ? '💎 פרימיום' : 'רגיל');
+                let status = v.used ? `<span style="color:#ef4444">שומש</span>` : `<span style="color:#10b981">פנוי</span>`;
+                vouchTbody.innerHTML += `<tr><td><b>${code}</b></td><td>${typeStr}</td><td>${v.days}</td><td>${status}</td><td>${v.generatedPin || '---'}</td><td><button class="btn-danger" onclick="deleteVoucher('${code}')">X</button></td></tr>`;
+            }
         });
 
-        // פונקציית עורך טקסט
         function insertTag(openTag, closeTag) {
             const textarea = document.getElementById('sysMsgInput');
             const start = textarea.selectionStart; const end = textarea.selectionEnd;
@@ -191,15 +212,24 @@
         }
 
         function updatePortalMsg() { socket.emit('updatePortalMsg', document.getElementById('sysMsgInput').value); alert("הודעה שודרה בהצלחה לפורטל!"); }
-        
-        // ... פונקציות העלאה ופינים נשארו רגיל ...
         function updatePortalAd() { const link = document.getElementById('adLinkInput').value; const fileInput = document.getElementById('adImageFile'); if(fileInput.files.length > 0) { const reader = new FileReader(); reader.onload = e => { socket.emit('updatePortalAd', { imgBase64: e.target.result, link: link }); alert('פרסומת עלתה!'); fileInput.value=''; }; reader.readAsDataURL(fileInput.files[0]); } else { socket.emit('updatePortalAd', { link: link }); } }
         function clearPortalAd() { if(confirm('למחוק?')) socket.emit('updatePortalAd', { clear: true }); }
+        
         function createVoucher() { const code = document.getElementById('vCode').value.trim(); const type = document.getElementById('vType').value; const days = document.getElementById('vDays').value; if(!code || !days) return; socket.emit('createVoucher', { code, type, days }); document.getElementById('vCode').value = ''; }
-        function createPins() { const start = document.getElementById('pinStart').value; const end = document.getElementById('pinEnd').value; const type = document.getElementById('pinType').value; const expireDate = document.getElementById('expireDate').value; if (!start) return; let expiresAt = new Date(expireDate).getTime(); expiresAt += (23 * 60 * 60 * 1000) + (59 * 60 * 1000); socket.emit('createBulkPins', { start, end, type, expiresAt }); document.getElementById('pinStart').value = ''; document.getElementById('pinEnd').value = ''; }
+        function createPins() { 
+            const start = document.getElementById('pinStart').value; 
+            const end = document.getElementById('pinEnd').value; 
+            const type = document.getElementById('pinType').value; 
+            const expireDate = document.getElementById('expireDate').value; 
+            if (!start) return; 
+            let expiresAt = new Date(expireDate).getTime(); expiresAt += (23 * 60 * 60 * 1000) + (59 * 60 * 1000); 
+            socket.emit('createBulkPins', { start, end, type, expiresAt }); 
+            document.getElementById('pinStart').value = ''; document.getElementById('pinEnd').value = ''; 
+        }
+        function deletePin(pin) { if(confirm('למחוק?')) socket.emit('deletePin', pin); }
+        function deleteVoucher(code) { if(confirm('למחוק וואוצ\'ר?')) socket.emit('deleteVoucher', code); }
         function deleteMsg(index) { if(confirm('למחוק?')) socket.emit('deleteMessage', index); }
 
-        // 👁️ מערכת הרדאר והריגול
         function fetchLiveStats() { 
             document.getElementById('liveStatsArea').innerHTML = '<p style="color:#38bdf8;">טוען נתונים מודיעיניים...</p>'; 
             document.getElementById('liveCallsArea').innerHTML = '<p style="color:#38bdf8;">סורק רשתות...</p>';
@@ -208,16 +238,14 @@
         
         socket.on('liveStatsData', (data) => {
             const stats = data.stats; const calls = data.calls;
-            latestRoomData = stats; // שומר בזיכרון ללחיצת הריגול
+            latestRoomData = stats;
             
-            // 1. רדאר שיחות
             const callsArea = document.getElementById('liveCallsArea'); callsArea.innerHTML = '';
             let callCount = 0;
             for(let id in calls.trivia) { callsArea.innerHTML += `<div style="color:#38bdf8;">📞 ${id} -> טריוויה (חדר: ${calls.trivia[id]})</div>`; callCount++; }
             for(let id in calls.arena) { callsArea.innerHTML += `<div style="color:#ef4444;">⚔️ ${id} -> זירה (חדר: ${calls.arena[id]})</div>`; callCount++; }
             if(callCount === 0) callsArea.innerHTML = '<span style="color:#94a3b8;">אין שיחות פעילות כרגע על הקו.</span>';
 
-            // 2. רדאר חדרים
             const area = document.getElementById('liveStatsArea'); area.innerHTML = '';
             let roomCount = 0; 
             for (let r in stats) {
@@ -226,18 +254,11 @@
                 let statusText = s.isActive ? '▶️ רץ כעת' : '⏸️ המתנה';
                 let statusClass = s.isActive ? 'live-active' : 'live-idle';
                 
-                area.innerHTML += `<div class="live-room">
-                    <button class="spy-btn" onclick="openSpy('${r}')">👁️ צפה בחדר</button>
-                    <div style="margin-right: 100px;">
-                        <div>חדר: <strong style="color: #38bdf8; font-size:1.2rem;">${r}</strong> | ${typeIcon}</div>
-                        <div><span class="${statusClass}">${statusText}</span> | 👥 שחקנים: <strong>${s.players}</strong></div>
-                    </div>
-                </div>`;
+                area.innerHTML += `<div class="live-room"><button class="spy-btn" onclick="openSpy('${r}')">👁️ צפה בחדר</button><div style="margin-right: 100px;"><div>חדר: <strong style="color: #38bdf8; font-size:1.2rem;">${r}</strong> | ${typeIcon}</div><div><span class="${statusClass}">${statusText}</span> | 👥 שחקנים: <strong>${s.players}</strong></div></div></div>`;
             }
             if (roomCount === 0) area.innerHTML = '<p style="text-align:center; color:#94a3b8;">אין חדרים פעילים.</p>';
         });
 
-        // 👁️ פתיחת מודל הריגול לחדר ספציפי
         function openSpy(roomId) {
             const data = latestRoomData[roomId];
             if(!data) return alert("שגיאה בשליפת נתוני החדר.");
@@ -246,11 +267,7 @@
             
             let html = `<b>סוג משחק:</b> ${data.type === 'arena' ? 'הזירה המשפחתית' : 'קליקינט טריוויה'}<br>`;
             html += `<b>סטטוס:</b> ${data.isActive ? 'פעיל' : 'ממתין'}<br>`;
-            if(data.type === 'trivia') {
-                html += `<b>שאלה נוכחית:</b> ${data.currentQ} מתוך ${data.qCount}<br>`;
-            } else {
-                html += `<b>שלב בזירה:</b> ${data.phase}<br>`;
-            }
+            if(data.type === 'trivia') { html += `<b>שאלה נוכחית:</b> ${data.currentQ} מתוך ${data.qCount}<br>`; } else { html += `<b>שלב בזירה:</b> ${data.phase}<br>`; }
             
             html += `<br><b style="color:#38bdf8;">👥 רשימת שחקנים וניקוד:</b><br><ul style="margin-top:5px; padding-right:20px;">`;
             
@@ -260,7 +277,7 @@
                 pKeys.forEach(p => {
                     let player = data.playersData[p];
                     html += `<li style="margin-bottom:5px;"><b>${player.name}</b> (📞 ${p}): ${Math.floor(player.score)} נקודות `;
-                    if(data.type === 'arena' && player.currentVote > 0) html += `| הצביע עכשיו: <b>${player.currentVote}</b>`;
+                    if(data.type === 'arena' && player.currentVote > 0) html += `| הצביע: <b>${player.currentVote}</b>`;
                     if(data.type === 'trivia' && player.currentChoice) html += `| לחץ: <b>${player.currentChoice}</b>`;
                     html += `</li>`;
                 });
