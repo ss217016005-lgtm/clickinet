@@ -14,7 +14,8 @@ const DB_PATH = 'uploads/database.json';
 let db = { 
     phonebooks: {}, savedGames: {}, pins: {}, vouchers: {}, messages: [], 
     portalMsg: "", portalAd: { img: "", link: "" }, publicExcels: [], 
-    analytics: { portal: 0, audience: 0, admin: 0, arena: 0 }
+    analytics: { portal: 0, audience: 0, admin: 0, arena: 0, desk: 0 },
+    myDesk: { links: [], passwords: [], tasks: [], files: [] } // 💼 האזור האישי חזר!
 };
 
 try { 
@@ -23,7 +24,8 @@ try {
         if (data.trim() !== '') {
             let parsed = JSON.parse(data);
             db = { ...db, ...parsed }; 
-            if(!db.analytics) db.analytics = { portal: 0, audience: 0, admin: 0, arena: 0 }; 
+            if(!db.analytics) db.analytics = { portal: 0, audience: 0, admin: 0, arena: 0, desk: 0 }; 
+            if(!db.myDesk) db.myDesk = { links: [], passwords: [], tasks: [], files: [] }; 
         }
     }
 } catch(e) {}
@@ -51,6 +53,7 @@ app.get('/admin', (req, res) => { db.analytics.admin++; saveDB(); emitSuperData(
 app.get('/portal', (req, res) => { db.analytics.portal++; saveDB(); emitSuperData(); res.sendFile(__dirname + '/portal.html'); });
 app.get('/arena', (req, res) => { db.analytics.arena++; saveDB(); emitSuperData(); res.sendFile(__dirname + '/arena.html'); });
 app.get('/super', (req, res) => res.sendFile(__dirname + '/superadmin.html')); 
+app.get('/desk', (req, res) => { db.analytics.desk++; saveDB(); emitSuperData(); res.sendFile(__dirname + '/desk.html'); }); // 💼 ניתוב לאזור האישי
 
 // API קליקינט
 app.all('/api/answer', (req, res) => {
@@ -143,16 +146,17 @@ function emitPortalData() { io.emit('portalData', { msg: db.portalMsg, ad: db.po
 
 io.on('connection', (socket) => {
     
-    // 📢 מערכת הכריזה הארצית החדשה!
+    // 💼 סוקטים של האזור האישי חזרו!
+    socket.on('deskLogin', (pass) => { if (pass === "TCRHNHCUHTR") { socket.emit('deskData', db.myDesk); } else { socket.emit('deskError'); } });
+    socket.on('deskUpdateData', (newData) => { db.myDesk.links = newData.links || db.myDesk.links; db.myDesk.passwords = newData.passwords || db.myDesk.passwords; db.myDesk.tasks = newData.tasks || db.myDesk.tasks; saveDB(); socket.emit('deskData', db.myDesk); });
+    socket.on('deskUploadFile', data => { if(data.base64) { const base64Data = data.base64.replace(/^data:.*?;base64,/, ""); const fileName = 'desk_file_' + Date.now() + '_' + data.name; fs.writeFileSync('uploads/' + fileName, base64Data, 'base64'); db.myDesk.files.push({ name: data.name, url: '/uploads/' + fileName }); saveDB(); socket.emit('deskData', db.myDesk); } });
+    socket.on('deskDeleteFile', index => { if(db.myDesk.files[index]) { const filePath = 'uploads/' + db.myDesk.files[index].url.split('/').pop(); if (fs.existsSync(filePath)) { fs.unlinkSync(filePath); } db.myDesk.files.splice(index, 1); saveDB(); socket.emit('deskData', db.myDesk); } });
+
+    // 📢 כריזה
     socket.on('sendSystemMessage', data => {
         let payload = { msg: data.msg, allowReply: data.reply };
-        if (data.room === 'all') {
-            io.emit('sysMessage', payload);       // שולח לכל מסכי הטריוויה והבקרה
-            io.emit('arenaSysMessage', payload);  // שולח לכל מסכי הזירה
-        } else {
-            io.to(data.room).emit('sysMessage', payload); 
-            io.to('arena_' + data.room).emit('arenaSysMessage', payload);
-        }
+        if (data.room === 'all') { io.emit('sysMessage', payload); io.emit('arenaSysMessage', payload); } 
+        else { io.to(data.room).emit('sysMessage', payload); io.to('arena_' + data.room).emit('arenaSysMessage', payload); }
     });
 
     socket.on('getPortalData', () => { socket.emit('portalData', { msg: db.portalMsg, ad: db.portalAd, excels: db.publicExcels }); });
@@ -210,4 +214,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V64.0 (Broadcast & Spy Ready) is ONLINE ==="));
+http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V65.0 (Desk Restored!) is ONLINE ==="));
