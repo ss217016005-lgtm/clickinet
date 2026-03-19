@@ -30,10 +30,7 @@ try {
 
 function saveDB() { try { fs.writeFileSync(DB_PATH, JSON.stringify(db)); } catch(e){} }
 
-let rooms = {}; 
-let callToRoom = {}; 
-let arenaRooms = {}; 
-let arenaCallToRoom = {}; 
+let rooms = {}; let callToRoom = {}; let arenaRooms = {}; let arenaCallToRoom = {}; 
 
 function getRoom(roomId) {
     if (!rooms[roomId]) {
@@ -55,7 +52,7 @@ app.get('/portal', (req, res) => { db.analytics.portal++; saveDB(); emitSuperDat
 app.get('/arena', (req, res) => { db.analytics.arena++; saveDB(); emitSuperData(); res.sendFile(__dirname + '/arena.html'); });
 app.get('/super', (req, res) => res.sendFile(__dirname + '/superadmin.html')); 
 
-// API קליקינט (טריוויה)
+// API קליקינט
 app.all('/api/answer', (req, res) => {
     res.set('Content-Type', 'text/plain; charset=utf-8');
     try {
@@ -105,7 +102,7 @@ app.all('/api/answer', (req, res) => {
     } catch(err) { res.send("id_list_message=t-שגיאה וניתוק&go_to_folder=hangup"); }
 });
 
-// API זירה משפחתית
+// API זירה
 app.all('/api/arena', (req, res) => {
     res.set('Content-Type', 'text/plain; charset=utf-8');
     try {
@@ -146,7 +143,18 @@ function emitPortalData() { io.emit('portalData', { msg: db.portalMsg, ad: db.po
 
 io.on('connection', (socket) => {
     
-    // --- Portal & SuperAdmin ---
+    // 📢 מערכת הכריזה הארצית החדשה!
+    socket.on('sendSystemMessage', data => {
+        let payload = { msg: data.msg, allowReply: data.reply };
+        if (data.room === 'all') {
+            io.emit('sysMessage', payload);       // שולח לכל מסכי הטריוויה והבקרה
+            io.emit('arenaSysMessage', payload);  // שולח לכל מסכי הזירה
+        } else {
+            io.to(data.room).emit('sysMessage', payload); 
+            io.to('arena_' + data.room).emit('arenaSysMessage', payload);
+        }
+    });
+
     socket.on('getPortalData', () => { socket.emit('portalData', { msg: db.portalMsg, ad: db.portalAd, excels: db.publicExcels }); });
     socket.on('superLogin', (pass) => { if (pass === "Ahal2026!") emitSuperData(); else socket.emit('superError'); });
     socket.on('updatePortalMsg', msg => { db.portalMsg = msg; saveDB(); emitPortalData(); emitSuperData(); });
@@ -162,7 +170,6 @@ io.on('connection', (socket) => {
     socket.on('submitMessage', msg => { if(!db.messages) db.messages = []; db.messages.push({ date: new Date().toLocaleString('he-IL'), name: msg.name, text: msg.text }); saveDB(); socket.emit('messageResult', { success: true }); emitSuperData(); });
     socket.on('deleteMessage', index => { if(db.messages && db.messages[index]) { db.messages.splice(index, 1); saveDB(); emitSuperData(); } });
 
-    // 👁️ מנוע החמ"ל
     socket.on('fetchLiveStats', () => { 
         let stats = {}; 
         for (let r in rooms) { let activeCount = Object.keys(rooms[r].activePlayers).length; if (activeCount > 0 || rooms[r].gameActive || rooms[r].questions.length > 0) { stats[r] = { type: 'trivia', players: activeCount, isActive: rooms[r].gameActive, qCount: rooms[r].questions.length, currentQ: rooms[r].currentQuestion + 1, playersData: rooms[r].activePlayers }; } }
@@ -203,4 +210,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V63.1 (Fixed Admin View) is ONLINE ==="));
+http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V64.0 (Broadcast & Spy Ready) is ONLINE ==="));
