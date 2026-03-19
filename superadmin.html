@@ -2,163 +2,142 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>מנהל על - Clickinet</title>
+    <title>חמ"ל מנכ"ל - Clickinet</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👑</text></svg>">
     <style>
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #0b0f19; color: #f8fafc; margin: 0; padding: 20px; }
         .login-box { text-align: center; margin-top: 100px; }
-        input { padding: 10px; font-size: 1.1rem; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: white; margin: 5px; width: calc(100% - 25px); }
-        button { padding: 10px 20px; font-size: 1.1rem; border-radius: 8px; border: none; background: #38bdf8; color: black; cursor: pointer; font-weight: bold; margin: 5px; }
-        #dashboard { display: none; max-width: 1200px; margin: 0 auto; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .panel { background: #1e293b; padding: 20px; border-radius: 12px; border: 1px solid #334155; margin-bottom: 20px;}
+        input, textarea { padding: 10px; font-size: 1.1rem; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: white; margin: 5px; width: calc(100% - 25px); }
+        button { padding: 10px 20px; font-size: 1.1rem; border-radius: 8px; border: none; background: #38bdf8; color: black; cursor: pointer; font-weight: bold; margin: 5px; transition: 0.2s;}
+        button:hover { filter: brightness(1.1); }
+        #dashboard { display: none; max-width: 1400px; margin: 0 auto; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; margin-bottom: 20px;}
+        .panel { background: #1e293b; padding: 20px; border-radius: 12px; border: 1px solid #334155; }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
         th, td { border: 1px solid #334155; padding: 10px; text-align: center; }
         th { background: #0f172a; color: #38bdf8; }
         .btn-danger { background: #ef4444; color: white; padding: 5px 10px; font-size: 0.9rem; }
-        .live-room { background: #0f172a; border: 1px solid #10b981; padding: 10px; margin-bottom: 10px; border-radius: 8px; }
+        
+        .live-room { background: #0f172a; border: 1px solid #10b981; padding: 15px; margin-bottom: 10px; border-radius: 8px; position: relative;}
         .live-active { color: #10b981; font-weight: bold; }
         .live-idle { color: #94a3b8; }
-        .form-group { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; margin-bottom: 15px; }
-        .msg-box { background: rgba(56, 189, 248, 0.1); border-right: 4px solid #38bdf8; padding: 15px; margin-bottom: 10px; border-radius: 5px;}
-        .ad-preview { max-width: 100%; max-height: 100px; border-radius: 8px; border: 1px dashed #eab308; margin-top: 10px; display: none; }
-        .full-width { grid-column: 1 / -1; }
+        .spy-btn { position: absolute; left: 15px; top: 15px; background: #8b5cf6; color: white; padding: 5px 10px; font-size: 0.9rem; }
         
-        /* עיצוב פאנל סטטיסטיקות */
-        .stat-box { background: #0f172a; padding: 20px; border-radius: 10px; text-align: center; flex: 1; border: 1px solid #475569; }
-        .stat-num { font-size: 2.5rem; font-weight: bold; margin-top: 10px; }
+        .msg-box { background: rgba(56, 189, 248, 0.1); border-right: 4px solid #38bdf8; padding: 15px; margin-bottom: 10px; border-radius: 5px;}
+        .report-box { background: rgba(239, 68, 68, 0.1); border-right: 4px solid #ef4444; }
+        
+        .stat-box { background: #0f172a; padding: 15px; border-radius: 10px; text-align: center; flex: 1; border: 1px solid #475569; }
+        .stat-num { font-size: 2.5rem; font-weight: bold; margin-top: 5px; }
+        
+        /* Modal ריגול */
+        #spyModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center;}
+        .spy-content { background: #1e293b; padding: 30px; border-radius: 15px; width: 80%; max-width: 600px; border: 2px solid #8b5cf6; box-shadow: 0 0 30px rgba(139, 92, 246, 0.5); max-height: 80vh; overflow-y: auto;}
+        
+        /* עורך טקסט חכם */
+        .editor-toolbar button { padding: 5px 10px; font-size: 0.9rem; margin: 2px; width: auto; background: #334155; color: white;}
     </style>
 </head>
 <body>
 
     <div id="loginArea" class="login-box">
-        <h1 style="color: #38bdf8;">כספת מנהל על 🔐</h1>
+        <h1 style="color: #38bdf8;">חמ"ל מנכ"ל 🔐</h1>
         <input type="password" id="superPass" placeholder="סיסמת מנהל..." style="width:300px;">
-        <br><button onclick="superLogin()">היכנס</button>
+        <br><button onclick="superLogin()">היכנס לחמ"ל</button>
     </div>
 
     <div id="dashboard">
-        <h1 style="text-align: center; color: #38bdf8;">מערכת ניהול מנויים, וואוצ'רים וניטור 🌐</h1>
+        <h1 style="text-align: center; color: #38bdf8;">🛡️ מערכת ניטור ושליטה ארצית (שב"כ)</h1>
         
-        <div class="panel full-width" style="border-color: #38bdf8; box-shadow: 0 0 15px rgba(56, 189, 248, 0.2);">
+        <div class="panel" style="border-color: #38bdf8;">
             <h2 style="margin-top:0; color:#38bdf8; text-align: center;">📊 מונה כניסות לאתר (Analytics)</h2>
-            <div style="display: flex; gap: 20px; justify-content: center; margin-top: 15px;">
-                <div class="stat-box">
-                    <div style="color: #94a3b8; font-size: 1.2rem;">🌐 פורטל לקוחות</div>
-                    <div class="stat-num" id="countPortal" style="color: #10b981;">0</div>
-                </div>
-                <div class="stat-box">
-                    <div style="color: #94a3b8; font-size: 1.2rem;">📺 מסך קהל ראשי</div>
-                    <div class="stat-num" id="countAudience" style="color: #eab308;">0</div>
-                </div>
-                <div class="stat-box">
-                    <div style="color: #94a3b8; font-size: 1.2rem;">⚙️ חדרי מפיקים</div>
-                    <div class="stat-num" id="countAdmin" style="color: #f97316;">0</div>
-                </div>
+            <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+                <div class="stat-box"><div style="color:#94a3b8;">🌐 פורטל</div><div class="stat-num" id="countPortal" style="color:#10b981;">0</div></div>
+                <div class="stat-box"><div style="color:#94a3b8;">📺 טריוויה</div><div class="stat-num" id="countAudience" style="color:#eab308;">0</div></div>
+                <div class="stat-box"><div style="color:#94a3b8;">⚔️ זירה</div><div class="stat-num" id="countArena" style="color:#ef4444;">0</div></div>
+                <div class="stat-box"><div style="color:#94a3b8;">⚙️ ח.בקרה</div><div class="stat-num" id="countAdmin" style="color:#3b82f6;">0</div></div>
+                <div class="stat-box"><div style="color:#94a3b8;">💼 אזור אישי</div><div class="stat-num" id="countDesk" style="color:#8b5cf6;">0</div></div>
             </div>
         </div>
-        
-        <div class="panel full-width" style="border-color: #eab308;">
-            <h2 style="margin-top:0; color:#eab308;">📢 ניהול הפורטל הציבורי (פרסומות, הודעות ואקסלים)</h2>
-            <div class="grid">
-                <div>
-                    <div class="form-group">
-                        <label style="color:#38bdf8; font-weight:bold;">הודעת מערכת רצה:</label>
-                        <input type="text" id="sysMsgInput" placeholder="הקלד הודעה לפורטל הציבורי...">
-                        <button style="width: 100%; background: #38bdf8;" onclick="updatePortalMsg()">עדכן הודעה</button>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label style="color:#10b981; font-weight:bold;">העלאת אקסל שאלות לציבור:</label>
-                        <input type="text" id="publicExcelName" placeholder="שם הקובץ (למשל: 'טריוויה לחנוכה')">
-                        <input type="file" id="publicExcelFile" accept=".xlsx, .xls" style="margin-top: 5px;">
-                        <button style="width: 100%; background: #10b981; color: white;" onclick="uploadPublicExcel()">העלה קובץ לפורטל</button>
-                    </div>
+
+        <div class="grid">
+            <div class="panel" style="border-color: #f59e0b;">
+                <h2 style="margin-top:0; color:#f59e0b;">👁️ רדאר שיחות וחדרים (Live)</h2>
+                <button onclick="fetchLiveStats()" style="width: 100%; background: #f59e0b; color: black; margin-bottom: 10px;">🔄 רענן נתונים עכשיו</button>
+                
+                <h3 style="color:#94a3b8; font-size:1rem; border-bottom:1px solid #334155; padding-bottom:5px;">📞 רדאר טלפונים על הקו:</h3>
+                <div id="liveCallsArea" style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-bottom: 15px; font-family: monospace; max-height: 100px; overflow-y: auto;">
+                    טוען...
                 </div>
 
-                <div>
-                    <div class="form-group">
-                        <label style="color:#f59e0b; font-weight:bold;">ניהול פרסומת (באנר):</label>
-                        <input type="text" id="adLinkInput" placeholder="קישור ללחיצה (לאן הפרסומת תוביל?)">
-                        <input type="file" id="adImageFile" accept="image/*" style="margin-top: 5px;">
-                        <button style="width: 100%; background: #f59e0b; color: black;" onclick="updatePortalAd()">עדכן פרסומת</button>
-                        <button class="btn-danger" style="width: 100%; margin-top:5px;" onclick="clearPortalAd()">מחק פרסומת מהאתר</button>
-                        <img id="currentAdPreview" class="ad-preview" src="">
-                    </div>
-                </div>
+                <h3 style="color:#94a3b8; font-size:1rem; border-bottom:1px solid #334155; padding-bottom:5px;">🎮 חדרים פעילים (Spy Mode):</h3>
+                <div id="liveStatsArea" style="max-height: 300px; overflow-y: auto;">טוען...</div>
             </div>
-            <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin-top: 15px;">
-                <h3 style="margin-top:0; color:#cbd5e1;">קבצי אקסל זמינים להורדה באתר:</h3>
-                <div id="publicExcelsList"></div>
+
+            <div class="panel" style="border-color: #ef4444;">
+                <h2 style="margin-top:0; color:#ef4444;">🚨 דיווחי תקלות דחופים</h2>
+                <div id="reportsArea" style="max-height: 200px; overflow-y: auto; margin-bottom: 20px;"></div>
+                
+                <h2 style="margin-top:0; color:#38bdf8; border-top: 1px solid #334155; padding-top: 15px;">✉️ הודעות ובקשות קשר</h2>
+                <div id="messagesArea" style="max-height: 200px; overflow-y: auto;"></div>
             </div>
         </div>
 
         <div class="grid">
             <div class="panel">
-                <h2 style="margin-top:0; color:#10b981;">🎫 יצירת קוד אישור (Voucher ללקוח)</h2>
-                <div class="form-group"><input type="text" id="vCode" placeholder="קוד אישור (למשל: 12224)"></div>
-                <div class="form-group">
-                    <select id="vType" style="padding: 10px; width: 100%; font-size: 1.1rem; border-radius: 8px; background: #1e293b; color: white;">
-                        <option value="regular">רגיל (חינם - עד 10 שחקנים)</option>
-                        <option value="premium">פרימיום (3 משחקים)</option>
-                        <option value="gold" style="background:#eab308; color:#000; font-weight:bold;">👑 פרימיום זהב</option>
-                    </select>
+                <h2 style="margin-top:0; color:#eab308;">📢 ניהול הפורטל (עורך חכם)</h2>
+                <label style="color:#38bdf8; font-weight:bold;">הודעת מערכת רצה (תומך HTML):</label>
+                
+                <div class="editor-toolbar">
+                    <button onclick="insertTag('<b>', '</b>')">מודגש</button>
+                    <button onclick="insertTag('<u>', '</u>')">קו תחתון</button>
+                    <button onclick="insertTag('<span style=\'color:red;\'>', '</span>')">טקסט אדום</button>
+                    <button onclick="insertTag('<span style=\'font-size:1.5rem;\'>', '</span>')">טקסט גדול</button>
                 </div>
-                <div class="form-group"><input type="number" id="vDays" placeholder="תוקף בימים (למשל: 1)"></div>
-                <button style="width: 100%; background: #10b981; color: white;" onclick="createVoucher()">ייצר קוד אישור ללקוח</button>
+                <textarea id="sysMsgInput" rows="3" placeholder="הקלד כאן..."></textarea>
+                <button style="width: 100%; background: #38bdf8;" onclick="updatePortalMsg()">שמור הודעה באתר</button>
+                
+                <hr style="border-color:#334155; margin:15px 0;">
+                <label style="color:#f59e0b; font-weight:bold;">באנר פרסומת:</label>
+                <input type="text" id="adLinkInput" placeholder="קישור ללחיצה (לאן זה מוביל?)">
+                <input type="file" id="adImageFile" accept="image/*">
+                <button style="width: 100%; background: #f59e0b; color: black;" onclick="updatePortalAd()">העלה פרסומת</button>
+                <button class="btn-danger" style="width: 100%;" onclick="clearPortalAd()">מחק פרסומת</button>
             </div>
 
             <div class="panel">
-                <h2 style="margin-top:0; color:#38bdf8;">✉️ דואר נכנס (מהפורטל)</h2>
-                <div id="messagesArea" style="max-height: 350px; overflow-y: auto;"></div>
-            </div>
-
-            <div class="panel">
-                <h2 style="margin-top:0; color:#cbd5e1;">➕ יצירת PIN ישירה (ללא פורטל)</h2>
-                <div class="form-group">
-                    <input type="number" id="pinStart" placeholder="קוד התחלה (1000)"><br>
-                    <input type="number" id="pinEnd" placeholder="קוד סיום (השאר ריק ליחיד)">
+                <h2 style="margin-top:0; color:#10b981;">🎫 ייצור מנויים (Vouchers & PINs)</h2>
+                <div style="display: flex; gap:10px;">
+                    <div style="flex:1; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px;">
+                        <h4>קוד אישור (Voucher)</h4>
+                        <input type="text" id="vCode" placeholder="למשל: VIP2026">
+                        <select id="vType"><option value="regular">רגיל</option><option value="premium">פרימיום</option><option value="gold">👑 זהב</option></select>
+                        <input type="number" id="vDays" placeholder="תוקף בימים">
+                        <button style="width: 100%; background: #10b981; color: white;" onclick="createVoucher()">ייצר וואוצ'ר</button>
+                    </div>
+                    <div style="flex:1; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px;">
+                        <h4>קוד מפיק ישיר (PIN)</h4>
+                        <input type="number" id="pinStart" placeholder="קוד התחלה (1000)">
+                        <select id="pinType"><option value="regular">רגיל</option><option value="premium">פרימיום</option><option value="gold">👑 זהב</option></select>
+                        <input type="date" id="expireDate">
+                        <button style="width: 100%;" onclick="createPins()">ייצר קוד</button>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <select id="pinType" style="padding: 10px; width: 100%; font-size: 1.1rem; border-radius: 8px; background: #1e293b; color: white;">
-                        <option value="regular">רגיל</option>
-                        <option value="premium">פרימיום</option>
-                        <option value="gold" style="background:#eab308; color:#000; font-weight:bold;">👑 פרימיום זהב</option>
-                    </select>
-                </div>
-                <div class="form-group"><input type="date" id="expireDate"></div>
-                <button style="width: 100%;" onclick="createPins()">ייצר קודים עכשיו</button>
-            </div>
-
-            <div class="panel">
-                <h2 style="margin-top:0; color:#f59e0b;">👁️ האח הגדול - חדרים פעילים</h2>
-                <button onclick="fetchLiveStats()" style="width: 100%; background: #f59e0b; color: black; margin-bottom: 15px;">🔄 רענן נתונים עכשיו</button>
-                <div id="liveStatsArea" style="max-height: 250px; overflow-y: auto;"></div>
             </div>
         </div>
+    </div>
 
-        <div class="grid">
-            <div class="panel">
-                <h2 style="margin-top:0;">🎫 וואוצ'רים פעילים</h2>
-                <table>
-                    <thead><tr><th>קוד</th><th>סוג</th><th>ימים</th><th>סטטוס</th><th>נמשך ל-PIN</th><th>מחק</th></tr></thead>
-                    <tbody id="vouchersBody"></tbody>
-                </table>
-            </div>
-
-            <div class="panel">
-                <h2 style="margin-top:0;">📋 קודי מפיק (PIN) קיימים</h2>
-                <table>
-                    <thead><tr><th>קוד (PIN)</th><th>סוג</th><th>משחקים</th><th>פג תוקף ב-</th><th>מחק</th></tr></thead>
-                    <tbody id="pinsBody"></tbody>
-                </table>
-            </div>
+    <div id="spyModal">
+        <div class="spy-content">
+            <h2 id="spyTitle" style="color: #8b5cf6; margin-top:0;">צופה בחדר...</h2>
+            <button class="btn-danger" style="float:left; margin-top:-45px;" onclick="closeSpy()">סגור X</button>
+            <div id="spyData" style="color: #cbd5e1; font-size: 1.1rem; line-height: 1.6;"></div>
         </div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
+        let latestRoomData = {}; // שומר את הנתונים המלאים למצב ריגול
 
         window.onload = () => { let d = new Date(); d.setDate(d.getDate() + 2); document.getElementById('expireDate').valueAsDate = d; };
 
@@ -168,68 +147,131 @@
         socket.on('superData', (data) => {
             document.getElementById('loginArea').style.display = 'none'; document.getElementById('dashboard').style.display = 'block';
             
-            // 📈 עדכון מונה הכניסות!
             if(data.analytics) {
                 document.getElementById('countPortal').innerText = data.analytics.portal || 0;
                 document.getElementById('countAudience').innerText = data.analytics.audience || 0;
+                document.getElementById('countArena').innerText = data.analytics.arena || 0;
                 document.getElementById('countAdmin').innerText = data.analytics.admin || 0;
+                document.getElementById('countDesk').innerText = data.analytics.desk || 0;
             }
 
             document.getElementById('sysMsgInput').value = data.portalMsg || "";
-            if(data.portalAd && data.portalAd.img) {
-                const imgEl = document.getElementById('currentAdPreview'); imgEl.src = data.portalAd.img; imgEl.style.display = 'block';
-                document.getElementById('adLinkInput').value = data.portalAd.link || "";
-            } else { document.getElementById('currentAdPreview').style.display = 'none'; }
-
-            const excelsList = document.getElementById('publicExcelsList'); excelsList.innerHTML = '';
-            if(!data.publicExcels || data.publicExcels.length === 0) excelsList.innerHTML = '<p style="color:#94a3b8;">אין קבצים ציבוריים.</p>';
-            (data.publicExcels || []).forEach((ex, i) => { excelsList.innerHTML += `<div style="display:flex; justify-content:space-between; background:#334155; padding:10px; margin-bottom:5px; border-radius:5px;"><span>📄 ${ex.name}</span> <button class="btn-danger" style="margin:0;" onclick="deletePublicExcel(${i})">מחק</button></div>`; });
-
-            const pinsTbody = document.getElementById('pinsBody'); pinsTbody.innerHTML = '';
-            for (let pin in data.pins) {
-                let p = data.pins[pin]; let typeStr = p.type === 'gold' ? '👑 זהב' : (p.type === 'premium' ? '💎 פרימיום' : 'רגיל'); let expDateStr = p.expiresAt ? new Date(p.expiresAt).toLocaleDateString('he-IL') : 'ללא';
-                pinsTbody.innerHTML += `<tr><td><b>${pin}</b></td><td>${typeStr}</td><td>${p.type === 'gold'?'∞':p.gamesLeft}</td><td>${expDateStr}</td><td><button class="btn-danger" onclick="deletePin('${pin}')">X</button></td></tr>`;
-            }
-
-            const vouchTbody = document.getElementById('vouchersBody'); vouchTbody.innerHTML = '';
-            for (let code in data.vouchers) {
-                let v = data.vouchers[code]; let typeStr = v.type === 'gold' ? '👑 זהב' : (v.type === 'premium' ? '💎 פרימיום' : 'רגיל'); let status = v.used ? `<span style="color:#ef4444">שומש</span>` : `<span style="color:#10b981">פנוי</span>`;
-                vouchTbody.innerHTML += `<tr><td><b>${code}</b></td><td>${typeStr}</td><td>${v.days}</td><td>${status}</td><td>${v.generatedPin || '---'}</td><td><button class="btn-danger" onclick="deleteVoucher('${code}')">X</button></td></tr>`;
-            }
-
-            const msgArea = document.getElementById('messagesArea'); msgArea.innerHTML = '';
-            if(!data.messages || data.messages.length === 0) msgArea.innerHTML = '<p style="text-align:center; color:#94a3b8;">אין הודעות חדשות.</p>';
-            (data.messages || []).forEach((m, index) => { msgArea.innerHTML += `<div class="msg-box"><div style="font-size:0.8rem; color:#94a3b8;">${m.date} | מ-${m.name}</div><div style="margin: 8px 0;">${m.text}</div><button class="btn-danger" onclick="deleteMsg(${index})">מחק הודעה</button></div>`; });
+            
+            // הפרדת הודעות לדיווחים!
+            const msgArea = document.getElementById('messagesArea');
+            const reportsArea = document.getElementById('reportsArea');
+            msgArea.innerHTML = ''; reportsArea.innerHTML = '';
+            
+            let msgCount = 0; let repCount = 0;
+            (data.messages || []).forEach((m, index) => { 
+                let isReport = m.text.includes('[🚨 דיווח תקלה]');
+                let cleanText = m.text.replace('[🚨 דיווח תקלה]:', '').replace('[🚨 דיווח תקלה]', '').trim();
+                
+                let html = `<div class="msg-box ${isReport ? 'report-box' : ''}">
+                    <div style="font-size:0.8rem; color:#94a3b8;">${m.date} | מ-${m.name}</div>
+                    <div style="margin: 8px 0;">${cleanText}</div>
+                    <button class="btn-danger" onclick="deleteMsg(${index})">מחק</button>
+                </div>`;
+                
+                if (isReport) { reportsArea.innerHTML += html; repCount++; }
+                else { msgArea.innerHTML += html; msgCount++; }
+            });
+            if(msgCount===0) msgArea.innerHTML = '<p style="color:#94a3b8;">אין הודעות רגילות.</p>';
+            if(repCount===0) reportsArea.innerHTML = '<p style="color:#94a3b8;">אין דיווחי תקלות. (איזה יופי!)</p>';
         });
 
-        function updatePortalMsg() { socket.emit('updatePortalMsg', document.getElementById('sysMsgInput').value); alert("עודכן בהצלחה!"); }
-        function updatePortalAd() {
-            const link = document.getElementById('adLinkInput').value; const fileInput = document.getElementById('adImageFile');
-            if(fileInput.files.length > 0) { const reader = new FileReader(); reader.onload = e => { socket.emit('updatePortalAd', { imgBase64: e.target.result, link: link }); alert('פרסומת עלתה בהצלחה!'); fileInput.value=''; }; reader.readAsDataURL(fileInput.files[0]); } else { socket.emit('updatePortalAd', { link: link }); alert('קישור לפרסומת עודכן!'); }
+        // פונקציית עורך טקסט
+        function insertTag(openTag, closeTag) {
+            const textarea = document.getElementById('sysMsgInput');
+            const start = textarea.selectionStart; const end = textarea.selectionEnd;
+            const text = textarea.value;
+            const selectedText = text.substring(start, end);
+            textarea.value = text.substring(0, start) + openTag + selectedText + closeTag + text.substring(end);
+            textarea.focus();
         }
-        function clearPortalAd() { if(confirm('למחוק את הפרסומת לחלוטין מהפורטל?')) socket.emit('updatePortalAd', { clear: true }); }
-        function uploadPublicExcel() {
-            const name = document.getElementById('publicExcelName').value; const fileInput = document.getElementById('publicExcelFile');
-            if(!name || fileInput.files.length === 0) return alert("הזן שם לקובץ ובחר קובץ אקסל!");
-            const reader = new FileReader(); reader.onload = e => { socket.emit('uploadPublicExcel', { name: name, base64: e.target.result }); alert('האקסל הועלה לאתר הציבורי!'); document.getElementById('publicExcelName').value=''; fileInput.value=''; }; reader.readAsDataURL(fileInput.files[0]);
-        }
-        function deletePublicExcel(index) { if(confirm('למחוק קובץ זה מהאתר?')) socket.emit('deletePublicExcel', index); }
-        function createVoucher() { const code = document.getElementById('vCode').value.trim(); const type = document.getElementById('vType').value; const days = document.getElementById('vDays').value; if(!code || !days) return alert("מלא קוד ומספר ימים!"); socket.emit('createVoucher', { code, type, days }); document.getElementById('vCode').value = ''; }
+
+        function updatePortalMsg() { socket.emit('updatePortalMsg', document.getElementById('sysMsgInput').value); alert("הודעה שודרה בהצלחה לפורטל!"); }
+        
+        // ... פונקציות העלאה ופינים נשארו רגיל ...
+        function updatePortalAd() { const link = document.getElementById('adLinkInput').value; const fileInput = document.getElementById('adImageFile'); if(fileInput.files.length > 0) { const reader = new FileReader(); reader.onload = e => { socket.emit('updatePortalAd', { imgBase64: e.target.result, link: link }); alert('פרסומת עלתה!'); fileInput.value=''; }; reader.readAsDataURL(fileInput.files[0]); } else { socket.emit('updatePortalAd', { link: link }); } }
+        function clearPortalAd() { if(confirm('למחוק?')) socket.emit('updatePortalAd', { clear: true }); }
+        function createVoucher() { const code = document.getElementById('vCode').value.trim(); const type = document.getElementById('vType').value; const days = document.getElementById('vDays').value; if(!code || !days) return; socket.emit('createVoucher', { code, type, days }); document.getElementById('vCode').value = ''; }
         function createPins() { const start = document.getElementById('pinStart').value; const end = document.getElementById('pinEnd').value; const type = document.getElementById('pinType').value; const expireDate = document.getElementById('expireDate').value; if (!start) return; let expiresAt = new Date(expireDate).getTime(); expiresAt += (23 * 60 * 60 * 1000) + (59 * 60 * 1000); socket.emit('createBulkPins', { start, end, type, expiresAt }); document.getElementById('pinStart').value = ''; document.getElementById('pinEnd').value = ''; }
-        function deletePin(pin) { if(confirm('למחוק?')) socket.emit('deletePin', pin); }
-        function deleteVoucher(code) { if(confirm('למחוק וואוצ\'ר?')) socket.emit('deleteVoucher', code); }
-        function deleteMsg(index) { if(confirm('למחוק הודעה?')) socket.emit('deleteMessage', index); }
+        function deleteMsg(index) { if(confirm('למחוק?')) socket.emit('deleteMessage', index); }
 
-        function fetchLiveStats() { document.getElementById('liveStatsArea').innerHTML = '<p style="text-align:center; color:#38bdf8;">טוען נתונים...</p>'; socket.emit('fetchLiveStats'); }
-        socket.on('liveStatsData', (stats) => {
-            const area = document.getElementById('liveStatsArea'); let count = 0; let time = new Date().toLocaleTimeString('he-IL'); 
-            area.innerHTML = `<div style="text-align:center; font-size:0.8rem; color:#94a3b8; margin-bottom:10px;">עודכן: ${time}</div>`;
+        // 👁️ מערכת הרדאר והריגול
+        function fetchLiveStats() { 
+            document.getElementById('liveStatsArea').innerHTML = '<p style="color:#38bdf8;">טוען נתונים מודיעיניים...</p>'; 
+            document.getElementById('liveCallsArea').innerHTML = '<p style="color:#38bdf8;">סורק רשתות...</p>';
+            socket.emit('fetchLiveStats'); 
+        }
+        
+        socket.on('liveStatsData', (data) => {
+            const stats = data.stats; const calls = data.calls;
+            latestRoomData = stats; // שומר בזיכרון ללחיצת הריגול
+            
+            // 1. רדאר שיחות
+            const callsArea = document.getElementById('liveCallsArea'); callsArea.innerHTML = '';
+            let callCount = 0;
+            for(let id in calls.trivia) { callsArea.innerHTML += `<div style="color:#38bdf8;">📞 ${id} -> טריוויה (חדר: ${calls.trivia[id]})</div>`; callCount++; }
+            for(let id in calls.arena) { callsArea.innerHTML += `<div style="color:#ef4444;">⚔️ ${id} -> זירה (חדר: ${calls.arena[id]})</div>`; callCount++; }
+            if(callCount === 0) callsArea.innerHTML = '<span style="color:#94a3b8;">אין שיחות פעילות כרגע על הקו.</span>';
+
+            // 2. רדאר חדרים
+            const area = document.getElementById('liveStatsArea'); area.innerHTML = '';
+            let roomCount = 0; 
             for (let r in stats) {
-                count++; let s = stats[r]; let statusClass = s.isActive ? 'live-active' : 'live-idle'; let statusText = s.isActive ? '▶️ פעיל' : '⏸️ בהכנה';
-                area.innerHTML += `<div class="live-room"><div>חדר: <strong style="color: #38bdf8;">${r}</strong> <span class="${statusClass}" style="float: left; font-size: 0.9rem;">${statusText}</span></div><div>👥 משתתפים: <strong>${s.players}</strong> | 📝 שאלות: <strong>${s.qCount}</strong></div></div>`;
+                roomCount++; let s = stats[r]; 
+                let typeIcon = s.type === 'arena' ? '⚔️ זירה' : '📺 טריוויה';
+                let statusText = s.isActive ? '▶️ רץ כעת' : '⏸️ המתנה';
+                let statusClass = s.isActive ? 'live-active' : 'live-idle';
+                
+                area.innerHTML += `<div class="live-room">
+                    <button class="spy-btn" onclick="openSpy('${r}')">👁️ צפה בחדר</button>
+                    <div style="margin-right: 100px;">
+                        <div>חדר: <strong style="color: #38bdf8; font-size:1.2rem;">${r}</strong> | ${typeIcon}</div>
+                        <div><span class="${statusClass}">${statusText}</span> | 👥 שחקנים: <strong>${s.players}</strong></div>
+                    </div>
+                </div>`;
             }
-            if (count === 0) area.innerHTML += '<p style="text-align:center; color:#94a3b8;">אין חדרים פעילים כרגע.</p>';
+            if (roomCount === 0) area.innerHTML = '<p style="text-align:center; color:#94a3b8;">אין חדרים פעילים.</p>';
         });
+
+        // 👁️ פתיחת מודל הריגול לחדר ספציפי
+        function openSpy(roomId) {
+            const data = latestRoomData[roomId];
+            if(!data) return alert("שגיאה בשליפת נתוני החדר.");
+            
+            document.getElementById('spyTitle').innerText = `👁️ ריגול: חדר ${roomId}`;
+            
+            let html = `<b>סוג משחק:</b> ${data.type === 'arena' ? 'הזירה המשפחתית' : 'קליקינט טריוויה'}<br>`;
+            html += `<b>סטטוס:</b> ${data.isActive ? 'פעיל' : 'ממתין'}<br>`;
+            if(data.type === 'trivia') {
+                html += `<b>שאלה נוכחית:</b> ${data.currentQ} מתוך ${data.qCount}<br>`;
+            } else {
+                html += `<b>שלב בזירה:</b> ${data.phase}<br>`;
+            }
+            
+            html += `<br><b style="color:#38bdf8;">👥 רשימת שחקנים וניקוד:</b><br><ul style="margin-top:5px; padding-right:20px;">`;
+            
+            let pKeys = Object.keys(data.playersData);
+            if(pKeys.length === 0) html += `<li>החדר ריק.</li>`;
+            else {
+                pKeys.forEach(p => {
+                    let player = data.playersData[p];
+                    html += `<li style="margin-bottom:5px;"><b>${player.name}</b> (📞 ${p}): ${Math.floor(player.score)} נקודות `;
+                    if(data.type === 'arena' && player.currentVote > 0) html += `| הצביע עכשיו: <b>${player.currentVote}</b>`;
+                    if(data.type === 'trivia' && player.currentChoice) html += `| לחץ: <b>${player.currentChoice}</b>`;
+                    html += `</li>`;
+                });
+            }
+            html += `</ul>`;
+            
+            document.getElementById('spyData').innerHTML = html;
+            document.getElementById('spyModal').style.display = 'flex';
+        }
+
+        function closeSpy() { document.getElementById('spyModal').style.display = 'none'; }
     </script>
 </body>
 </html>
