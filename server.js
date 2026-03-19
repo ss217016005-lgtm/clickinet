@@ -14,8 +14,7 @@ const DB_PATH = 'uploads/database.json';
 let db = { 
     phonebooks: {}, savedGames: {}, pins: {}, vouchers: {}, messages: [], 
     portalMsg: "", portalAd: { img: "", link: "" }, publicExcels: [], 
-    analytics: { portal: 0, audience: 0, admin: 0, arena: 0, desk: 0 },
-    myDesk: { links: [], passwords: [], tasks: [], files: [] } 
+    analytics: { portal: 0, audience: 0, admin: 0, arena: 0 }
 };
 
 try { 
@@ -24,8 +23,7 @@ try {
         if (data.trim() !== '') {
             let parsed = JSON.parse(data);
             db = { ...db, ...parsed }; 
-            if(!db.analytics) db.analytics = { portal: 0, audience: 0, admin: 0, arena: 0, desk: 0 }; 
-            if(!db.myDesk) db.myDesk = { links: [], passwords: [], tasks: [], files: [] }; 
+            if(!db.analytics) db.analytics = { portal: 0, audience: 0, admin: 0, arena: 0 }; 
         }
     }
 } catch(e) {}
@@ -55,7 +53,6 @@ app.get('/', (req, res) => { db.analytics.audience++; saveDB(); emitSuperData();
 app.get('/admin', (req, res) => { db.analytics.admin++; saveDB(); emitSuperData(); res.sendFile(__dirname + '/admin.html'); });
 app.get('/portal', (req, res) => { db.analytics.portal++; saveDB(); emitSuperData(); res.sendFile(__dirname + '/portal.html'); });
 app.get('/arena', (req, res) => { db.analytics.arena++; saveDB(); emitSuperData(); res.sendFile(__dirname + '/arena.html'); });
-app.get('/desk', (req, res) => { db.analytics.desk++; saveDB(); emitSuperData(); res.sendFile(__dirname + '/desk.html'); });
 app.get('/super', (req, res) => res.sendFile(__dirname + '/superadmin.html')); 
 
 // API קליקינט (טריוויה)
@@ -75,7 +72,7 @@ app.all('/api/answer', (req, res) => {
             if (val !== undefined && val !== '') {
                 if (!db.pins[val]) return res.send(`read=t-קוד שגוי נא לנסות שוב=val_1,no,10,1,15,no,no`);
                 if (db.pins[val].expiresAt && exactHitTime > db.pins[val].expiresAt) return res.send(`id_list_message=t-תוקף הקוד פג&go_to_folder=hangup`);
-                if (db.pins[val].gamesLeft <= 0) return res.send(`id_list_message=t-הקוד סיים את המכסה&go_to_folder=hangup`);
+                if (db.pins[val].gamesLeft <= 0) return res.send(`id_list_message=t-הקוד סיים את מכסת המשחקים&go_to_folder=hangup`);
                 callToRoom[callId] = val; getRoom(val);
                 return res.send(`id_list_message=t-מחובר בהצלחה&read=t-ממתין=val_1,no,1,1,10,no,no`);
             } else { return res.send("read=t-ברוכים הבאים הקישו קוד משחק וסולמית=val_1,no,10,1,15,no,no"); }
@@ -149,12 +146,6 @@ function emitPortalData() { io.emit('portalData', { msg: db.portalMsg, ad: db.po
 
 io.on('connection', (socket) => {
     
-    // --- Desk ---
-    socket.on('deskLogin', (pass) => { if (pass === "TCRHNHCUHTR") { socket.emit('deskData', db.myDesk); } else { socket.emit('deskError'); } });
-    socket.on('deskUpdateData', (newData) => { db.myDesk.links = newData.links || db.myDesk.links; db.myDesk.passwords = newData.passwords || db.myDesk.passwords; db.myDesk.tasks = newData.tasks || db.myDesk.tasks; saveDB(); socket.emit('deskData', db.myDesk); });
-    socket.on('deskUploadFile', data => { if(data.base64) { const base64Data = data.base64.replace(/^data:.*?;base64,/, ""); const fileName = 'desk_file_' + Date.now() + '_' + data.name; fs.writeFileSync('uploads/' + fileName, base64Data, 'base64'); db.myDesk.files.push({ name: data.name, url: '/uploads/' + fileName }); saveDB(); socket.emit('deskData', db.myDesk); } });
-    socket.on('deskDeleteFile', index => { if(db.myDesk.files[index]) { const filePath = 'uploads/' + db.myDesk.files[index].url.split('/').pop(); if (fs.existsSync(filePath)) { fs.unlinkSync(filePath); } db.myDesk.files.splice(index, 1); saveDB(); socket.emit('deskData', db.myDesk); } });
-
     // --- Portal & SuperAdmin ---
     socket.on('getPortalData', () => { socket.emit('portalData', { msg: db.portalMsg, ad: db.portalAd, excels: db.publicExcels }); });
     socket.on('superLogin', (pass) => { if (pass === "Ahal2026!") emitSuperData(); else socket.emit('superError'); });
@@ -171,17 +162,16 @@ io.on('connection', (socket) => {
     socket.on('submitMessage', msg => { if(!db.messages) db.messages = []; db.messages.push({ date: new Date().toLocaleString('he-IL'), name: msg.name, text: msg.text }); saveDB(); socket.emit('messageResult', { success: true }); emitSuperData(); });
     socket.on('deleteMessage', index => { if(db.messages && db.messages[index]) { db.messages.splice(index, 1); saveDB(); emitSuperData(); } });
 
-    // 👁️ מנוע החמ"ל - נתונים מלאים למנהל העל!
+    // 👁️ מנוע החמ"ל
     socket.on('fetchLiveStats', () => { 
         let stats = {}; 
         for (let r in rooms) { let activeCount = Object.keys(rooms[r].activePlayers).length; if (activeCount > 0 || rooms[r].gameActive || rooms[r].questions.length > 0) { stats[r] = { type: 'trivia', players: activeCount, isActive: rooms[r].gameActive, qCount: rooms[r].questions.length, currentQ: rooms[r].currentQuestion + 1, playersData: rooms[r].activePlayers }; } }
         for (let r in arenaRooms) { let activeCount = Object.keys(arenaRooms[r].players).length; if (activeCount > 0 || arenaRooms[r].phase !== 'lobby') { stats[r] = { type: 'arena', players: activeCount, isActive: (arenaRooms[r].phase !== 'lobby'), phase: arenaRooms[r].phase, playersData: arenaRooms[r].players }; } }
-        
         let calls = { trivia: callToRoom, arena: arenaCallToRoom };
         socket.emit('liveStatsData', { stats: stats, calls: calls }); 
     });
 
-    // --- חדרים (קליקינט והזירה) ---
+    // --- חדרים קליקינט ---
     socket.on('joinRoom', (roomId) => { if (!db.pins[roomId]) return socket.emit('loginResponse', { success: false, error: 'קוד לא קיים!' }); if (db.pins[roomId].expiresAt && Date.now() > db.pins[roomId].expiresAt) return socket.emit('loginResponse', { success: false, error: 'הקוד פג תוקף!' }); socket.join(roomId); socket.roomId = roomId; const room = getRoom(roomId); let gamesDisplay = (db.pins[roomId].type === 'gold') ? 'ללא הגבלה 👑' : db.pins[roomId].gamesLeft; socket.emit('loginResponse', { success: true, gamesLeft: gamesDisplay }); socket.emit('updateSettings', room.gameSettings); socket.emit('updateLeaderboard', room.activePlayers); socket.emit('lockState', room.answersLocked); socket.emit('updateQuestions', room.questions); socket.emit('doublePointsState', room.isDoublePoints); });
     socket.on('startGame', () => { if(!socket.roomId) return; let room = rooms[socket.roomId]; if(room.questions.length === 0) return; if (db.pins[socket.roomId].type !== 'gold') { db.pins[socket.roomId].gamesLeft--; saveDB(); } let gamesDisplay = (db.pins[socket.roomId].type === 'gold') ? 'ללא הגבלה 👑' : db.pins[socket.roomId].gamesLeft; io.to(socket.roomId).emit('updateGamesLeft', gamesDisplay); room.gameActive = true; room.currentQuestion = 0; room.answersLocked = true; room.isDoublePoints = false; for(let p in room.activePlayers) { room.activePlayers[p].score = 0; room.activePlayers[p].lastAnswered = -1; room.activePlayers[p].streak = 0; room.activePlayers[p].currentChoice = null; } io.to(socket.roomId).emit('doublePointsState', false); io.to(socket.roomId).emit('newQuestion', room.questions[room.currentQuestion]); io.to(socket.roomId).emit('lockState', true); io.to(socket.roomId).emit('updateLeaderboard', room.activePlayers); });
     socket.on('addSingleQuestion', q => { if(socket.roomId) { if (q.imgBase64) { const base64Data = q.imgBase64.replace(/^data:image\/\w+;base64,/, ""); const fileName = 'img_' + Date.now() + '.png'; fs.writeFileSync('uploads/' + fileName, base64Data, 'base64'); q.image = '/uploads/' + fileName; delete q.imgBase64; } rooms[socket.roomId].questions.push(q); io.to(socket.roomId).emit('updateQuestions', rooms[socket.roomId].questions); } });
@@ -213,4 +203,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V63.0 (Shin-Bet War Room) is ONLINE ==="));
+http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V63.1 (Fixed Admin View) is ONLINE ==="));
