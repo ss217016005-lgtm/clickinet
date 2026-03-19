@@ -10,10 +10,9 @@
         header { background: #1e293b; padding: 20px; text-align: center; border-bottom: 2px solid #38bdf8; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         h1 { color: #38bdf8; margin: 0; font-size: 2.5rem; text-shadow: 0 0 10px rgba(56, 189, 248, 0.4); }
         
-        /* 📢 הודעת מערכת */
         #systemMessageBanner { background: #eab308; color: #000; text-align: center; padding: 10px; font-weight: bold; font-size: 1.1rem; display: none; }
         
-        .container { max-width: 1000px; margin: 30px auto; padding: 0 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .container { max-width: 1100px; margin: 30px auto; padding: 0 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .card { background: #1e293b; padding: 25px; border-radius: 15px; border: 1px solid #334155; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); }
         .full-width { grid-column: 1 / -1; }
         h2 { border-bottom: 2px solid #10b981; padding-bottom: 10px; margin-top: 0; color: #10b981; }
@@ -21,18 +20,25 @@
         button { background: #38bdf8; color: black; border: none; padding: 12px 20px; font-size: 1.1rem; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.2s; }
         button:hover { transform: scale(1.02); }
         .btn-success { background: #10b981; color: white; }
+        .btn-danger { background: #ef4444; color: white; }
         
         .result-box { display: none; background: #0f172a; border: 2px dashed #10b981; padding: 20px; text-align: center; border-radius: 10px; margin-top: 15px; }
         .pin-display { font-size: 3rem; color: #eab308; font-weight: bold; letter-spacing: 5px; margin: 10px 0; }
         
-        /* 💸 אזור פרסומות */
         #adContainer { text-align: center; margin: 20px auto; max-width: 1000px; display: none; padding: 0 20px;}
         #adContainer img { max-width: 100%; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); border: 2px solid #38bdf8; transition: transform 0.2s; cursor: pointer; }
         #adContainer img:hover { transform: scale(1.01); }
         .ad-label { font-size: 0.8rem; color: #94a3b8; margin-bottom: 5px; }
 
         .excel-dl-btn { display: inline-block; background: #334155; padding: 10px 15px; border-radius: 8px; text-decoration: none; color: #38bdf8; margin: 5px; border: 1px solid #475569; transition: background 0.2s;}
-        .excel-dl-btn:hover { background: #475569; }
+        .excel-dl-btn:hover { background: #475569; color: #fff;}
+        
+        .quick-links-container { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin-top: 15px; }
+        .quick-link-btn { width: auto; padding: 15px 30px; font-size: 1.2rem; display: flex; align-items: center; gap: 10px; }
+        
+        .guide-text { line-height: 1.6; color: #cbd5e1; }
+        .guide-text h3 { color: #38bdf8; margin-bottom: 5px; margin-top: 25px;}
+        .guide-text ul { margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -41,7 +47,7 @@
 
     <header>
         <h1>ברוכים הבאים לפורטל קליקינט</h1>
-        <p style="color: #94a3b8; font-size: 1.2rem; margin-top: 5px;">כאן תוכלו למשוך קודי הפעלה, להוריד תבניות, ולקרוא את המדריך</p>
+        <p style="color: #94a3b8; font-size: 1.2rem; margin-top: 5px;">המרכז שלכם לניהול משחקים, קודים והדרכות</p>
     </header>
 
     <div id="adContainer">
@@ -53,9 +59,18 @@
 
     <div class="container">
         
+        <div class="card full-width" style="text-align: center; border-color: #38bdf8; box-shadow: 0 0 20px rgba(56, 189, 248, 0.2);">
+            <h2 style="color: #38bdf8; border-bottom: none;">🚀 גישה מהירה למערכות המשחק</h2>
+            <div class="quick-links-container">
+                <button class="quick-link-btn" style="background: #10b981;" onclick="window.open('/', '_blank')">📺 מסך קהל (טריוויה)</button>
+                <button class="quick-link-btn" style="background: #e67e22;" onclick="window.open('/arena', '_blank')">⚔️ הזירה המשפחתית</button>
+                <button class="quick-link-btn" style="background: #3b82f6;" onclick="window.open('/admin', '_blank')">⚙️ ניהול חדר (מפיק)</button>
+            </div>
+        </div>
+
         <div class="card">
             <h2>🎫 הפעלת קוד אישור (Voucher)</h2>
-            <p>רכשתם מנוי או קיבלתם קוד אישור מאהל יהודה? הקישו אותו כאן כדי לקבל את קוד המפיק (PIN) האישי שלכם:</p>
+            <p>קיבלתם קוד אישור? הקישו אותו כאן כדי לקבל קוד מפיק (PIN) להפעלת החדרים:</p>
             <input type="text" id="voucherCode" placeholder="הקש קוד אישור כאן...">
             <button class="btn-success" onclick="redeem()">משוך קוד מפיק עכשיו</button>
             
@@ -64,38 +79,60 @@
                 <div class="pin-display" id="generatedPin">12345</div>
                 <p style="margin: 0; font-size: 0.9rem; color: #94a3b8;">סוג מנוי: <span id="vType"></span> | תקף ל-<span id="vDays"></span> ימים.</p>
                 <p style="color: #ef4444; font-weight: bold; margin-top: 10px;">שמור את הקוד הזה! לא ניתן לשחזר אותו.</p>
-                <a href="/admin" target="_blank"><button style="margin-top: 10px;">מעבר לחדר הבקרה</button></a>
             </div>
         </div>
 
         <div class="card">
-            <h2>✉️ צור קשר / השאר הודעה</h2>
-            <p>צריכים עזרה? יש לכם תקלה או בקשה מיוחדת? שלחו הודעה למנהל המערכת:</p>
-            <input type="text" id="msgName" placeholder="השם שלך או מספר טלפון לחזרה">
-            <textarea id="msgText" rows="4" placeholder="תוכן ההודעה..."></textarea>
-            <button onclick="sendMsg()">שלח הודעה</button>
-        </div>
-
-        <div class="card full-width">
-            <h2>📘 מאגר שאלות ציבורי ותבניות</h2>
-            <p>להלן קבצי אקסל זמינים להורדה. הורידו את הקובץ, וישר תוכלו להעלות אותו לחדר הבקרה שלכם!</p>
-            
-            <button style="width: auto; background: #eab308; color: #000; margin-bottom: 15px;" onclick="downloadTemplate()">📥 הורד תבנית אקסל ריקה (לדוגמה)</button>
-            
+            <h2>📁 מאגר שאלות ותבניות</h2>
+            <p>הורידו קבצי אקסל מוכנים או תבנית ריקה, והעלו אותם בקליק בחדר הבקרה:</p>
+            <button style="background: #eab308; color: #000; margin-bottom: 15px;" onclick="downloadTemplate()">📥 תבנית ריקה ליצירת משחק אישי</button>
             <div id="publicExcelsArea" style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px;">
                 <p style="color: #94a3b8; font-size: 0.9rem; margin:0;">טוען מאגר שאלות...</p>
             </div>
+        </div>
 
-            <hr style="border-color: #334155; margin: 20px 0;">
-            
-            <h2 style="color: #38bdf8;">מדריך למפעיל – קליקינט</h2>
-            <div style="line-height: 1.6; color: #cbd5e1;">
-                <h3 style="color: #38bdf8; margin-bottom: 5px;">🎛️ 1. כניסה לחדר הבקרה וטעינת שאלות</h3>
-                <p>היכנסו לכתובת <b>/admin</b> והקישו את קוד המפיק שלכם. בפאנל "מחסנית השאלות" תוכלו להזין שאלות ידנית או להעלות קובץ אקסל. מנויי "זהב" יכולים לצרף תמונה.</p>
-                <h3 style="color: #38bdf8; margin-bottom: 5px;">📺 2. חיבור הקהל</h3>
-                <p>פתחו במסך הגדול באולם את הכתובת הראשי של האתר. בקשו מהקהל לחייג ל-<b>077-2296674</b> ולהקיש קוד משחק.</p>
-                <h3 style="color: #38bdf8; margin-bottom: 5px;">🎮 3. ניהול המשחק</h3>
-                <p>לחצו על "התחל משחק". השתמשו בכפתור "טייס אוטומטי" כדי שהמערכת תעשה הכל לבד, או שלטו ידנית בשעון ובגרפים!</p>
+        <div class="card">
+            <h2>✉️ יצירת קשר עם ההנהלה</h2>
+            <p>צריכים עזרה כללית? בקשה מיוחדת? שלחו הודעה להנהלת האתר:</p>
+            <input type="text" id="msgName" placeholder="השם שלך / מספר מפיק">
+            <textarea id="msgText" rows="3" placeholder="תוכן ההודעה..."></textarea>
+            <button onclick="sendMsg('regular')">שלח הודעה</button>
+        </div>
+
+        <div class="card" style="border-color: #ef4444;">
+            <h2 style="color: #ef4444; border-bottom-color: #ef4444;">🚨 דיווח על תקלות והפרעות</h2>
+            <p>נתקלתם בבאג טכני? יש שחקן שמפריע בחדר? דווחו לנו מיד לטיפול מהיר:</p>
+            <input type="text" id="reportName" placeholder="השם שלך / קוד החדר">
+            <textarea id="reportText" rows="3" placeholder="פרטי התקלה או ההפרעה..."></textarea>
+            <button class="btn-danger" onclick="sendMsg('report')">שלח דיווח דחוף</button>
+        </div>
+
+        <div class="card full-width">
+            <h2>📘 המדריך למפעיל – קליקינט והזירה המשפחתית</h2>
+            <div class="guide-text">
+                <p>מערכות המשחקים שלנו מאפשרות לכם להפעיל אירועים רבי משתתפים ישירות דרך מסך אחד, כאשר הקהל כולו משתתף ומצביע מהטלפון שלו בזמן אמת!</p>
+                
+                <h3>🎛️ 1. כניסה לחדר הבקרה (משחק טריוויה)</h3>
+                <p>היכנסו למערכת הניהול והקישו את קוד המפיק שלכם. בפאנל "מחסנית השאלות" תוכלו להזין שאלות ידנית או להעלות קובץ אקסל שהורדתם מהמאגר שלנו. מנויי פרימיום-זהב יכולים גם לצרף תמונות ולוגו חסות אישי.</p>
+
+                <h3>📺 2. חיבור הקהל</h3>
+                <p>פתחו במסך הגדול באולם את הכתובת של <b>מסך הקהל</b>. בקשו מהקהל לחייג למספר <b>077-2296674</b>, להקיש 1 למשחק טריוויה, ולאחר מכן את קוד המשחק שמופיע על המסך. שמות המשתתפים יתחילו לקפוץ בבועות!</p>
+
+                <h3>🎮 3. ניהול משחק הטריוויה</h3>
+                <p>לחצו על כפתור "התחל משחק". השתמשו בכפתור "טייס אוטומטי" כדי שהמערכת תנהל את הכל לבד (הקראת שאלה, שעון 15 שניות, גרף הצבעות וחשיפת תשובה), או שלטו ידנית בקצב באמצעות הכפתורים הבודדים. תוכלו גם להפעיל מוזיקת רקע ולזרוק שחקנים מפריעים דרך ניהול הקהל.</p>
+
+                <hr style="border-color: #334155; margin: 30px 0;">
+
+                <h3 style="color: #eab308; font-size: 1.5rem;">⚔️ 4. הפעלת "הזירה המשפחתית" (משחק חדש!)</h3>
+                <p>הזירה המשפחתית היא משחק חברתי ומשעשע שמבוסס על דירוגים. במקום תשובות אמריקאיות, השחקנים צריכים לענות יצירתית והקהל שופט אותם!</p>
+                <ul>
+                    <li>היכנסו לקישור <b>הזירה המשפחתית</b> מהתפריט המהיר למעלה, והקישו את קוד המפיק שלכם.</li>
+                    <li>בחרו נושא שאלות מתוך הכרטיסיות שעל המסך (טבע, משפחה, צחוקים וכו'), או כתבו שאלות משלכם.</li>
+                    <li>בקשו מהקהל לחייג לקו, <b>להקיש 2 (לזירת דירוגים)</b> ואז את קוד המשחק שלכם.</li>
+                    <li>בכל תור, המערכת תבחר שחקן אחד שיצטרך לענות בקול רם על השאלה שעל המסך.</li>
+                    <li>לאחר שענה, המנחה ילחץ "עניתי!", וכל שאר הקהל יתבקש <b>להקיש בטלפון שלו ציון מ-1 עד 10</b> על התשובה.</li>
+                    <li>המערכת תשקלל את הציונים ותציג פודיום מנצחים מרהיב בסוף המשחק!</li>
+                </ul>
             </div>
         </div>
 
@@ -105,39 +142,29 @@
     <script>
         const socket = io();
 
-        // 🌐 משיכת נתונים ציבוריים כשהדף עולה
+        // 🌐 משיכת נתונים ציבוריים
         socket.emit('getPortalData');
         
         socket.on('portalData', data => {
-            // 📢 הודעת מערכת
             const msgBanner = document.getElementById('systemMessageBanner');
             if(data.msg && data.msg.trim() !== '') { msgBanner.innerText = data.msg; msgBanner.style.display = 'block'; }
             else { msgBanner.style.display = 'none'; }
 
-            // 💸 פרסומת
             const adContainer = document.getElementById('adContainer');
             if(data.ad && data.ad.img) {
-                document.getElementById('adImage').src = data.ad.img;
-                document.getElementById('adLink').href = data.ad.link || "#";
+                document.getElementById('adImage').src = data.ad.img; document.getElementById('adLink').href = data.ad.link || "#";
                 adContainer.style.display = 'block';
             } else { adContainer.style.display = 'none'; }
 
-            // 📄 מאגר אקסלים
             const excelsArea = document.getElementById('publicExcelsArea');
             excelsArea.innerHTML = '';
-            if(!data.excels || data.excels.length === 0) {
-                excelsArea.innerHTML = '<p style="color: #94a3b8; font-size: 0.9rem; margin:0;">אין כרגע קבצים מוכנים במאגר. חזרו בקרוב!</p>';
-            } else {
-                data.excels.forEach(ex => {
-                    excelsArea.innerHTML += `<a href="${ex.url}" class="excel-dl-btn" download>📥 ${ex.name}</a>`;
-                });
-            }
+            if(!data.excels || data.excels.length === 0) { excelsArea.innerHTML = '<p style="color: #94a3b8; font-size: 0.9rem; margin:0;">אין כרגע קבצים במאגר.</p>'; } 
+            else { data.excels.forEach(ex => { excelsArea.innerHTML += `<a href="${ex.url}" class="excel-dl-btn" download>📥 ${ex.name}</a>`; }); }
         });
 
         function redeem() {
             const code = document.getElementById('voucherCode').value.trim();
-            if(!code) return alert("נא להקיש קוד אישור!");
-            socket.emit('redeemVoucher', code);
+            if(!code) return alert("נא להקיש קוד אישור!"); socket.emit('redeemVoucher', code);
         }
 
         socket.on('voucherResult', res => {
@@ -149,13 +176,26 @@
             } else { alert(res.error); }
         });
 
-        function sendMsg() {
-            const name = document.getElementById('msgName').value.trim(); const text = document.getElementById('msgText').value.trim();
-            if(!name || !text) return alert("נא למלא את כל השדות!"); socket.emit('submitMessage', { name, text });
+        // ✉️ שליחת הודעה או דיווח
+        function sendMsg(type) {
+            let nameId = type === 'report' ? 'reportName' : 'msgName';
+            let textId = type === 'report' ? 'reportText' : 'msgText';
+            
+            const name = document.getElementById(nameId).value.trim(); 
+            const text = document.getElementById(textId).value.trim();
+            
+            if(!name || !text) return alert("נא למלא את כל השדות!"); 
+            
+            // תיוג אוטומטי של סוג ההודעה למנהל העל
+            const finalText = type === 'report' ? `[🚨 דיווח תקלה]: ${text}` : text;
+            
+            socket.emit('submitMessage', { name, text: finalText });
+            
+            document.getElementById(nameId).value = ''; document.getElementById(textId).value = '';
         }
 
         socket.on('messageResult', res => {
-            if(res.success) { alert('ההודעה נשלחה בהצלחה למנהל המערכת!'); document.getElementById('msgName').value = ''; document.getElementById('msgText').value = ''; }
+            if(res.success) { alert('נשלח בהצלחה למנהל המערכת!'); }
         });
 
         function downloadTemplate() {
