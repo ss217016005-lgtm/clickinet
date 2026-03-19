@@ -7,7 +7,6 @@
     <style>
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #0f172a; color: white; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; transition: all 0.5s; position: relative;}
         
-        /* 🌐 תפריט הניווט העליון החדש! */
         #topNav { position: absolute; top: 20px; right: 20px; z-index: 100; display: flex; gap: 10px; }
         .nav-btn { background: rgba(30, 41, 59, 0.8); border: 1px solid #38bdf8; color: #38bdf8; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: all 0.2s; font-size: 1rem; backdrop-filter: blur(5px); }
         .nav-btn:hover { background: #38bdf8; color: #000; transform: scale(1.05); }
@@ -101,6 +100,16 @@
         </div>
     </div>
 
+    <div id="sysAlertModal" style="display:none; position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#ef4444; color:white; padding:20px; border-radius:15px; z-index:10000; box-shadow:0 10px 30px rgba(0,0,0,0.5); text-align:center; min-width:300px; border: 2px solid #fff;">
+        <h3 style="margin-top:0; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">🚨 הודעה מהנהלת האתר</h3>
+        <p id="sysAlertText" style="font-size:1.3rem; font-weight:bold; margin-bottom: 20px;"></p>
+        <input type="text" id="sysAlertReply" placeholder="הקלד תגובה למנהל..." style="display:none; width:90%; padding:12px; margin-top:10px; border-radius:8px; border:none; color:black; font-size:1rem; box-sizing: border-box;">
+        <div style="margin-top:15px; display:flex; gap:10px; justify-content:center;">
+            <button style="background:#334155; padding:10px 20px; border-radius:8px; color:#fff; border:none; cursor:pointer;" onclick="document.getElementById('sysAlertModal').style.display='none'">הבנתי, תודה</button>
+            <button id="sysAlertSendBtn" style="display:none; background:#10b981; padding:10px 20px; border-radius:8px; color:#fff; border:none; font-weight:bold; cursor:pointer;" onclick="sendSysReply()">שלח תגובה למנהל</button>
+        </div>
+    </div>
+
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
@@ -116,8 +125,12 @@
         };
 
         window.onload = () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const autoPin = urlParams.get('pin');
             const savedRoom = sessionStorage.getItem('clickinetPlayerRoom');
-            if (savedRoom) { document.getElementById('roomIdInput').value = savedRoom; joinRoom(); }
+            
+            if(autoPin) { document.getElementById('roomIdInput').value = autoPin; setTimeout(joinRoom, 500); }
+            else if (savedRoom) { document.getElementById('roomIdInput').value = savedRoom; joinRoom(); }
         };
 
         function enableAudio() { audioEnabled = true; }
@@ -127,11 +140,10 @@
             if(roomId) { document.getElementById('pinText').innerText = roomId; socket.emit('joinRoom', roomId); }
         }
 
-        // פונקציית ההתנתקות החדשה! 🚪
         function disconnectRoom() {
             if(confirm('האם אתה בטוח שברצונך להתנתק מהחדר הנוכחי?')) {
                 sessionStorage.removeItem('clickinetPlayerRoom');
-                location.reload(); // מרענן את הדף ומחזיר למסך הפתיחה
+                window.location.href = '/'; 
             }
         }
 
@@ -140,7 +152,6 @@
                 sessionStorage.setItem('clickinetPlayerRoom', document.getElementById('roomIdInput').value);
                 document.getElementById('joinBox').style.display = 'none';
                 document.getElementById('mainContainer').style.display = 'block';
-                // מציג את כפתור ההתנתקות רק אחרי חיבור מוצלח
                 document.getElementById('disconnectBtn').style.display = 'block';
             } else { alert(res.error); sessionStorage.removeItem('clickinetPlayerRoom'); }
         });
@@ -223,6 +234,23 @@
             isGameRunning = false; document.getElementById('gameView').style.display = 'none'; document.getElementById('lobbyView').style.display = 'flex';
             document.getElementById('lobbyStatus').innerText = "המשחק הסתיים! ממתינים לסיבוב הבא...";
         });
+
+        // 🚨 מערכת הודעות חירום ממנהל העל
+        socket.on('sysMessage', handleSysMsg);
+        function handleSysMsg(data) {
+            document.getElementById('sysAlertText').innerText = data.msg;
+            document.getElementById('sysAlertModal').style.display = 'block';
+            if(data.allowReply) { document.getElementById('sysAlertReply').style.display = 'block'; document.getElementById('sysAlertSendBtn').style.display = 'block'; } 
+            else { document.getElementById('sysAlertReply').style.display = 'none'; document.getElementById('sysAlertSendBtn').style.display = 'none'; }
+        }
+        function sendSysReply() {
+            const reply = document.getElementById('sysAlertReply').value;
+            if(reply) {
+                let pin = document.getElementById('roomIdInput').value || 'לא ידוע';
+                socket.emit('submitMessage', { name: "תגובה מחדר טריוויה (PIN: " + pin + ")", text: reply });
+                document.getElementById('sysAlertModal').style.display = 'none'; document.getElementById('sysAlertReply').value = ''; alert('נשלח בהצלחה להנהלה!');
+            }
+        }
     </script>
 </body>
 </html>
