@@ -52,7 +52,7 @@
 
     <div id="adContainer">
         <div class="ad-label">- חסות -</div>
-        <a id="adLink" href="#" target="_blank">
+        <a id="adLink" href="#" target="_blank" onclick="socket.emit('adClicked')">
             <img id="adImage" src="" alt="פרסומת">
         </a>
     </div>
@@ -138,11 +138,20 @@
 
     </div>
 
+    <div id="sysAlertModal" style="display:none; position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#ef4444; color:white; padding:20px; border-radius:15px; z-index:10000; box-shadow:0 10px 30px rgba(0,0,0,0.5); text-align:center; min-width:300px; border: 2px solid #fff;">
+        <h3 style="margin-top:0; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">🚨 הודעה מהנהלת האתר</h3>
+        <p id="sysAlertText" style="font-size:1.3rem; font-weight:bold; margin-bottom: 20px;"></p>
+        <input type="text" id="sysAlertReply" placeholder="הקלד תגובה למנהל..." style="display:none; width:90%; padding:12px; margin-top:10px; border-radius:8px; border:none; color:black; font-size:1rem; box-sizing: border-box;">
+        <div style="margin-top:15px; display:flex; gap:10px; justify-content:center;">
+            <button style="background:#334155; padding:10px 20px; border-radius:8px; color:#fff; border:none; cursor:pointer;" onclick="document.getElementById('sysAlertModal').style.display='none'">הבנתי, תודה</button>
+            <button id="sysAlertSendBtn" style="display:none; background:#10b981; padding:10px 20px; border-radius:8px; color:#fff; border:none; font-weight:bold; cursor:pointer;" onclick="sendSysReply()">שלח תגובה למנהל</button>
+        </div>
+    </div>
+
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
 
-        // 🌐 משיכת נתונים ציבוריים
         socket.emit('getPortalData');
         
         socket.on('portalData', data => {
@@ -176,7 +185,6 @@
             } else { alert(res.error); }
         });
 
-        // ✉️ שליחת הודעה או דיווח
         function sendMsg(type) {
             let nameId = type === 'report' ? 'reportName' : 'msgName';
             let textId = type === 'report' ? 'reportText' : 'msgText';
@@ -186,9 +194,7 @@
             
             if(!name || !text) return alert("נא למלא את כל השדות!"); 
             
-            // תיוג אוטומטי של סוג ההודעה למנהל העל
             const finalText = type === 'report' ? `[🚨 דיווח תקלה]: ${text}` : text;
-            
             socket.emit('submitMessage', { name, text: finalText });
             
             document.getElementById(nameId).value = ''; document.getElementById(textId).value = '';
@@ -201,6 +207,22 @@
         function downloadTemplate() {
             let data = [ ["שאלה", "תשובה 1", "תשובה 2", "תשובה 3", "תשובה 4", "מספר נכונה (1-4)"], ["מה בירת ישראל?", "תל אביב", "ירושלים", "חיפה", "אילת", "2"] ];
             let ws = XLSX.utils.aoa_to_sheet(data); let wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "תבנית קליקינט"); XLSX.writeFile(wb, `Clickinet_Template.xlsx`);
+        }
+
+        // קליטת הודעת המנהל
+        socket.on('sysMessage', handleSysMsg);
+        function handleSysMsg(data) {
+            document.getElementById('sysAlertText').innerText = data.msg;
+            document.getElementById('sysAlertModal').style.display = 'block';
+            if(data.allowReply) { document.getElementById('sysAlertReply').style.display = 'block'; document.getElementById('sysAlertSendBtn').style.display = 'block'; } 
+            else { document.getElementById('sysAlertReply').style.display = 'none'; document.getElementById('sysAlertSendBtn').style.display = 'none'; }
+        }
+        function sendSysReply() {
+            const reply = document.getElementById('sysAlertReply').value;
+            if(reply) {
+                socket.emit('submitMessage', { name: "תגובה מפורטל הלקוחות", text: reply });
+                document.getElementById('sysAlertModal').style.display = 'none'; document.getElementById('sysAlertReply').value = ''; alert('נשלח בהצלחה להנהלה!');
+            }
         }
     </script>
 </body>
