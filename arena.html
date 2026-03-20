@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -28,6 +27,8 @@
         .podium-1 { height: 160px; background: linear-gradient(to top, var(--primary), var(--gold)); order: 2; z-index: 3; }
         .podium-2 { height: 120px; background: linear-gradient(to top, var(--primary), var(--silver)); order: 1; z-index: 2; }
         .podium-3 { height: 90px; background: linear-gradient(to top, var(--primary), var(--bronze)); order: 3; z-index: 1; }
+        .podium-name { font-weight: bold; font-size: 1.1rem; }
+        .podium-score { font-size: 0.9rem; opacity: 0.9; }
         .rest-players { text-align: right; background: rgba(255, 255, 255, 0.5); padding: 15px; border-radius: 10px; margin-top: 20px; max-height: 150px; overflow-y: auto; }
         .rest-item { display: flex; justify-content: space-between; border-bottom: 1px solid #ddd; padding: 8px 0; font-size: 0.9rem; }
         #back-btn { position: absolute; top: 15px; right: 15px; background: transparent; color: var(--primary); border: 2px solid var(--primary); padding: 5px 15px; font-size: 0.9rem; margin: 0; box-shadow: none; }
@@ -71,7 +72,7 @@
             <div style="text-align: right; background: rgba(255,255,255,0.4); padding: 20px; border-radius: 15px; margin: 20px 0; border-right: 5px solid var(--accent);">
                 <p><b>איך נלחמים?</b> (הפעלה דרך הטלפון!)</p>
                 <ul style="list-style: none; padding: 0; line-height: 1.6;">
-                    <li>📞 <b>התחברות:</b> מחייגים, לוחצים 2 (לזירה) ומקישים את הקוד.</li>
+                    <li>📞 <b>התחברות:</b> מחייגים לקו, לוחצים 2 (לזירה) ומקישים את הקוד.</li>
                     <li>⚔️ <b>התור שלכם:</b> שחקן נבחר מקבל שאלה ועונה עליה בקול רם.</li>
                     <li>⭐ <b>הדירוג (בטלפון):</b> שאר הקהל מקיש בטלפון ניקוד מ-1 עד 10!</li>
                 </ul>
@@ -141,7 +142,13 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        const socket = io(); let myRoomId = ""; let playersMap = {}; let playersArray = []; let selectedQuestions = []; let currentQuestionIndex = 0; let prize = ""; let totalQuestionsLimit = 40; let historyStack = [];
+        const socket = io(); 
+        let myRoomId = ""; let playersMap = {}; let playersArray = []; let selectedQuestions = []; let currentQuestionIndex = 0; let prize = ""; let totalQuestionsLimit = 40; let historyStack = [];
+        
+        // ⚔️ משיכת שאלות מהשרת בלייב
+        let questionBank = {}; 
+        socket.emit('getArenaQuestions'); 
+        socket.on('arenaQuestionsData', data => { questionBank = data; }); 
 
         window.onload = () => {
             const urlParams = new URLSearchParams(window.location.search);
@@ -162,7 +169,6 @@
 
         socket.on('arenaVoteReceived', data => { if (playersMap[data.phone]) { playersMap[data.phone].currentVote = data.vote; const statusBox = document.getElementById('status_' + data.phone); if(statusBox) { statusBox.innerText = "הצביע: " + data.vote; statusBox.classList.add('voted-yes'); playSound("click"); } } });
 
-        const questionBank = { family: [{ q: "מי במשפחה קם ראשון בשבת?", a: "המשכים המשפחתי" }], nature: [{ q: "איזו חיה ישנה בעמידה?", a: "סוס או פיל" }], general: [{ q: "כמה שעות בשבוע?", a: "168" }], funny: [{ q: "מה רטוב יותר ככל שמייבש?", a: "מגבת" }] };
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)(); function playSound(type) { if (audioCtx.state === 'suspended') audioCtx.resume(); const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.connect(gain); gain.connect(audioCtx.destination); const now = audioCtx.currentTime; if (type === "click") { osc.type = "sine"; osc.frequency.setValueAtTime(800, now); osc.frequency.exponentialRampToValueAtTime(400, now + 0.1); gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1); osc.start(now); osc.stop(now + 0.1); } else if (type === "success") { osc.type = "triangle"; osc.frequency.setValueAtTime(440, now); osc.frequency.exponentialRampToValueAtTime(880, now + 0.4); gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.1, now + 0.1); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5); osc.start(now); osc.stop(now + 0.5); } else if (type === "win") { const notes = [440, 554.37, 659.25, 880]; notes.forEach((freq, i) => { const o = audioCtx.createOscillator(); const g = audioCtx.createGain(); o.type = "sine"; o.connect(g); g.connect(audioCtx.destination); const start = now + (i * 0.15); o.frequency.setValueAtTime(freq, start); o.frequency.exponentialRampToValueAtTime(freq * 1.02, start + 0.8); g.gain.setValueAtTime(0, start); g.gain.linearRampToValueAtTime(0.05, start + 0.1); g.gain.exponentialRampToValueAtTime(0.001, start + 1.2); o.start(start); o.stop(start + 1.2); }); } }
 
         function showScreen(id, saveHistory = true) { playSound("click"); if (saveHistory) { const current = document.querySelector('.screen:not(.hidden)'); if (current) historyStack.push({ id: current.id, qIndex: currentQuestionIndex }); } document.querySelectorAll('.screen').forEach(div => div.classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); const backBtn = document.getElementById('back-btn'); if (id === 'screen-intro' || historyStack.length === 0) backBtn.classList.add('hidden'); else backBtn.classList.remove('hidden'); }
@@ -177,7 +183,7 @@
         function submitRatings() { playSound("success"); socket.emit('arenaSetPhase', { roomId: myRoomId, phase: 'playing' }); let totalTurnScore = 0; const currentPlayerPhone = playersArray[currentQuestionIndex % playersArray.length].phone; Object.keys(playersMap).forEach(phone => { if(phone !== currentPlayerPhone) { totalTurnScore += (playersMap[phone].currentVote || 0); } }); playersMap[currentPlayerPhone].score += totalTurnScore; socket.emit('arenaUpdateScores', { roomId: myRoomId, players: playersMap }); playersArray = Object.values(playersMap); currentQuestionIndex++; const isEndOfThirdRound = currentQuestionIndex % (playersArray.length * 3) === 0; if (currentQuestionIndex >= totalQuestionsLimit) { showLeaderboard(true); } else if (isEndOfThirdRound) { showLeaderboard(false); } else { document.getElementById('phase-question').classList.remove('hidden'); document.getElementById('phase-rating').classList.add('hidden'); showQuestionUI(); } }
         function showLeaderboard(isFinal = false) { if (isFinal) playSound("win"); else playSound("success"); showScreen('screen-leaderboard'); const sorted = [...playersArray].sort((a, b) => b.score - a.score); document.getElementById('leaderboard-title').innerText = isFinal ? "🏆 תוצאות סופיות!" : "📊 מצב הביניים"; const podiumArea = document.getElementById('podium-area'); podiumArea.innerHTML = ""; const top3 = sorted.slice(0, 3); top3.forEach((p, i) => { const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"; const div = document.createElement('div'); div.className = `podium-place podium-${i + 1}`; div.innerHTML = `<span style="font-size:2rem">${medal}</span><div class="podium-name">${p.name}</div><div class="podium-score">${Math.floor(p.score)} נק'</div>`; podiumArea.appendChild(div); }); const restArea = document.getElementById('rest-area'); const restList = document.getElementById('rest-list'); if (sorted.length > 3) { restArea.classList.remove('hidden'); restList.innerHTML = sorted.slice(3).map((p, i) => `<div class="rest-item"><span>${i + 4}. ${p.name}</span><span>${Math.floor(p.score)} נקודות</span></div>`).join(''); } else { restArea.classList.add('hidden'); } const btn = document.getElementById('leaderboard-btn'); if (isFinal) { podiumArea.insertAdjacentHTML('afterend', `<div style="margin-top: 30px; animation: fadeIn 1s ease;"><h3 style="color:var(--accent); margin-bottom: 20px;">🎉 הזוכה בפרס (${prize}) הוא: ${sorted[0].name}!</h3><hr style="border: 0; border-top: 1px solid rgba(0,0,0,0.1); margin: 25px 0;"></div>`); btn.innerText = "🎮 משחק חדש"; btn.onclick = () => location.reload(); } else { btn.innerText = "המשך לשאלה הבאה"; btn.onclick = () => { document.getElementById('phase-question').classList.remove('hidden'); document.getElementById('phase-rating').classList.add('hidden'); showScreen('screen-game'); showQuestionUI(); }; } }
 
-        // 🚨 מערכת הודעות חירום
+        // 🚨 מערכת הודעות חירום ממנהל העל
         socket.on('arenaSysMessage', handleSysMsg);
         function handleSysMsg(data) {
             document.getElementById('sysAlertText').innerText = data.msg;
