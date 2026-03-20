@@ -14,8 +14,14 @@ const DB_PATH = 'uploads/database.json';
 let db = { 
     phonebooks: {}, savedGames: {}, pins: {}, vouchers: {}, messages: [], 
     portalMsg: "", portalAd: { img: "", link: "" }, publicExcels: [], 
-    analytics: { portal: 0, audience: 0, admin: 0, arena: 0, desk: 0 },
-    myDesk: { links: [], passwords: [], tasks: [], files: [] } // 💼 האזור האישי חזר!
+    analytics: { portal: 0, audience: 0, admin: 0, arena: 0, desk: 0, adClicks: 0 },
+    myDesk: { links: [], passwords: [], tasks: [], files: [] },
+    arenaQuestions: {
+        family: [{ q: "מי במשפחה תמיד קם ראשון בשבת בבוקר?", a: "המשכים המשפחתי" }, { q: "מי הכי סביר שייצא ויחזור כי שכח משהו?", a: "המפוזר" }],
+        nature: [{ q: "איזו חיה ישנה בעמידה?", a: "סוס או פיל" }, { q: "מהו העץ הלאומי של ישראל?", a: "זית" }],
+        general: [{ q: "איזה חודש בעברי תמיד 29 ימים?", a: "טבת" }, { q: "כמה שעות יש בשבוע?", a: "168" }],
+        funny: [{ q: "מה יש לו שיניים אבל לא נושך?", a: "מסרק" }, { q: "מה נהיה רטוב יותר ככל שמייבש?", a: "מגבת" }]
+    }
 };
 
 try { 
@@ -24,8 +30,9 @@ try {
         if (data.trim() !== '') {
             let parsed = JSON.parse(data);
             db = { ...db, ...parsed }; 
-            if(!db.analytics) db.analytics = { portal: 0, audience: 0, admin: 0, arena: 0, desk: 0 }; 
-            if(!db.myDesk) db.myDesk = { links: [], passwords: [], tasks: [], files: [] }; 
+            if(!db.analytics) db.analytics = { portal: 0, audience: 0, admin: 0, arena: 0, desk: 0, adClicks: 0 }; 
+            if(!db.analytics.adClicks) db.analytics.adClicks = 0;
+            if(!db.arenaQuestions) db.arenaQuestions = { family: [], nature: [], general: [], funny: [] };
         }
     }
 } catch(e) {}
@@ -52,8 +59,8 @@ app.get('/', (req, res) => { db.analytics.audience++; saveDB(); emitSuperData();
 app.get('/admin', (req, res) => { db.analytics.admin++; saveDB(); emitSuperData(); res.sendFile(__dirname + '/admin.html'); });
 app.get('/portal', (req, res) => { db.analytics.portal++; saveDB(); emitSuperData(); res.sendFile(__dirname + '/portal.html'); });
 app.get('/arena', (req, res) => { db.analytics.arena++; saveDB(); emitSuperData(); res.sendFile(__dirname + '/arena.html'); });
+app.get('/desk', (req, res) => { db.analytics.desk++; saveDB(); emitSuperData(); res.sendFile(__dirname + '/desk.html'); });
 app.get('/super', (req, res) => res.sendFile(__dirname + '/superadmin.html')); 
-app.get('/desk', (req, res) => { db.analytics.desk++; saveDB(); emitSuperData(); res.sendFile(__dirname + '/desk.html'); }); // 💼 ניתוב לאזור האישי
 
 // API קליקינט
 app.all('/api/answer', (req, res) => {
@@ -64,7 +71,7 @@ app.all('/api/answer', (req, res) => {
         let valRaw = input.val_1; let val = "";
         if (Array.isArray(valRaw)) val = valRaw[valRaw.length - 1]; else if (typeof valRaw === 'string') val = valRaw.split(',').pop().trim();
         
-        console.log(`📞 שיחה נכנסת! טלפון: ${phone} | הקשה: ${val} | חדר נוכחי: ${callToRoom[callId] || 'טרם נבחר'}`);
+        console.log(`📞 קליקינט! טלפון: ${phone} | הקשה: ${val} | חדר: ${callToRoom[callId] || 'טרם נבחר'}`);
         if (val === '*') { delete callToRoom[callId]; return res.send("read=t-נא להקיש קוד משחק וסולמית=val_1,no,10,1,15,no,no"); }
 
         let roomId = callToRoom[callId];
@@ -72,7 +79,7 @@ app.all('/api/answer', (req, res) => {
             if (val !== undefined && val !== '') {
                 if (!db.pins[val]) return res.send(`read=t-קוד שגוי נא לנסות שוב=val_1,no,10,1,15,no,no`);
                 if (db.pins[val].expiresAt && exactHitTime > db.pins[val].expiresAt) return res.send(`id_list_message=t-תוקף הקוד פג&go_to_folder=hangup`);
-                if (db.pins[val].gamesLeft <= 0) return res.send(`id_list_message=t-הקוד סיים את מכסת המשחקים&go_to_folder=hangup`);
+                if (db.pins[val].gamesLeft <= 0) return res.send(`id_list_message=t-הקוד סיים מכסה&go_to_folder=hangup`);
                 callToRoom[callId] = val; getRoom(val);
                 return res.send(`id_list_message=t-מחובר בהצלחה&read=t-ממתין=val_1,no,1,1,10,no,no`);
             } else { return res.send("read=t-ברוכים הבאים הקישו קוד משחק וסולמית=val_1,no,10,1,15,no,no"); }
@@ -105,7 +112,7 @@ app.all('/api/answer', (req, res) => {
     } catch(err) { res.send("id_list_message=t-שגיאה וניתוק&go_to_folder=hangup"); }
 });
 
-// API זירה
+// API זירה משפחתית
 app.all('/api/arena', (req, res) => {
     res.set('Content-Type', 'text/plain; charset=utf-8');
     try {
@@ -114,6 +121,7 @@ app.all('/api/arena', (req, res) => {
         let valRaw = input.val_1; let val = "";
         if (Array.isArray(valRaw)) val = valRaw[valRaw.length - 1]; else if (typeof valRaw === 'string') val = valRaw.split(',').pop().trim();
         
+        console.log(`⚔️ זירה! טלפון: ${phone} | הקשה: ${val} | חדר: ${arenaCallToRoom[callId] || 'טרם נבחר'}`);
         if (val === '*') { delete arenaCallToRoom[callId]; return res.send("read=t-הקש קוד משחק וסולמית=val_1,no,10,1,15,no,no"); }
 
         let roomId = arenaCallToRoom[callId];
@@ -141,23 +149,21 @@ app.all('/api/arena', (req, res) => {
     } catch(err) { res.send("id_list_message=t-שגיאה וניתוק&go_to_folder=hangup"); }
 });
 
-function emitSuperData() { io.emit('superData', { pins: db.pins, vouchers: db.vouchers, messages: db.messages, portalMsg: db.portalMsg, portalAd: db.portalAd, publicExcels: db.publicExcels, analytics: db.analytics }); }
+function emitSuperData() { io.emit('superData', { pins: db.pins, vouchers: db.vouchers, messages: db.messages, portalMsg: db.portalMsg, portalAd: db.portalAd, publicExcels: db.publicExcels, analytics: db.analytics, arenaQuestions: db.arenaQuestions }); }
 function emitPortalData() { io.emit('portalData', { msg: db.portalMsg, ad: db.portalAd, excels: db.publicExcels }); }
 
 io.on('connection', (socket) => {
     
-    // 💼 סוקטים של האזור האישי חזרו!
+    socket.on('adClicked', () => { db.analytics.adClicks++; saveDB(); emitSuperData(); });
+    socket.on('updateArenaQuestions', data => { db.arenaQuestions = data; saveDB(); emitSuperData(); });
+    socket.on('killRoom', data => { if(data.type === 'trivia') { delete rooms[data.roomId]; } else if (data.type === 'arena') { delete arenaRooms[data.roomId]; } emitSuperData(); });
+
     socket.on('deskLogin', (pass) => { if (pass === "TCRHNHCUHTR") { socket.emit('deskData', db.myDesk); } else { socket.emit('deskError'); } });
     socket.on('deskUpdateData', (newData) => { db.myDesk.links = newData.links || db.myDesk.links; db.myDesk.passwords = newData.passwords || db.myDesk.passwords; db.myDesk.tasks = newData.tasks || db.myDesk.tasks; saveDB(); socket.emit('deskData', db.myDesk); });
     socket.on('deskUploadFile', data => { if(data.base64) { const base64Data = data.base64.replace(/^data:.*?;base64,/, ""); const fileName = 'desk_file_' + Date.now() + '_' + data.name; fs.writeFileSync('uploads/' + fileName, base64Data, 'base64'); db.myDesk.files.push({ name: data.name, url: '/uploads/' + fileName }); saveDB(); socket.emit('deskData', db.myDesk); } });
     socket.on('deskDeleteFile', index => { if(db.myDesk.files[index]) { const filePath = 'uploads/' + db.myDesk.files[index].url.split('/').pop(); if (fs.existsSync(filePath)) { fs.unlinkSync(filePath); } db.myDesk.files.splice(index, 1); saveDB(); socket.emit('deskData', db.myDesk); } });
 
-    // 📢 כריזה
-    socket.on('sendSystemMessage', data => {
-        let payload = { msg: data.msg, allowReply: data.reply };
-        if (data.room === 'all') { io.emit('sysMessage', payload); io.emit('arenaSysMessage', payload); } 
-        else { io.to(data.room).emit('sysMessage', payload); io.to('arena_' + data.room).emit('arenaSysMessage', payload); }
-    });
+    socket.on('sendSystemMessage', data => { let payload = { msg: data.msg, allowReply: data.reply }; if (data.room === 'all') { io.emit('sysMessage', payload); io.emit('arenaSysMessage', payload); } else { io.to(data.room).emit('sysMessage', payload); io.to('arena_' + data.room).emit('arenaSysMessage', payload); } });
 
     socket.on('getPortalData', () => { socket.emit('portalData', { msg: db.portalMsg, ad: db.portalAd, excels: db.publicExcels }); });
     socket.on('superLogin', (pass) => { if (pass === "Ahal2026!") emitSuperData(); else socket.emit('superError'); });
@@ -168,9 +174,43 @@ io.on('connection', (socket) => {
 
     socket.on('createBulkPins', (data) => { let start = parseInt(data.start); let end = data.end ? parseInt(data.end) : start; let initialGames = data.type === 'gold' ? 9999 : 3; for(let i = start; i <= end; i++) { db.pins[i.toString()] = { type: data.type, gamesLeft: initialGames, created: new Date().toLocaleDateString('he-IL'), expiresAt: data.expiresAt }; } saveDB(); emitSuperData(); });
     socket.on('deletePin', (pin) => { delete db.pins[pin]; saveDB(); emitSuperData(); });
-    socket.on('createVoucher', data => { db.vouchers[data.code] = { type: data.type, days: parseInt(data.days), used: false, created: new Date().toLocaleDateString('he-IL') }; saveDB(); emitSuperData(); });
+    
+    // 🎫 יצירת וואוצ'ר משודרגת - תומכת ב"קוד ציבורי"!
+    socket.on('createVoucher', data => { 
+        db.vouchers[data.code] = { 
+            type: data.type, 
+            days: parseInt(data.days), 
+            used: false, 
+            isPublic: data.isPublic || false, // שומר אם זה קוד רב-פעמי
+            usesCount: 0, // מונה שימושים לקוד ציבורי
+            created: new Date().toLocaleDateString('he-IL') 
+        }; 
+        saveDB(); emitSuperData(); 
+    });
+    
     socket.on('deleteVoucher', code => { delete db.vouchers[code]; saveDB(); emitSuperData(); });
-    socket.on('redeemVoucher', code => { let v = db.vouchers[code]; if(v && !v.used) { let newPin; do { newPin = Math.floor(10000 + Math.random() * 90000).toString(); } while(db.pins[newPin]); let expiresAt = Date.now() + (v.days * 24 * 60 * 60 * 1000); db.pins[newPin] = { type: v.type, gamesLeft: (v.type==='gold'?9999:3), created: new Date().toLocaleDateString('he-IL'), expiresAt: expiresAt }; v.used = true; v.generatedPin = newPin; saveDB(); socket.emit('voucherResult', { success: true, pin: newPin, type: v.type, days: v.days }); emitSuperData(); } else { socket.emit('voucherResult', { success: false, error: 'קוד האישור שגוי או שכבר נעשה בו שימוש.' }); } });
+    
+    // 🎫 פדיון וואוצ'ר משודרג - לא "שורף" קוד ציבורי!
+    socket.on('redeemVoucher', code => { 
+        let v = db.vouchers[code]; 
+        if(v && (!v.used || v.isPublic)) { // אם זה פנוי, או אם זה קוד ציבורי רב-פעמי
+            let newPin; do { newPin = Math.floor(10000 + Math.random() * 90000).toString(); } while(db.pins[newPin]); 
+            let expiresAt = Date.now() + (v.days * 24 * 60 * 60 * 1000); 
+            db.pins[newPin] = { type: v.type, gamesLeft: (v.type==='gold'?9999:3), created: new Date().toLocaleDateString('he-IL'), expiresAt: expiresAt }; 
+            
+            if (v.isPublic) {
+                v.usesCount = (v.usesCount || 0) + 1; // מוסיף למונה
+            } else {
+                v.used = true; // שורף קוד רגיל
+                v.generatedPin = newPin; 
+            }
+            
+            saveDB(); socket.emit('voucherResult', { success: true, pin: newPin, type: v.type, days: v.days }); emitSuperData(); 
+        } else { 
+            socket.emit('voucherResult', { success: false, error: 'קוד האישור שגוי או שכבר נעשה בו שימוש.' }); 
+        } 
+    });
+
     socket.on('submitMessage', msg => { if(!db.messages) db.messages = []; db.messages.push({ date: new Date().toLocaleString('he-IL'), name: msg.name, text: msg.text }); saveDB(); socket.emit('messageResult', { success: true }); emitSuperData(); });
     socket.on('deleteMessage', index => { if(db.messages && db.messages[index]) { db.messages.splice(index, 1); saveDB(); emitSuperData(); } });
 
@@ -182,7 +222,7 @@ io.on('connection', (socket) => {
         socket.emit('liveStatsData', { stats: stats, calls: calls }); 
     });
 
-    // --- חדרים קליקינט ---
+    // --- קליקינט ---
     socket.on('joinRoom', (roomId) => { if (!db.pins[roomId]) return socket.emit('loginResponse', { success: false, error: 'קוד לא קיים!' }); if (db.pins[roomId].expiresAt && Date.now() > db.pins[roomId].expiresAt) return socket.emit('loginResponse', { success: false, error: 'הקוד פג תוקף!' }); socket.join(roomId); socket.roomId = roomId; const room = getRoom(roomId); let gamesDisplay = (db.pins[roomId].type === 'gold') ? 'ללא הגבלה 👑' : db.pins[roomId].gamesLeft; socket.emit('loginResponse', { success: true, gamesLeft: gamesDisplay }); socket.emit('updateSettings', room.gameSettings); socket.emit('updateLeaderboard', room.activePlayers); socket.emit('lockState', room.answersLocked); socket.emit('updateQuestions', room.questions); socket.emit('doublePointsState', room.isDoublePoints); });
     socket.on('startGame', () => { if(!socket.roomId) return; let room = rooms[socket.roomId]; if(room.questions.length === 0) return; if (db.pins[socket.roomId].type !== 'gold') { db.pins[socket.roomId].gamesLeft--; saveDB(); } let gamesDisplay = (db.pins[socket.roomId].type === 'gold') ? 'ללא הגבלה 👑' : db.pins[socket.roomId].gamesLeft; io.to(socket.roomId).emit('updateGamesLeft', gamesDisplay); room.gameActive = true; room.currentQuestion = 0; room.answersLocked = true; room.isDoublePoints = false; for(let p in room.activePlayers) { room.activePlayers[p].score = 0; room.activePlayers[p].lastAnswered = -1; room.activePlayers[p].streak = 0; room.activePlayers[p].currentChoice = null; } io.to(socket.roomId).emit('doublePointsState', false); io.to(socket.roomId).emit('newQuestion', room.questions[room.currentQuestion]); io.to(socket.roomId).emit('lockState', true); io.to(socket.roomId).emit('updateLeaderboard', room.activePlayers); });
     socket.on('addSingleQuestion', q => { if(socket.roomId) { if (q.imgBase64) { const base64Data = q.imgBase64.replace(/^data:image\/\w+;base64,/, ""); const fileName = 'img_' + Date.now() + '.png'; fs.writeFileSync('uploads/' + fileName, base64Data, 'base64'); q.image = '/uploads/' + fileName; delete q.imgBase64; } rooms[socket.roomId].questions.push(q); io.to(socket.roomId).emit('updateQuestions', rooms[socket.roomId].questions); } });
@@ -206,7 +246,8 @@ io.on('connection', (socket) => {
     socket.on('showVictoryScreen', () => { if(socket.roomId) { let room = rooms[socket.roomId]; room.gameActive = false; room.answersLocked = true; io.to(socket.roomId).emit('lockState', true); const topPlayers = Object.values(room.activePlayers).sort((a,b) => b.score - a.score).slice(0, 3); io.to(socket.roomId).emit('victoryPodium', topPlayers); } });
     socket.on('updatePlayerName', ({ phone, newName }) => { if(socket.roomId) { db.phonebooks[socket.roomId][phone] = newName; saveDB(); if (rooms[socket.roomId].activePlayers[phone]) rooms[socket.roomId].activePlayers[phone].name = newName; io.to(socket.roomId).emit('updateLeaderboard', rooms[socket.roomId].activePlayers); } });
 
-    // --- זירה משפחתית ---
+    // --- זירה ---
+    socket.on('getArenaQuestions', () => { socket.emit('arenaQuestionsData', db.arenaQuestions); }); 
     socket.on('joinArenaRoom', roomId => { if (!db.pins[roomId]) return socket.emit('loginResponse', { success: false, error: 'קוד מפיק לא קיים!' }); if (db.pins[roomId].expiresAt && Date.now() > db.pins[roomId].expiresAt) return socket.emit('loginResponse', { success: false, error: 'הקוד פג תוקף!' }); socket.join('arena_' + roomId); if (!arenaRooms[roomId]) arenaRooms[roomId] = { players: {}, phase: 'lobby' }; socket.emit('loginResponse', { success: true }); socket.emit('arenaUpdatePlayers', arenaRooms[roomId].players); });
     socket.on('arenaSetPhase', data => { if(arenaRooms[data.roomId]) arenaRooms[data.roomId].phase = data.phase; });
     socket.on('arenaUpdateScores', data => { if(arenaRooms[data.roomId]) arenaRooms[data.roomId].players = data.players; });
@@ -214,4 +255,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V65.0 (Desk Restored!) is ONLINE ==="));
+http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V67.0 (Public Vouchers Added) is ONLINE ==="));
