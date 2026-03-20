@@ -177,11 +177,86 @@
         function showCustomInput() { const list = document.getElementById('custom-questions-list'); list.innerHTML = ''; for (let i = 1; i <= 20; i++) { list.innerHTML += `<div class="custom-q-wrapper"><div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;"><span class="q-number">${i}</span><input type="text" class="custom-q" placeholder="השאלה..." style="flex: 1;"></div><div style="padding-right: 35px;"><input type="text" class="custom-a" placeholder="התשובה..." style="width: 100%;"></div></div>`; } showScreen('screen-custom'); }
         function saveCustomQuestions() { const qInputs = document.querySelectorAll('.custom-q'); const aInputs = document.querySelectorAll('.custom-a'); selectedQuestions = Array.from(qInputs).map((input, i) => ({ q: input.value.trim() || "שאלה", a: aInputs[i].value.trim() || "תשובה" })).filter(item => item.q !== "שאלה"); if(selectedQuestions.length===0) selectedQuestions=[{q:"מי גיבור?", a:"אני"}]; showScreen('screen-players'); }
 
-        function startGame() { playersArray = Object.values(playersMap); prize = document.getElementById('prize-input').value || "תהילת עולם"; if (playersArray.length < 2) return alert("צריך לחבר לפחות 2 טלפונים כדי לשחק!"); const numPlayers = playersArray.length; let roundsPerPlayer; if (numPlayers === 2) roundsPerPlayer = 10; else if (numPlayers <= 5) roundsPerPlayer = 5; else roundsPerPlayer = 3; totalQuestionsLimit = numPlayers * roundsPerPlayer; let baseQuestions = [...selectedQuestions]; while (selectedQuestions.length < totalQuestionsLimit) { selectedQuestions.push(...baseQuestions); } selectedQuestions = selectedQuestions.slice(0, totalQuestionsLimit); socket.emit('arenaSetPhase', { roomId: myRoomId, phase: 'playing' }); currentQuestionIndex = 0; showScreen('screen-game'); document.getElementById('phase-question').classList.remove('hidden'); document.getElementById('phase-rating').classList.add('hidden'); showQuestionUI(); }
-        function showQuestionUI() { socket.emit('arenaSetPhase', { roomId: myRoomId, phase: 'playing' }); const player = playersArray[currentQuestionIndex % playersArray.length]; document.getElementById('turn-indicator').innerText = `התור של: ${player.name} 🎯`; let qText = selectedQuestions[currentQuestionIndex].q || selectedQuestions[currentQuestionIndex]; document.getElementById('current-question').innerText = qText; }
-        function goToRatingPhase() { playSound("click"); socket.emit('arenaSetPhase', { roomId: myRoomId, phase: 'rating' }); document.getElementById('phase-question').classList.add('hidden'); document.getElementById('phase-rating').classList.remove('hidden'); const currentQ = selectedQuestions[currentQuestionIndex]; const answerText = currentQ.a || "אין תשובה מוגדרת"; const ratingsDiv = document.getElementById('rating-inputs'); Object.values(playersMap).forEach(p => p.currentVote = 0); let html = `<div style="background: rgba(230, 126, 34, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 20px; border-right: 5px solid var(--accent); text-align: right;"><b style="color: var(--primary);">התשובה המקורית:</b><br><span style="font-size: 1.1rem;">${answerText}</span></div>`; const currentPlayerPhone = playersArray[currentQuestionIndex % playersArray.length].phone; Object.keys(playersMap).forEach(phone => { if(phone !== currentPlayerPhone) { html += `<div class="vote-row"><span style="font-size:1.2rem;"><b>${playersMap[phone].name}</b></span><div class="vote-status" id="status_${phone}">⏳ ממתין...</div></div>`; } }); ratingsDiv.innerHTML = html; }
-        function submitRatings() { playSound("success"); socket.emit('arenaSetPhase', { roomId: myRoomId, phase: 'playing' }); let totalTurnScore = 0; const currentPlayerPhone = playersArray[currentQuestionIndex % playersArray.length].phone; Object.keys(playersMap).forEach(phone => { if(phone !== currentPlayerPhone) { totalTurnScore += (playersMap[phone].currentVote || 0); } }); playersMap[currentPlayerPhone].score += totalTurnScore; socket.emit('arenaUpdateScores', { roomId: myRoomId, players: playersMap }); playersArray = Object.values(playersMap); currentQuestionIndex++; const isEndOfThirdRound = currentQuestionIndex % (playersArray.length * 3) === 0; if (currentQuestionIndex >= totalQuestionsLimit) { showLeaderboard(true); } else if (isEndOfThirdRound) { showLeaderboard(false); } else { document.getElementById('phase-question').classList.remove('hidden'); document.getElementById('phase-rating').classList.add('hidden'); showQuestionUI(); } }
-        function showLeaderboard(isFinal = false) { if (isFinal) playSound("win"); else playSound("success"); showScreen('screen-leaderboard'); const sorted = [...playersArray].sort((a, b) => b.score - a.score); document.getElementById('leaderboard-title').innerText = isFinal ? "🏆 תוצאות סופיות!" : "📊 מצב הביניים"; const podiumArea = document.getElementById('podium-area'); podiumArea.innerHTML = ""; const top3 = sorted.slice(0, 3); top3.forEach((p, i) => { const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"; const div = document.createElement('div'); div.className = `podium-place podium-${i + 1}`; div.innerHTML = `<span style="font-size:2rem">${medal}</span><div class="podium-name">${p.name}</div><div class="podium-score">${Math.floor(p.score)} נק'</div>`; podiumArea.appendChild(div); }); const restArea = document.getElementById('rest-area'); const restList = document.getElementById('rest-list'); if (sorted.length > 3) { restArea.classList.remove('hidden'); restList.innerHTML = sorted.slice(3).map((p, i) => `<div class="rest-item"><span>${i + 4}. ${p.name}</span><span>${Math.floor(p.score)} נקודות</span></div>`).join(''); } else { restArea.classList.add('hidden'); } const btn = document.getElementById('leaderboard-btn'); if (isFinal) { podiumArea.insertAdjacentHTML('afterend', `<div style="margin-top: 30px; animation: fadeIn 1s ease;"><h3 style="color:var(--accent); margin-bottom: 20px;">🎉 הזוכה בפרס (${prize}) הוא: ${sorted[0].name}!</h3><hr style="border: 0; border-top: 1px solid rgba(0,0,0,0.1); margin: 25px 0;"></div>`); btn.innerText = "🎮 משחק חדש"; btn.onclick = () => location.reload(); } else { btn.innerText = "המשך לשאלה הבאה"; btn.onclick = () => { document.getElementById('phase-question').classList.remove('hidden'); document.getElementById('phase-rating').classList.add('hidden'); showScreen('screen-game'); showQuestionUI(); }; } }
+        // 💥 התיקון שביקשת! הסרתי את החסימה של שחקן 1 או 0 שחקנים
+        function startGame() { 
+            playersArray = Object.values(playersMap); 
+            prize = document.getElementById('prize-input').value || "תהילת עולם"; 
+            
+            const numPlayers = playersArray.length || 1; // תמיד יתייחס למינימום 1 כדי לא לקרוס בטסטים
+            let roundsPerPlayer; 
+            if (numPlayers <= 2) roundsPerPlayer = 10; 
+            else if (numPlayers <= 5) roundsPerPlayer = 5; 
+            else roundsPerPlayer = 3; 
+            
+            totalQuestionsLimit = numPlayers * roundsPerPlayer; 
+            
+            let baseQuestions = [...selectedQuestions]; 
+            while (selectedQuestions.length < totalQuestionsLimit) { selectedQuestions.push(...baseQuestions); } 
+            selectedQuestions = selectedQuestions.slice(0, totalQuestionsLimit); 
+            
+            socket.emit('arenaSetPhase', { roomId: myRoomId, phase: 'playing' }); 
+            currentQuestionIndex = 0; 
+            showScreen('screen-game'); 
+            document.getElementById('phase-question').classList.remove('hidden'); 
+            document.getElementById('phase-rating').classList.add('hidden'); 
+            showQuestionUI(); 
+        }
+        
+        function showQuestionUI() { 
+            socket.emit('arenaSetPhase', { roomId: myRoomId, phase: 'playing' }); 
+            const player = playersArray.length > 0 ? playersArray[currentQuestionIndex % playersArray.length] : { name: "מנחה המשחק (טסט)" }; 
+            document.getElementById('turn-indicator').innerText = `התור של: ${player.name} 🎯`; 
+            let qText = selectedQuestions[currentQuestionIndex].q || selectedQuestions[currentQuestionIndex]; 
+            document.getElementById('current-question').innerText = qText; 
+        }
+        
+        function goToRatingPhase() { 
+            playSound("click"); 
+            socket.emit('arenaSetPhase', { roomId: myRoomId, phase: 'rating' }); 
+            document.getElementById('phase-question').classList.add('hidden'); 
+            document.getElementById('phase-rating').classList.remove('hidden'); 
+            
+            const currentQ = selectedQuestions[currentQuestionIndex]; 
+            const answerText = currentQ.a || "אין תשובה מוגדרת"; 
+            const ratingsDiv = document.getElementById('rating-inputs'); 
+            Object.values(playersMap).forEach(p => p.currentVote = 0); 
+            
+            let html = `<div style="background: rgba(230, 126, 34, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 20px; border-right: 5px solid var(--accent); text-align: right;"><b style="color: var(--primary);">התשובה המקורית:</b><br><span style="font-size: 1.1rem;">${answerText}</span></div>`; 
+            
+            const currentPlayerPhone = playersArray.length > 0 ? playersArray[currentQuestionIndex % playersArray.length].phone : "none"; 
+            Object.keys(playersMap).forEach(phone => { 
+                if(phone !== currentPlayerPhone) { 
+                    html += `<div class="vote-row"><span style="font-size:1.2rem;"><b>${playersMap[phone].name}</b></span><div class="vote-status" id="status_${phone}">⏳ ממתין...</div></div>`; 
+                } 
+            }); 
+            ratingsDiv.innerHTML = html; 
+        }
+        
+        function submitRatings() { 
+            playSound("success"); 
+            socket.emit('arenaSetPhase', { roomId: myRoomId, phase: 'playing' }); 
+            let totalTurnScore = 0; 
+            const currentPlayerPhone = playersArray.length > 0 ? playersArray[currentQuestionIndex % playersArray.length].phone : "none"; 
+            
+            Object.keys(playersMap).forEach(phone => { 
+                if(phone !== currentPlayerPhone) { totalTurnScore += (playersMap[phone].currentVote || 0); } 
+            }); 
+            
+            if(playersMap[currentPlayerPhone]) playersMap[currentPlayerPhone].score += totalTurnScore; 
+            
+            socket.emit('arenaUpdateScores', { roomId: myRoomId, players: playersMap }); 
+            playersArray = Object.values(playersMap); 
+            
+            currentQuestionIndex++; 
+            const numPlayers = playersArray.length || 1;
+            const isEndOfThirdRound = currentQuestionIndex % (numPlayers * 3) === 0; 
+            
+            if (currentQuestionIndex >= totalQuestionsLimit) { showLeaderboard(true); } 
+            else if (isEndOfThirdRound) { showLeaderboard(false); } 
+            else { document.getElementById('phase-question').classList.remove('hidden'); document.getElementById('phase-rating').classList.add('hidden'); showQuestionUI(); } 
+        }
+        
+        function showLeaderboard(isFinal = false) { if (isFinal) playSound("win"); else playSound("success"); showScreen('screen-leaderboard'); const sorted = [...playersArray].sort((a, b) => b.score - a.score); document.getElementById('leaderboard-title').innerText = isFinal ? "🏆 תוצאות סופיות!" : "📊 מצב הביניים"; const podiumArea = document.getElementById('podium-area'); podiumArea.innerHTML = ""; const top3 = sorted.slice(0, 3); top3.forEach((p, i) => { const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"; const div = document.createElement('div'); div.className = `podium-place podium-${i + 1}`; div.innerHTML = `<span style="font-size:2rem">${medal}</span><div class="podium-name">${p.name}</div><div class="podium-score">${Math.floor(p.score)} נק'</div>`; podiumArea.appendChild(div); }); const restArea = document.getElementById('rest-area'); const restList = document.getElementById('rest-list'); if (sorted.length > 3) { restArea.classList.remove('hidden'); restList.innerHTML = sorted.slice(3).map((p, i) => `<div class="rest-item"><span>${i + 4}. ${p.name}</span><span>${Math.floor(p.score)} נקודות</span></div>`).join(''); } else { restArea.classList.add('hidden'); } const btn = document.getElementById('leaderboard-btn'); if (isFinal) { podiumArea.insertAdjacentHTML('afterend', `<div style="margin-top: 30px; animation: fadeIn 1s ease;"><h3 style="color:var(--accent); margin-bottom: 20px;">🎉 הזוכה בפרס (${prize}) הוא: ${sorted[0].name ? sorted[0].name : "אף אחד"}!</h3><hr style="border: 0; border-top: 1px solid rgba(0,0,0,0.1); margin: 25px 0;"></div>`); btn.innerText = "🎮 משחק חדש"; btn.onclick = () => location.reload(); } else { btn.innerText = "המשך לשאלה הבאה"; btn.onclick = () => { document.getElementById('phase-question').classList.remove('hidden'); document.getElementById('phase-rating').classList.add('hidden'); showScreen('screen-game'); showQuestionUI(); }; } }
 
         // 🚨 מערכת הודעות חירום ממנהל העל
         socket.on('arenaSysMessage', handleSysMsg);
