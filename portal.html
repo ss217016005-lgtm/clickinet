@@ -2,15 +2,16 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>קליקינט | פורטל לקוחות</title>
+    <title>קליקינט | שער הכניסה</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌐</text></svg>">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #0b0f19; color: #f8fafc; margin: 0; padding: 0; }
         header { background: #1e293b; padding: 20px; text-align: center; border-bottom: 2px solid #38bdf8; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        h1 { color: #38bdf8; margin: 0; font-size: 2.5rem; text-shadow: 0 0 10px rgba(56, 189, 248, 0.4); }
+        h1 { color: #38bdf8; margin: 0; font-size: 3rem; text-shadow: 0 0 10px rgba(56, 189, 248, 0.4); }
         
-        #systemMessageBanner { background: #eab308; color: #000; text-align: center; padding: 10px; font-weight: bold; font-size: 1.1rem; display: none; }
+        #tempMessageBanner { background: #ef4444; color: white; text-align: center; padding: 10px; font-weight: bold; font-size: 1.1rem; display: none; }
+        #permMessage { font-size: 1.2rem; color: #eab308; margin-top: 10px; }
         
         .container { max-width: 1100px; margin: 30px auto; padding: 0 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .card { background: #1e293b; padding: 25px; border-radius: 15px; border: 1px solid #334155; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); }
@@ -22,129 +23,86 @@
         .btn-success { background: #10b981; color: white; }
         .btn-danger { background: #ef4444; color: white; }
         
-        .result-box { display: none; background: #0f172a; border: 2px dashed #10b981; padding: 20px; text-align: center; border-radius: 10px; margin-top: 15px; }
-        .pin-display { font-size: 3rem; color: #eab308; font-weight: bold; letter-spacing: 5px; margin: 10px 0; }
-        
-        #adContainer { text-align: center; margin: 20px auto; max-width: 1000px; display: none; padding: 0 20px;}
-        #adContainer img { max-width: 100%; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); border: 2px solid #38bdf8; transition: transform 0.2s; cursor: pointer; }
-        #adContainer img:hover { transform: scale(1.01); }
-        .ad-label { font-size: 0.8rem; color: #94a3b8; margin-bottom: 5px; }
-
-        .excel-dl-btn { display: inline-block; background: #334155; padding: 10px 15px; border-radius: 8px; text-decoration: none; color: #38bdf8; margin: 5px; border: 1px solid #475569; transition: background 0.2s;}
-        .excel-dl-btn:hover { background: #475569; color: #fff;}
-        
         .quick-links-container { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin-top: 15px; }
-        .quick-link-btn { width: auto; padding: 15px 30px; font-size: 1.2rem; display: flex; align-items: center; gap: 10px; }
+        .quick-link-btn { width: auto; padding: 15px 40px; font-size: 1.4rem; display: flex; align-items: center; gap: 10px; border: 2px solid rgba(255,255,255,0.2); }
         
-        .guide-text { line-height: 1.6; color: #cbd5e1; }
-        .guide-text h3 { color: #38bdf8; margin-bottom: 5px; margin-top: 25px;}
-        .guide-text ul { margin-top: 5px; }
+        /* מערכת הפרסומות החדשה */
+        .ads-section { margin-top: 30px; text-align: center; }
+        .ads-grid { display: flex; gap: 15px; overflow-x: auto; padding: 10px 0; justify-content: center; }
+        .ad-item { flex-shrink: 0; width: 250px; border-radius: 10px; overflow: hidden; border: 2px solid #334155; transition: transform 0.2s; cursor: pointer; }
+        .ad-item:hover { transform: scale(1.05); border-color: #38bdf8; }
+        .ad-item img { width: 100%; height: 150px; object-fit: cover; display: block; }
+        
+        .excel-dl-btn { display: inline-block; background: #334155; padding: 10px 15px; border-radius: 8px; text-decoration: none; color: #38bdf8; margin: 5px; border: 1px solid #475569;}
+        .result-box { display: none; background: #0f172a; border: 2px dashed #10b981; padding: 20px; text-align: center; border-radius: 10px; margin-top: 15px; }
     </style>
 </head>
 <body>
 
-    <div id="systemMessageBanner"></div>
+    <div id="tempMessageBanner"></div>
 
     <header>
-        <h1>ברוכים הבאים לפורטל קליקינט</h1>
-        <p style="color: #94a3b8; font-size: 1.2rem; margin-top: 5px;">המרכז שלכם לניהול משחקים, קודים והדרכות</p>
+        <h1>קליקינט</h1>
+        <p style="color: #94a3b8; font-size: 1.2rem; margin-top: 5px;">המערכת הארצית למשחקים אינטראקטיביים דרך הטלפון</p>
+        <div id="permMessage"></div>
     </header>
-
-    <div id="adContainer">
-        <div class="ad-label">- חסות -</div>
-        <a id="adLink" href="#" target="_blank" onclick="socket.emit('adClicked')">
-            <img id="adImage" src="" alt="פרסומת">
-        </a>
-    </div>
 
     <div class="container">
         
-        <div class="card full-width" style="text-align: center; border-color: #38bdf8; box-shadow: 0 0 20px rgba(56, 189, 248, 0.2);">
-            <h2 style="color: #38bdf8; border-bottom: none;">🚀 גישה מהירה למערכות המשחק</h2>
+        <div class="card full-width" style="text-align: center; border-color: #38bdf8; box-shadow: 0 0 30px rgba(56, 189, 248, 0.3);">
+            <h2 style="color: #38bdf8; border-bottom: none; font-size: 2rem;">באיזה משחק נשחק היום?</h2>
             <div class="quick-links-container">
-                <button class="quick-link-btn" style="background: #10b981;" onclick="window.open('/', '_blank')">📺 מסך קהל (טריוויה)</button>
-                <button class="quick-link-btn" style="background: #e67e22;" onclick="window.open('/arena', '_blank')">⚔️ הזירה המשפחתית</button>
-                <button class="quick-link-btn" style="background: #3b82f6;" onclick="window.open('/admin', '_blank')">⚙️ ניהול חדר (מפיק)</button>
+                <button class="quick-link-btn" style="background: #10b981; color: white;" onclick="window.open('/play', '_blank')">📺 כניסה למסך טריוויה</button>
+                <button class="quick-link-btn" style="background: #e67e22; color: white;" onclick="window.open('/arena', '_blank')">⚔️ כניסה לזירה המשפחתית</button>
+                <button class="quick-link-btn" style="background: #3b82f6; color: white;" onclick="window.open('/admin', '_blank')">⚙️ כניסה לניהול המפיק</button>
+            </div>
+        </div>
+
+        <div class="card full-width" style="border-color: #eab308;">
+            <h2 style="color: #eab308; text-align: center; border-bottom: none;">🛒 חסויות וציוד משלים לאירוע שלכם</h2>
+            
+            <div class="ads-section" id="sec-projectors" style="display:none;">
+                <h3 style="color:#cbd5e1; text-align:right;">🎥 מקרנים ומסכים:</h3>
+                <div class="ads-grid" id="grid-projectors"></div>
+            </div>
+            
+            <div class="ads-section" id="sec-computers" style="display:none;">
+                <h3 style="color:#cbd5e1; text-align:right;">💻 מחשבים ואביזרים:</h3>
+                <div class="ads-grid" id="grid-computers"></div>
+            </div>
+            
+            <div class="ads-section" id="sec-phones" style="display:none;">
+                <h3 style="color:#cbd5e1; text-align:right;">📱 פלאפונים ותקשורת:</h3>
+                <div class="ads-grid" id="grid-phones"></div>
+            </div>
+            
+            <div class="ads-section" id="sec-general" style="display:none;">
+                <h3 style="color:#cbd5e1; text-align:right;">✨ כללי:</h3>
+                <div class="ads-grid" id="grid-general"></div>
             </div>
         </div>
 
         <div class="card">
             <h2>🎫 הפעלת קוד אישור (Voucher)</h2>
-            <p>קיבלתם קוד אישור? הקישו אותו כאן כדי לקבל קוד מפיק (PIN) להפעלת החדרים:</p>
+            <p>יש לכם קוד אישור? הקישו כאן כדי לקבל קוד מפיק (PIN):</p>
             <input type="text" id="voucherCode" placeholder="הקש קוד אישור כאן...">
             <button class="btn-success" onclick="redeem()">משוך קוד מפיק עכשיו</button>
-            
             <div id="voucherResult" class="result-box">
                 <p style="margin: 0; color: #10b981; font-size: 1.2rem;">האישור עבר בהצלחה! קוד המפיק שלך הוא:</p>
-                <div class="pin-display" id="generatedPin">12345</div>
+                <div style="font-size: 3rem; color: #eab308; font-weight: bold; letter-spacing: 5px;" id="generatedPin"></div>
                 <p style="margin: 0; font-size: 0.9rem; color: #94a3b8;">סוג מנוי: <span id="vType"></span> | תקף ל-<span id="vDays"></span> ימים.</p>
-                <p style="color: #ef4444; font-weight: bold; margin-top: 10px;">שמור את הקוד הזה! לא ניתן לשחזר אותו.</p>
             </div>
         </div>
 
         <div class="card">
-            <h2>📁 מאגר שאלות ותבניות</h2>
-            <p>הורידו קבצי אקסל מוכנים או תבנית ריקה, והעלו אותם בקליק בחדר הבקרה:</p>
-            <button style="background: #eab308; color: #000; margin-bottom: 15px;" onclick="downloadTemplate()">📥 תבנית ריקה ליצירת משחק אישי</button>
-            <div id="publicExcelsArea" style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px;">
-                <p style="color: #94a3b8; font-size: 0.9rem; margin:0;">טוען מאגר שאלות...</p>
-            </div>
-        </div>
-
-        <div class="card">
-            <h2>✉️ יצירת קשר עם ההנהלה</h2>
-            <p>צריכים עזרה כללית? בקשה מיוחדת? שלחו הודעה להנהלת האתר:</p>
+            <h2>✉️ יצירת קשר / דיווח תקלה</h2>
+            <p>צריכים עזרה או נתקלתם בבעיה טכנית?</p>
             <input type="text" id="msgName" placeholder="השם שלך / מספר מפיק">
-            <textarea id="msgText" rows="3" placeholder="תוכן ההודעה..."></textarea>
-            <button onclick="sendMsg('regular')">שלח הודעה</button>
-        </div>
-
-        <div class="card" style="border-color: #ef4444;">
-            <h2 style="color: #ef4444; border-bottom-color: #ef4444;">🚨 דיווח על תקלות והפרעות</h2>
-            <p>נתקלתם בבאג טכני? יש שחקן שמפריע בחדר? דווחו לנו מיד לטיפול מהיר:</p>
-            <input type="text" id="reportName" placeholder="השם שלך / קוד החדר">
-            <textarea id="reportText" rows="3" placeholder="פרטי התקלה או ההפרעה..."></textarea>
-            <button class="btn-danger" onclick="sendMsg('report')">שלח דיווח דחוף</button>
-        </div>
-
-        <div class="card full-width">
-            <h2>📘 המדריך למפעיל – קליקינט והזירה המשפחתית</h2>
-            <div class="guide-text">
-                <p>מערכות המשחקים שלנו מאפשרות לכם להפעיל אירועים רבי משתתפים ישירות דרך מסך אחד, כאשר הקהל כולו משתתף ומצביע מהטלפון שלו בזמן אמת!</p>
-                
-                <h3>🎛️ 1. כניסה לחדר הבקרה (משחק טריוויה)</h3>
-                <p>היכנסו למערכת הניהול והקישו את קוד המפיק שלכם. בפאנל "מחסנית השאלות" תוכלו להזין שאלות ידנית או להעלות קובץ אקסל שהורדתם מהמאגר שלנו. מנויי פרימיום-זהב יכולים גם לצרף תמונות ולוגו חסות אישי.</p>
-
-                <h3>📺 2. חיבור הקהל</h3>
-                <p>פתחו במסך הגדול באולם את הכתובת של <b>מסך הקהל</b>. בקשו מהקהל לחייג למספר <b>077-2296674</b>, להקיש 1 למשחק טריוויה, ולאחר מכן את קוד המשחק שמופיע על המסך. שמות המשתתפים יתחילו לקפוץ בבועות!</p>
-
-                <h3>🎮 3. ניהול משחק הטריוויה</h3>
-                <p>לחצו על כפתור "התחל משחק". השתמשו בכפתור "טייס אוטומטי" כדי שהמערכת תנהל את הכל לבד (הקראת שאלה, שעון 15 שניות, גרף הצבעות וחשיפת תשובה), או שלטו ידנית בקצב באמצעות הכפתורים הבודדים. תוכלו גם להפעיל מוזיקת רקע ולזרוק שחקנים מפריעים דרך ניהול הקהל.</p>
-
-                <hr style="border-color: #334155; margin: 30px 0;">
-
-                <h3 style="color: #eab308; font-size: 1.5rem;">⚔️ 4. הפעלת "הזירה המשפחתית" (משחק חדש!)</h3>
-                <p>הזירה המשפחתית היא משחק חברתי ומשעשע שמבוסס על דירוגים. במקום תשובות אמריקאיות, השחקנים צריכים לענות יצירתית והקהל שופט אותם!</p>
-                <ul>
-                    <li>היכנסו לקישור <b>הזירה המשפחתית</b> מהתפריט המהיר למעלה, והקישו את קוד המפיק שלכם.</li>
-                    <li>בחרו נושא שאלות מתוך הכרטיסיות שעל המסך (טבע, משפחה, צחוקים וכו'), או כתבו שאלות משלכם.</li>
-                    <li>בקשו מהקהל לחייג לקו, <b>להקיש 2 (לזירת דירוגים)</b> ואז את קוד המשחק שלכם.</li>
-                    <li>בכל תור, המערכת תבחר שחקן אחד שיצטרך לענות בקול רם על השאלה שעל המסך.</li>
-                    <li>לאחר שענה, המנחה ילחץ "עניתי!", וכל שאר הקהל יתבקש <b>להקיש בטלפון שלו ציון מ-1 עד 10</b> על התשובה.</li>
-                    <li>המערכת תשקלל את הציונים ותציג פודיום מנצחים מרהיב בסוף המשחק!</li>
-                </ul>
+            <textarea id="msgText" rows="3" placeholder="תוכן הפנייה..."></textarea>
+            <div style="display:flex; gap:10px;">
+                <button onclick="sendMsg('regular')">שלח הודעה</button>
+                <button class="btn-danger" onclick="sendMsg('report')">🚨 דווח תקלה</button>
             </div>
-        </div>
-
-    </div>
-
-    <div id="sysAlertModal" style="display:none; position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#ef4444; color:white; padding:20px; border-radius:15px; z-index:10000; box-shadow:0 10px 30px rgba(0,0,0,0.5); text-align:center; min-width:300px; border: 2px solid #fff;">
-        <h3 style="margin-top:0; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">🚨 הודעה מהנהלת האתר</h3>
-        <p id="sysAlertText" style="font-size:1.3rem; font-weight:bold; margin-bottom: 20px;"></p>
-        <input type="text" id="sysAlertReply" placeholder="הקלד תגובה למנהל..." style="display:none; width:90%; padding:12px; margin-top:10px; border-radius:8px; border:none; color:black; font-size:1rem; box-sizing: border-box;">
-        <div style="margin-top:15px; display:flex; gap:10px; justify-content:center;">
-            <button style="background:#334155; padding:10px 20px; border-radius:8px; color:#fff; border:none; cursor:pointer;" onclick="document.getElementById('sysAlertModal').style.display='none'">הבנתי, תודה</button>
-            <button id="sysAlertSendBtn" style="display:none; background:#10b981; padding:10px 20px; border-radius:8px; color:#fff; border:none; font-weight:bold; cursor:pointer;" onclick="sendSysReply()">שלח תגובה למנהל</button>
         </div>
     </div>
 
@@ -155,75 +113,36 @@
         socket.emit('getPortalData');
         
         socket.on('portalData', data => {
-            const msgBanner = document.getElementById('systemMessageBanner');
-            if(data.msg && data.msg.trim() !== '') { msgBanner.innerText = data.msg; msgBanner.style.display = 'block'; }
-            else { msgBanner.style.display = 'none'; }
-
-            const adContainer = document.getElementById('adContainer');
-            if(data.ad && data.ad.img) {
-                document.getElementById('adImage').src = data.ad.img; document.getElementById('adLink').href = data.ad.link || "#";
-                adContainer.style.display = 'block';
-            } else { adContainer.style.display = 'none'; }
-
-            const excelsArea = document.getElementById('publicExcelsArea');
-            excelsArea.innerHTML = '';
-            if(!data.excels || data.excels.length === 0) { excelsArea.innerHTML = '<p style="color: #94a3b8; font-size: 0.9rem; margin:0;">אין כרגע קבצים במאגר.</p>'; } 
-            else { data.excels.forEach(ex => { excelsArea.innerHTML += `<a href="${ex.url}" class="excel-dl-btn" download>📥 ${ex.name}</a>`; }); }
-        });
-
-        function redeem() {
-            const code = document.getElementById('voucherCode').value.trim();
-            if(!code) return alert("נא להקיש קוד אישור!"); socket.emit('redeemVoucher', code);
-        }
-
-        socket.on('voucherResult', res => {
-            if(res.success) {
-                document.getElementById('generatedPin').innerText = res.pin;
-                let t = res.type === 'gold' ? '👑 פרימיום זהב' : (res.type === 'premium' ? '💎 פרימיום' : 'רגיל');
-                document.getElementById('vType').innerText = t; document.getElementById('vDays').innerText = res.days;
-                document.getElementById('voucherResult').style.display = 'block';
-            } else { alert(res.error); }
-        });
-
-        function sendMsg(type) {
-            let nameId = type === 'report' ? 'reportName' : 'msgName';
-            let textId = type === 'report' ? 'reportText' : 'msgText';
-            
-            const name = document.getElementById(nameId).value.trim(); 
-            const text = document.getElementById(textId).value.trim();
-            
-            if(!name || !text) return alert("נא למלא את כל השדות!"); 
-            
-            const finalText = type === 'report' ? `[🚨 דיווח תקלה]: ${text}` : text;
-            socket.emit('submitMessage', { name, text: finalText });
-            
-            document.getElementById(nameId).value = ''; document.getElementById(textId).value = '';
-        }
-
-        socket.on('messageResult', res => {
-            if(res.success) { alert('נשלח בהצלחה למנהל המערכת!'); }
-        });
-
-        function downloadTemplate() {
-            let data = [ ["שאלה", "תשובה 1", "תשובה 2", "תשובה 3", "תשובה 4", "מספר נכונה (1-4)"], ["מה בירת ישראל?", "תל אביב", "ירושלים", "חיפה", "אילת", "2"] ];
-            let ws = XLSX.utils.aoa_to_sheet(data); let wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "תבנית קליקינט"); XLSX.writeFile(wb, `Clickinet_Template.xlsx`);
-        }
-
-        // קליטת הודעת המנהל
-        socket.on('sysMessage', handleSysMsg);
-        function handleSysMsg(data) {
-            document.getElementById('sysAlertText').innerText = data.msg;
-            document.getElementById('sysAlertModal').style.display = 'block';
-            if(data.allowReply) { document.getElementById('sysAlertReply').style.display = 'block'; document.getElementById('sysAlertSendBtn').style.display = 'block'; } 
-            else { document.getElementById('sysAlertReply').style.display = 'none'; document.getElementById('sysAlertSendBtn').style.display = 'none'; }
-        }
-        function sendSysReply() {
-            const reply = document.getElementById('sysAlertReply').value;
-            if(reply) {
-                socket.emit('submitMessage', { name: "תגובה מפורטל הלקוחות", text: reply });
-                document.getElementById('sysAlertModal').style.display = 'none'; document.getElementById('sysAlertReply').value = ''; alert('נשלח בהצלחה להנהלה!');
+            // הודעות מערכת
+            if(data.msg) {
+                const tempBanner = document.getElementById('tempMessageBanner');
+                if(data.msg.temporary) { tempBanner.innerHTML = data.msg.temporary; tempBanner.style.display = 'block'; } else { tempBanner.style.display = 'none'; }
+                document.getElementById('permMessage').innerHTML = data.msg.permanent || "";
             }
-        }
+
+            // סידור הפרסומות בקטגוריות
+            if(data.ads) {
+                ['projectors', 'computers', 'phones', 'general'].forEach(cat => {
+                    const grid = document.getElementById('grid-' + cat);
+                    const section = document.getElementById('sec-' + cat);
+                    grid.innerHTML = '';
+                    if(data.ads[cat] && data.ads[cat].length > 0) {
+                        section.style.display = 'block';
+                        data.ads[cat].forEach(ad => {
+                            grid.innerHTML += `<div class="ad-item" onclick="openAd('${ad.link}')"><img src="${ad.img}"></div>`;
+                        });
+                    } else { section.style.display = 'none'; }
+                });
+            }
+        });
+
+        function openAd(link) { socket.emit('adClicked'); window.open(link, '_blank'); }
+
+        function redeem() { const code = document.getElementById('voucherCode').value.trim(); if(!code) return alert("נא להקיש קוד!"); socket.emit('redeemVoucher', code); }
+        socket.on('voucherResult', res => { if(res.success) { document.getElementById('generatedPin').innerText = res.pin; let t = res.type === 'gold' ? '👑 זהב' : (res.type === 'premium' ? '💎 פרימיום' : 'רגיל'); document.getElementById('vType').innerText = t; document.getElementById('vDays').innerText = res.days; document.getElementById('voucherResult').style.display = 'block'; } else { alert(res.error); } });
+
+        function sendMsg(type) { const name = document.getElementById('msgName').value.trim(); const text = document.getElementById('msgText').value.trim(); if(!name || !text) return alert("מלא הכל!"); const finalText = type === 'report' ? `[🚨 דיווח תקלה]: ${text}` : text; socket.emit('submitMessage', { name, text: finalText }); document.getElementById('msgName').value = ''; document.getElementById('msgText').value = ''; }
+        socket.on('messageResult', res => { if(res.success) { alert('נשלח להנהלה!'); } });
     </script>
 </body>
 </html>
