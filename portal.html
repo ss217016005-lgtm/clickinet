@@ -7,9 +7,13 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #0b0f19; color: #f8fafc; margin: 0; padding: 0; }
-        header { background: #1e293b; padding: 20px; text-align: center; border-bottom: 2px solid #38bdf8; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        header { background: #1e293b; padding: 20px; text-align: center; border-bottom: 2px solid #38bdf8; box-shadow: 0 4px 15px rgba(0,0,0,0.5); position: relative;}
         h1 { color: #38bdf8; margin: 0; font-size: 3rem; text-shadow: 0 0 10px rgba(56, 189, 248, 0.4); }
         
+        /* הכפתור הסודי למנכ"ל */
+        .secret-btn { position: absolute; top: 20px; left: 20px; font-size: 2rem; text-decoration: none; cursor: default; user-select: none; opacity: 0.1; transition: 0.3s; }
+        .secret-btn:hover { opacity: 1; cursor: pointer; }
+
         #tempMessageBanner { background: #ef4444; color: white; text-align: center; padding: 10px; font-weight: bold; font-size: 1.1rem; display: none; }
         #permMessage { font-size: 1.2rem; color: #eab308; margin-top: 10px; }
         
@@ -26,12 +30,12 @@
         .quick-links-container { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin-top: 15px; }
         .quick-link-btn { width: auto; padding: 15px 40px; font-size: 1.4rem; display: flex; align-items: center; gap: 10px; border: 2px solid rgba(255,255,255,0.2); }
         
-        /* מערכת הפרסומות החדשה */
+        /* פרסומות לא נחתכות יותר! - contain במקום cover */
         .ads-section { margin-top: 30px; text-align: center; }
         .ads-grid { display: flex; gap: 15px; overflow-x: auto; padding: 10px 0; justify-content: center; }
-        .ad-item { flex-shrink: 0; width: 250px; border-radius: 10px; overflow: hidden; border: 2px solid #334155; transition: transform 0.2s; cursor: pointer; }
+        .ad-item { flex-shrink: 0; width: 250px; border-radius: 10px; overflow: hidden; border: 2px solid #334155; transition: transform 0.2s; cursor: pointer; background: white;}
         .ad-item:hover { transform: scale(1.05); border-color: #38bdf8; }
-        .ad-item img { width: 100%; height: 150px; object-fit: cover; display: block; }
+        .ad-item img { width: 100%; height: 150px; object-fit: contain; display: block; }
         
         .excel-dl-btn { display: inline-block; background: #334155; padding: 10px 15px; border-radius: 8px; text-decoration: none; color: #38bdf8; margin: 5px; border: 1px solid #475569;}
         .result-box { display: none; background: #0f172a; border: 2px dashed #10b981; padding: 20px; text-align: center; border-radius: 10px; margin-top: 15px; }
@@ -46,6 +50,7 @@
     <div id="tempMessageBanner"></div>
 
     <header>
+        <a href="/desk" class="secret-btn" title="לאזור האישי">💼</a>
         <h1>קליקינט</h1>
         <p style="color: #94a3b8; font-size: 1.2rem; margin-top: 5px;">המערכת הארצית למשחקים אינטראקטיביים דרך הטלפון</p>
         <div id="permMessage"></div>
@@ -121,7 +126,7 @@
                 <p>פתחו במסך הגדול באולם את הכתובת של <b>מסך הקהל</b>. בקשו מהקהל לחייג למספר <b>077-2296674</b>, להקיש 1 למשחק טריוויה, ולאחר מכן את קוד המשחק שמופיע על המסך. שמות המשתתפים יתחילו לקפוץ בבועות!</p>
 
                 <h3>🎮 3. ניהול משחק הטריוויה</h3>
-                <p>לחצו על כפתור "התחל משחק". השתמשו בכפתור "טייס אוטומטי" כדי שהמערכת תנהל את הכל לבד (הקראת שאלה, שעון 15 שניות, גרף הצבעות וחשיפת תשובה), או שלטו ידנית בקצב באמצעות הכפתורים הבודדים. תוכלו גם להפעיל מוזיקת רקע ולזרוק שחקנים מפריעים דרך ניהול הקהל.</p>
+                <p>לחצו על כפתור "התחל משחק". השתמשו בכפתור "טייס אוטומטי" כדי שהמערכת תנהל את הכל לבד, או שלטו ידנית בקצב באמצעות הכפתורים. תוכלו גם להפעיל מוזיקת רקע ולזרוק שחקנים מפריעים.</p>
 
                 <hr style="border-color: #334155; margin: 30px 0;">
 
@@ -129,8 +134,8 @@
                 <p>הזירה המשפחתית היא משחק חברתי ומשעשע שמבוסס על דירוגים. במקום תשובות אמריקאיות, השחקנים צריכים לענות יצירתית והקהל שופט אותם!</p>
                 <ul>
                     <li>היכנסו לקישור <b>הזירה המשפחתית</b> מהתפריט המהיר למעלה, והקישו את קוד המפיק שלכם.</li>
-                    <li>בחרו נושא שאלות מתוך הכרטיסיות שעל המסך (טבע, משפחה, צחוקים וכו'), או כתבו שאלות משלכם.</li>
-                    <li>בקשו מהקהל לחייג לקו, <b>להקיש 2 (לזירת דירוגים)</b> ואז את קוד המשחק שלכם.</li>
+                    <li>בחרו נושא שאלות מתוך הכרטיסיות שעל המסך, או כתבו שאלות משלכם.</li>
+                    <li>בקשו מהקהל לחייג לקו, <b>להקיש 2 (לזירת דירוגים)</b> ואז את קוד המשחק.</li>
                     <li>בכל תור, המערכת תבחר שחקן אחד שיצטרך לענות בקול רם על השאלה שעל המסך.</li>
                     <li>לאחר שענה, המנחה ילחץ "עניתי!", וכל שאר הקהל יתבקש <b>להקיש בטלפון שלו ציון מ-1 עד 10</b> על התשובה.</li>
                     <li>המערכת תשקלל את הציונים ותציג פודיום מנצחים מרהיב בסוף המשחק!</li>
@@ -140,6 +145,16 @@
 
     </div>
 
+    <div id="sysAlertModal" style="display:none; position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#ef4444; color:white; padding:20px; border-radius:15px; z-index:10000; box-shadow:0 10px 30px rgba(0,0,0,0.5); text-align:center; min-width:300px; border: 2px solid #fff;">
+        <h3 style="margin-top:0; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">🚨 הודעה מהנהלת האתר</h3>
+        <p id="sysAlertText" style="font-size:1.3rem; font-weight:bold; margin-bottom: 20px;"></p>
+        <input type="text" id="sysAlertReply" placeholder="הקלד תגובה למנהל..." style="display:none; width:90%; padding:12px; margin-top:10px; border-radius:8px; border:none; color:black; font-size:1rem; box-sizing: border-box;">
+        <div style="margin-top:15px; display:flex; gap:10px; justify-content:center;">
+            <button style="background:#334155; padding:10px 20px; border-radius:8px; color:#fff; border:none; cursor:pointer;" onclick="document.getElementById('sysAlertModal').style.display='none'">הבנתי, תודה</button>
+            <button id="sysAlertSendBtn" style="display:none; background:#10b981; padding:10px 20px; border-radius:8px; color:#fff; border:none; font-weight:bold; cursor:pointer;" onclick="sendSysReply()">שלח תגובה למנהל</button>
+        </div>
+    </div>
+
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
@@ -147,14 +162,12 @@
         socket.emit('getPortalData');
         
         socket.on('portalData', data => {
-            // הודעות מערכת
             if(data.msg) {
                 const tempBanner = document.getElementById('tempMessageBanner');
                 if(data.msg.temporary) { tempBanner.innerHTML = data.msg.temporary; tempBanner.style.display = 'block'; } else { tempBanner.style.display = 'none'; }
                 document.getElementById('permMessage').innerHTML = data.msg.permanent || "";
             }
 
-            // סידור הפרסומות בקטגוריות
             if(data.ads) {
                 ['projectors', 'computers', 'phones', 'general'].forEach(cat => {
                     const grid = document.getElementById('grid-' + cat);
@@ -177,6 +190,18 @@
 
         function sendMsg(type) { const name = document.getElementById('msgName').value.trim(); const text = document.getElementById('msgText').value.trim(); if(!name || !text) return alert("מלא הכל!"); const finalText = type === 'report' ? `[🚨 דיווח תקלה]: ${text}` : text; socket.emit('submitMessage', { name, text: finalText }); document.getElementById('msgName').value = ''; document.getElementById('msgText').value = ''; }
         socket.on('messageResult', res => { if(res.success) { alert('נשלח להנהלה!'); } });
+
+        socket.on('sysMessage', handleSysMsg);
+        function handleSysMsg(data) {
+            document.getElementById('sysAlertText').innerText = data.msg;
+            document.getElementById('sysAlertModal').style.display = 'block';
+            if(data.allowReply) { document.getElementById('sysAlertReply').style.display = 'block'; document.getElementById('sysAlertSendBtn').style.display = 'block'; } 
+            else { document.getElementById('sysAlertReply').style.display = 'none'; document.getElementById('sysAlertSendBtn').style.display = 'none'; }
+        }
+        function sendSysReply() {
+            const reply = document.getElementById('sysAlertReply').value;
+            if(reply) { socket.emit('submitMessage', { name: "תגובה מפורטל הלקוחות", text: reply }); document.getElementById('sysAlertModal').style.display = 'none'; document.getElementById('sysAlertReply').value = ''; alert('נשלח בהצלחה להנהלה!'); }
+        }
     </script>
 </body>
 </html>
