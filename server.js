@@ -37,7 +37,13 @@ try {
             db = { ...db, ...parsed }; 
             if(!db.analytics) db.analytics = { portal: 0, audience: 0, admin: 0, arena: 0, desk: 0, adClicks: 0 }; 
             if(!db.analytics.adClicks) db.analytics.adClicks = 0;
-            if(!db.arenaQuestions || !db.arenaQuestions.family || db.arenaQuestions.family.length === 0) { db.arenaQuestions = defaultArenaQuestions; }
+            
+            // 🔥 התיקון הקריטי: דורס בכוח אם הזיכרון הישן מחזיק פחות מ-5 שאלות
+            if(!db.arenaQuestions || !db.arenaQuestions.family || db.arenaQuestions.family.length < 5) { 
+                db.arenaQuestions = defaultArenaQuestions; 
+                saveDB(); 
+            }
+            
             if(!db.portalMsg || typeof db.portalMsg === 'string') db.portalMsg = { permanent: db.portalMsg, temporary: "" };
             if(!db.ads) db.ads = { projectors: [], computers: [], phones: [], general: [] };
         }
@@ -62,9 +68,10 @@ function getRoom(roomId) {
     return rooms[roomId];
 }
 
-// 🌐 ניתובים - הפורטל הוא עכשיו דף הבית (/) והקהל הוא (/play)
-app.get('/', (req, res) => { db.analytics.portal++; saveDB(); emitSuperData(); res.sendFile(__dirname + '/portal.html'); }); // שער הכניסה (האב)
-app.get('/play', (req, res) => { db.analytics.audience++; saveDB(); emitSuperData(); res.sendFile(__dirname + '/index.html'); }); // מסך הקהל של הטריוויה
+// 🌐 ניתובים (הפניה מ-/portal ל-/)
+app.get('/', (req, res) => { db.analytics.portal++; saveDB(); emitSuperData(); res.sendFile(__dirname + '/portal.html'); });
+app.get('/portal', (req, res) => { res.redirect(301, '/'); }); // מעביר את כולם לכתובת החדשה!
+app.get('/play', (req, res) => { db.analytics.audience++; saveDB(); emitSuperData(); res.sendFile(__dirname + '/index.html'); });
 app.get('/admin', (req, res) => { db.analytics.admin++; saveDB(); emitSuperData(); res.sendFile(__dirname + '/admin.html'); });
 app.get('/arena', (req, res) => { db.analytics.arena++; saveDB(); emitSuperData(); res.sendFile(__dirname + '/arena.html'); });
 app.get('/desk', (req, res) => { db.analytics.desk++; saveDB(); emitSuperData(); res.sendFile(__dirname + '/desk.html'); });
@@ -159,20 +166,19 @@ function emitPortalData() { io.emit('portalData', { msg: db.portalMsg, ads: db.a
 
 io.on('connection', (socket) => {
     
-    // 🖱️ קליטת לחיצות על הפרסומות החדשות
     socket.on('adClicked', () => { db.analytics.adClicks++; saveDB(); emitSuperData(); });
-
-    // עדכון הודעות מפוצלות (קבוע + זמני)
     socket.on('updatePortalMsgs', data => { db.portalMsg.permanent = data.perm; db.portalMsg.temporary = data.temp; saveDB(); emitPortalData(); emitSuperData(); });
-    
-    // הוספת מחיקת פרסומות לפי קטגוריה
     socket.on('addAd', data => { if (data.imgBase64) { const base64Data = data.imgBase64.replace(/^data:image\/\w+;base64,/, ""); const fileName = 'ad_' + Date.now() + '.png'; fs.writeFileSync('uploads/' + fileName, base64Data, 'base64'); db.ads[data.category].push({ img: '/uploads/' + fileName, link: data.link }); saveDB(); emitPortalData(); emitSuperData(); } });
     socket.on('deleteAd', data => { db.ads[data.category].splice(data.index, 1); saveDB(); emitPortalData(); emitSuperData(); });
 
     socket.on('updateArenaQuestions', data => { db.arenaQuestions = data; saveDB(); emitSuperData(); });
     socket.on('killRoom', data => { if(data.type === 'trivia') { delete rooms[data.roomId]; } else if (data.type === 'arena') { delete arenaRooms[data.roomId]; } emitSuperData(); });
-
     socket.on('sendSystemMessage', data => { let payload = { msg: data.msg, allowReply: data.reply }; if (data.room === 'all') { io.emit('sysMessage', payload); io.emit('arenaSysMessage', payload); } else { io.to(data.room).emit('sysMessage', payload); io.to('arena_' + data.room).emit('arenaSysMessage', payload); } });
+
+    socket.on('deskLogin', (pass) => { if (pass === "TCRHNHCUHTR") { socket.emit('deskData', db.myDesk); } else { socket.emit('deskError'); } });
+    socket.on('deskUpdateData', (newData) => { db.myDesk.links = newData.links || db.myDesk.links; db.myDesk.passwords = newData.passwords || db.myDesk.passwords; db.myDesk.tasks = newData.tasks || db.myDesk.tasks; saveDB(); socket.emit('deskData', db.myDesk); });
+    socket.on('deskUploadFile', data => { if(data.base64) { const base64Data = data.base64.replace(/^data:.*?;base64,/, ""); const fileName = 'desk_file_' + Date.now() + '_' + data.name; fs.writeFileSync('uploads/' + fileName, base64Data, 'base64'); db.myDesk.files.push({ name: data.name, url: '/uploads/' + fileName }); saveDB(); socket.emit('deskData', db.myDesk); } });
+    socket.on('deskDeleteFile', index => { if(db.myDesk.files[index]) { const filePath = 'uploads/' + db.myDesk.files[index].url.split('/').pop(); if (fs.existsSync(filePath)) { fs.unlinkSync(filePath); } db.myDesk.files.splice(index, 1); saveDB(); socket.emit('deskData', db.myDesk); } });
 
     socket.on('getPortalData', () => { emitPortalData(); });
     socket.on('superLogin', (pass) => { if (pass === "Ahal2026!") emitSuperData(); else socket.emit('superError'); });
@@ -229,4 +235,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V70.0 (The Hub & Ad Engine) is ONLINE ==="));
+http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V71.0 (Full SuperAdmin) is ONLINE ==="));
