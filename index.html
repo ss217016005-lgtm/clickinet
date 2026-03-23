@@ -50,6 +50,11 @@
         #timerDisplay { position: absolute; top: -10px; right: 20px; font-size: 4rem; color: #f97316; font-weight: bold; text-shadow: 0 0 10px rgba(249,115,22,0.5); }
         .correct-answer { background: #10b981 !important; border-color: #fff !important; transform: scale(1.05); box-shadow: 0 0 40px rgba(16, 185, 129, 0.8); z-index: 5;}
 
+        /* 🎛️ פס השליטה החדש בתחתית (למסך בודד) */
+        #miniAdminControls { display: none; position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(15, 23, 42, 0.95); padding: 15px 0; border-top: 2px solid #38bdf8; justify-content: center; gap: 15px; z-index: 1000; backdrop-filter: blur(5px); }
+        .mini-btn { background: #1e293b; color: white; border: 1px solid #475569; padding: 10px 20px; border-radius: 8px; font-size: 1.1rem; cursor: pointer; transition: 0.2s; font-weight: bold; }
+        .mini-btn:hover { background: #334155; transform: translateY(-2px); }
+
         @keyframes popIn { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
         @keyframes shake { 0%, 100% { transform: translate(0,0); } 10%, 30%, 50%, 70%, 90% { transform: translate(-5px,0); } 20%, 40%, 60%, 80% { transform: translate(5px,0); } }
@@ -58,7 +63,7 @@
 <body onclick="enableAudio()">
 
     <div id="topNav">
-        <button class="nav-btn" onclick="window.open('/portal', '_blank')">🌐 לפורטל</button>
+        <button class="nav-btn" onclick="window.location.href='/'">🌐 לפורטל הראשי</button>
         <button class="nav-btn" onclick="window.open('/admin', '_blank')">⚙️ ניהול משחק</button>
         <button class="nav-btn btn-disconnect" id="disconnectBtn" onclick="disconnectRoom()">🚪 התנתק מחדר</button>
     </div>
@@ -98,6 +103,15 @@
                 <div class="answer-box" id="ans-4"><div class="bar-fill" id="bar-4"></div><span class="num">4</span> <span class="answer-text" id="text-4"></span> <span class="bar-count" id="count-4">0</span></div>
             </div>
         </div>
+    </div>
+
+    <div id="miniAdminControls">
+        <button class="mini-btn" style="border-color:#10b981; color:#10b981;" onclick="socket.emit('startGame')">▶️ התחל</button>
+        <button class="mini-btn" onclick="socket.emit('prevQuestion')">⏮️ הקודמת</button>
+        <button class="mini-btn" onclick="socket.emit('nextQuestion')">⏭️ הבאה</button>
+        <button class="mini-btn" style="border-color:#f97316; color:#f97316;" onclick="socket.emit('startTimer', 15)">⏱️ שעון</button>
+        <button class="mini-btn" style="border-color:#3b82f6; color:#3b82f6;" onclick="socket.emit('showChart')">📊 גרף</button>
+        <button class="mini-btn" style="border-color:#8b5cf6; color:#8b5cf6;" onclick="socket.emit('revealAnswer')">👁️ תשובה</button>
     </div>
 
     <div id="sysAlertModal" style="display:none; position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#ef4444; color:white; padding:20px; border-radius:15px; z-index:10000; box-shadow:0 10px 30px rgba(0,0,0,0.5); text-align:center; min-width:300px; border: 2px solid #fff;">
@@ -153,6 +167,8 @@
                 document.getElementById('joinBox').style.display = 'none';
                 document.getElementById('mainContainer').style.display = 'block';
                 document.getElementById('disconnectBtn').style.display = 'block';
+                // חשיפת פס השליטה המינימלי למטה
+                document.getElementById('miniAdminControls').style.display = 'flex';
             } else { alert(res.error); sessionStorage.removeItem('clickinetPlayerRoom'); }
         });
 
