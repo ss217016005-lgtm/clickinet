@@ -56,6 +56,23 @@
         </div>
 
         <div class="grid">
+            <div class="panel" style="border-color: #f59e0b;">
+                <h2 style="margin-top:0; color:#f59e0b;">👁️ רדאר שיחות וחדרים (Live)</h2>
+                <button onclick="fetchLiveStats()" style="width: 100%; background: #f59e0b; color: black; margin-bottom: 10px;">🔄 רענן נתונים עכשיו</button>
+                <div id="liveCallsArea" style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-bottom: 15px; font-family: monospace; max-height: 100px; overflow-y: auto;">טוען...</div>
+                <div id="liveStatsArea" style="max-height: 400px; overflow-y: auto;">טוען...</div>
+            </div>
+
+            <div class="panel" style="border-color: #8b5cf6;">
+                <h2 style="margin-top:0; color:#8b5cf6;">🚨 כריזת חירום לחדרים הפעילים</h2>
+                <input type="text" id="broadcastTarget" placeholder="הכנס PIN של חדר ספציפי (השאר ריק כדי לשלוח לכולם!)">
+                <textarea id="broadcastMsg" rows="3" placeholder="תוכן ההודעה שתוצג להם..."></textarea>
+                <div style="margin: 10px 0;"><input type="checkbox" id="broadcastReply" style="width: auto; margin-left: 5px;"><label for="broadcastReply" style="color: #10b981;">אפשר ללקוחות להשיב בחזרה אלי</label></div>
+                <button style="width: 100%; background: #8b5cf6; color: white;" onclick="sendBroadcast()">📡 שדר הודעה לחדר(ים)</button>
+            </div>
+        </div>
+
+        <div class="grid">
             <div class="panel">
                 <h2 style="margin-top:0; color:#eab308;">📢 הודעות למסך קליקינט</h2>
                 <label style="color:#10b981;">הודעה קבועה (מתחת לכותרת):</label>
@@ -78,33 +95,19 @@
                 <input type="text" id="adLinkInput" placeholder="קישור לחיצה (למשל: mailto:test@gmail.com)">
                 <input type="file" id="adImageFile" accept="image/*">
                 <button style="width: 100%; background: #f59e0b; color: black;" onclick="addAd()">➕ הוסף פרסומת לקטגוריה</button>
-                
                 <div id="adsListArea" style="max-height: 150px; overflow-y: auto; margin-top: 15px;"></div>
             </div>
         </div>
 
         <div class="grid">
-            <div class="panel" style="border-color: #f59e0b;">
-                <h2 style="margin-top:0; color:#f59e0b;">👁️ רדאר שיחות וחדרים (Live)</h2>
-                <button onclick="fetchLiveStats()" style="width: 100%; background: #f59e0b; color: black; margin-bottom: 10px;">🔄 רענן נתונים עכשיו</button>
-                <div id="liveCallsArea" style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-bottom: 15px; font-family: monospace; max-height: 100px; overflow-y: auto;">טוען...</div>
-                <div id="liveStatsArea" style="max-height: 300px; overflow-y: auto;">טוען...</div>
-            </div>
-
-            <div class="panel" style="border-color: #8b5cf6;">
-                <h2 style="margin-top:0; color:#8b5cf6;">🚨 כריזת חירום לחדרים הפעילים</h2>
-                <input type="text" id="broadcastTarget" placeholder="הכנס PIN של חדר ספציפי (השאר ריק כדי לשלוח לכולם!)">
-                <textarea id="broadcastMsg" rows="3" placeholder="תוכן ההודעה שתוצג להם..."></textarea>
-                <div style="margin: 10px 0;"><input type="checkbox" id="broadcastReply" style="width: auto; margin-left: 5px;"><label for="broadcastReply" style="color: #10b981;">אפשר ללקוחות להשיב בחזרה אלי</label></div>
-                <button style="width: 100%; background: #8b5cf6; color: white;" onclick="sendBroadcast()">📡 שדר הודעה לחדר(ים)</button>
-            </div>
-        </div>
-
-        <div class="grid">
-            <div class="panel" style="border-color: #ef4444;">
-                <h2 style="margin-top:0; color:#ef4444;">🚨 תקלות ובקשות קשר</h2>
-                <div id="reportsArea" style="max-height: 150px; overflow-y: auto; margin-bottom: 10px;"></div>
-                <div id="messagesArea" style="max-height: 150px; overflow-y: auto;"></div>
+            <div class="panel" style="border-color: #38bdf8;">
+                <h2 style="margin-top:0; color:#38bdf8;">📁 מאגר קבצי אקסל ציבורי (לפורטל)</h2>
+                <p style="font-size:0.9rem; color:#94a3b8; margin-top:0;">העלה קבצי אקסל לכאן, וכולם יוכלו להוריד אותם מהפורטל הראשי.</p>
+                <input type="text" id="excelNameInput" placeholder="שם הקובץ (למשל: טריוויה חנוכה)">
+                <input type="file" id="publicExcelFile" accept=".xlsx, .xls">
+                <button style="width: 100%; background: #38bdf8; color: black;" onclick="uploadExcel()">⬆️ העלה קובץ לפורטל</button>
+                <h3 style="color:#cbd5e1; font-size:1rem; border-bottom:1px solid #334155; padding-bottom:5px;">קבצים קיימים במאגר:</h3>
+                <div id="excelsListArea" style="max-height: 150px; overflow-y: auto;"></div>
             </div>
 
             <div class="panel" style="border-color: #10b981;">
@@ -119,19 +122,22 @@
         </div>
 
         <div class="grid">
+            <div class="panel" style="border-color: #ef4444;">
+                <h2 style="margin-top:0; color:#ef4444;">🚨 תקלות ובקשות קשר</h2>
+                <div id="reportsArea" style="max-height: 150px; overflow-y: auto; margin-bottom: 10px;"></div>
+                <div id="messagesArea" style="max-height: 150px; overflow-y: auto;"></div>
+            </div>
+
             <div class="panel">
                 <h2 style="margin-top:0; color:#10b981;">🎫 וואוצ'רים וקודים</h2>
-                
                 <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
                     <h4 style="margin-top:0;">יצירת קוד אישור (Voucher)</h4>
                     <input type="text" id="vCode" placeholder="למשל: FREE2026">
                     <select id="vType"><option value="regular">רגיל</option><option value="premium">פרימיום</option><option value="gold">👑 זהב</option></select>
-                    <input type="number" id="vDays" placeholder="תוקף בימים (לכל PIN שייווצר)">
+                    <input type="number" id="vDays" placeholder="תוקף בימים">
                     <div style="margin: 10px 0;"><input type="checkbox" id="vIsPublic" style="width: auto;"> <label style="color:#10b981; font-weight:bold;">קוד ציבורי (ללא הגבלת שימושים!)</label></div>
                     <button style="width: 100%; background: #10b981; color: white;" onclick="createVoucher()">ייצר וואוצ'ר</button>
                 </div>
-                
-                <hr style="border-color:#334155; margin:15px 0;">
                 <h4 style="margin-top:0;">יצירת PIN ישיר למפיק</h4>
                 <input type="number" id="pinStart" placeholder="PIN התחלה (1000)">
                 <input type="number" id="pinEnd" placeholder="PIN סיום (לכמות מרובה)">
@@ -139,15 +145,18 @@
                 <input type="date" id="expireDate">
                 <button style="width: 100%;" onclick="createPins()">ייצר PIN/ים</button>
             </div>
-            
+        </div>
+
+        <div class="grid">
             <div class="panel">
                 <h2 style="margin-top:0;">📋 קודי מפיק (PIN) קיימים</h2>
                 <div style="max-height: 250px; overflow-y: auto; margin-bottom: 20px;">
                     <table><thead><tr><th>קוד</th><th>סוג</th><th>משחקים</th><th>מחק</th></tr></thead><tbody id="pinsBody"></tbody></table>
                 </div>
-
+            </div>
+            <div class="panel">
                 <h2 style="margin-top:0;">🎫 וואוצ'רים פעילים</h2>
-                <div style="max-height: 200px; overflow-y: auto;">
+                <div style="max-height: 250px; overflow-y: auto;">
                     <table><thead><tr><th>קוד אישור</th><th>סוג</th><th>ימים</th><th>סטטוס / שימושים</th><th>מחק</th></tr></thead><tbody id="vouchersBody"></tbody></table>
                 </div>
             </div>
@@ -168,7 +177,7 @@
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        let latestRoomData = {}; let currentSpyRoomId = ""; let arenaQData = {}; let allAds = {};
+        let latestRoomData = {}; let currentSpyRoomId = ""; let arenaQData = {}; let allAds = {}; let publicExcels = [];
 
         window.onload = () => { let d = new Date(); d.setDate(d.getDate() + 2); document.getElementById('expireDate').valueAsDate = d; };
 
@@ -186,21 +195,20 @@
                 document.getElementById('countAdClicks').innerText = data.analytics.adClicks || 0; 
             }
 
-            // הודעות הפורטל המפוצלות
             if(data.portalMsg) {
                 document.getElementById('sysMsgPerm').value = data.portalMsg.permanent || "";
                 document.getElementById('sysMsgTemp').value = data.portalMsg.temporary || "";
             }
             
-            // טעינת פרסומות
             allAds = data.ads || { projectors: [], computers: [], phones: [], general: [] };
             renderAdsList();
 
-            // שאלות הזירה
+            publicExcels = data.publicExcels || [];
+            renderExcelsList();
+
             arenaQData = data.arenaQuestions || { family: [], nature: [], general: [], funny: [] };
             if(document.getElementById('arenaQText').value === "") loadArenaCat(); 
 
-            // הודעות ודיווחים
             const msgArea = document.getElementById('messagesArea'); const reportsArea = document.getElementById('reportsArea'); msgArea.innerHTML = ''; reportsArea.innerHTML = '';
             let msgCount = 0; let repCount = 0;
             (data.messages || []).forEach((m, index) => { 
@@ -210,11 +218,9 @@
             });
             if(msgCount===0) msgArea.innerHTML = '<p style="color:#94a3b8;">אין הודעות.</p>'; if(repCount===0) reportsArea.innerHTML = '<p style="color:#94a3b8;">אין דיווחים.</p>';
 
-            // קודים (PIN)
             const pinsTbody = document.getElementById('pinsBody'); pinsTbody.innerHTML = '';
             for (let pin in data.pins) { let p = data.pins[pin]; let typeStr = p.type === 'gold' ? '👑 זהב' : (p.type === 'premium' ? '💎 פרימיום' : 'רגיל'); pinsTbody.innerHTML += `<tr><td><b>${pin}</b></td><td>${typeStr}</td><td>${p.type === 'gold'?'∞':p.gamesLeft}</td><td><button class="btn-danger" onclick="deletePin('${pin}')">X</button></td></tr>`; }
 
-            // וואוצ'רים כולל הציבורי
             const vouchTbody = document.getElementById('vouchersBody'); vouchTbody.innerHTML = '';
             for (let code in data.vouchers) {
                 let v = data.vouchers[code]; let t = v.type === 'gold' ? '👑 זהב' : (v.type === 'premium' ? '💎 פרימיום' : 'רגיל');
@@ -223,7 +229,30 @@
             }
         });
 
-        // פונקציות הודעות ופרסומות
+        // פונקציות להעלאת אקסל
+        function uploadExcel() {
+            const fileInput = document.getElementById('publicExcelFile');
+            const name = document.getElementById('excelNameInput').value.trim() || 'קובץ שאלות חדש';
+            if(fileInput.files.length > 0) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    socket.emit('uploadPublicExcel', { name: name, base64: e.target.result });
+                    alert('הקובץ עלה בהצלחה לפורטל ולמאגר!');
+                    fileInput.value = ''; document.getElementById('excelNameInput').value = '';
+                };
+                reader.readAsDataURL(fileInput.files[0]);
+            } else { alert("נא לבחור קובץ אקסל קודם!"); }
+        }
+
+        function renderExcelsList() {
+            const area = document.getElementById('excelsListArea'); area.innerHTML = '';
+            if (publicExcels.length === 0) { area.innerHTML = '<p style="color:#94a3b8; font-size:0.9rem;">אין כרגע קבצים במאגר.</p>'; return; }
+            publicExcels.forEach((ex, idx) => {
+                area.innerHTML += `<div class="ad-list-item"><span>📄 ${ex.name}</span> <button class="btn-danger" style="margin:0;" onclick="deleteExcel(${idx})">מחק קובץ</button></div>`;
+            });
+        }
+        function deleteExcel(idx) { if(confirm('למחוק קובץ מהפורטל?')) socket.emit('deletePublicExcel', idx); }
+
         function updatePortalMsgs() { socket.emit('updatePortalMsgs', { perm: document.getElementById('sysMsgPerm').value, temp: document.getElementById('sysMsgTemp').value }); alert("הודעות עודכנו!"); }
         
         function addAd() {
@@ -248,21 +277,18 @@
         }
         function deleteAd(cat, idx) { if(confirm('למחוק פרסומת?')) socket.emit('deleteAd', { category: cat, index: idx }); }
 
-        // פונקציות זירה
         function loadArenaCat() { let cat = document.getElementById('arenaCatSelect').value; let list = arenaQData[cat] || []; document.getElementById('arenaQText').value = list.map(q => `${q.q} | ${q.a}`).join('\n'); }
         function saveArenaCat() { let cat = document.getElementById('arenaCatSelect').value; let text = document.getElementById('arenaQText').value; let list = text.split('\n').filter(l => l.includes('|')).map(l => { let parts = l.split('|'); return { q: parts[0].trim(), a: parts[1].trim() }; }); arenaQData[cat] = list; socket.emit('updateArenaQuestions', arenaQData); alert("הקטגוריה נשמרה!"); }
 
-        // פונקציות קודים ווואוצ'רים
         function createVoucher() { const c = document.getElementById('vCode').value.trim(); const t = document.getElementById('vType').value; const d = document.getElementById('vDays').value; const isPub = document.getElementById('vIsPublic').checked; if(!c || !d) return alert("חסר נתונים!"); socket.emit('createVoucher', { code:c, type:t, days:d, isPublic: isPub }); document.getElementById('vCode').value = ''; document.getElementById('vIsPublic').checked = false; }
         function createPins() { const s = document.getElementById('pinStart').value; const e = document.getElementById('pinEnd').value; const t = document.getElementById('pinType').value; const d = document.getElementById('expireDate').value; if (!s) return; let exp = new Date(d).getTime() + (23 * 60 * 60 * 1000) + (59 * 60 * 1000); socket.emit('createBulkPins', { start:s, end:e, type:t, expiresAt:exp }); document.getElementById('pinStart').value = ''; document.getElementById('pinEnd').value = ''; }
         function deletePin(pin) { if(confirm('למחוק?')) socket.emit('deletePin', pin); }
         function deleteVoucher(code) { if(confirm('למחוק וואוצ\'ר?')) socket.emit('deleteVoucher', code); }
         function deleteMsg(index) { if(confirm('למחוק?')) socket.emit('deleteMessage', index); }
 
-        // כריזה ושידורים
         function sendBroadcast() { const target = document.getElementById('broadcastTarget').value.trim() || 'all'; const msg = document.getElementById('broadcastMsg').value.trim(); const allowReply = document.getElementById('broadcastReply').checked; if(!msg) return alert("הקלד הודעה!"); socket.emit('sendSystemMessage', { room: target, msg: msg, reply: allowReply }); alert("ההודעה שודרה!"); document.getElementById('broadcastMsg').value = ''; }
 
-        // רדאר מודיעין
+        // 👁️ הרדאר החדש! עכשיו הוא ממיין לפי זמן ומציג כמה שאלות יש
         function fetchLiveStats() { document.getElementById('liveStatsArea').innerHTML = '<p style="color:#38bdf8;">טוען...</p>'; document.getElementById('liveCallsArea').innerHTML = '<p style="color:#38bdf8;">טוען...</p>'; socket.emit('fetchLiveStats'); }
         socket.on('liveStatsData', (data) => {
             const stats = data.stats; const calls = data.calls; latestRoomData = stats;
@@ -271,21 +297,33 @@
             for(let id in calls.arena) { callsArea.innerHTML += `<div style="color:#ef4444;">⚔️ ${id} -> זירה (חדר: ${calls.arena[id]})</div>`; callCount++; }
             if(callCount === 0) callsArea.innerHTML = '<span style="color:#94a3b8;">אין שיחות על הקו.</span>';
 
-            const area = document.getElementById('liveStatsArea'); area.innerHTML = ''; let roomCount = 0; 
-            for (let r in stats) {
-                roomCount++; let s = stats[r]; let typeIcon = s.type === 'arena' ? '⚔️ זירה' : '📺 טריוויה'; let statusClass = s.isActive ? 'live-active' : 'live-idle';
+            const area = document.getElementById('liveStatsArea'); area.innerHTML = '';
+            
+            // 🎯 מיון החדרים מהחדש לישן
+            let sortedStats = Object.entries(stats).sort((a, b) => b[1].createdAt - a[1].createdAt);
+            
+            if (sortedStats.length === 0) { area.innerHTML = '<p style="color:#94a3b8;">אין חדרים פעילים.</p>'; return; }
+
+            for (let [r, s] of sortedStats) {
+                let typeIcon = s.type === 'arena' ? '⚔️ זירה' : '📺 טריוויה'; 
+                let statusClass = s.isActive ? 'live-active' : 'live-idle';
                 
+                // 🎯 הצגת כמות השאלות לטריוויה!
+                let qCountDisplay = s.type === 'trivia' ? ` | 📝 שאלות: <strong style="color:#eab308;">${s.qCount || 0}</strong>` : '';
+                
+                // 🎯 חותמת זמן!
+                let timeString = new Date(s.createdAt).toLocaleTimeString('he-IL', {hour: '2-digit', minute:'2-digit'});
+
                 area.innerHTML += `
                 <div class="live-room">
                     <button class="spy-btn" onclick="openSpy('${r}')">👁️ צפה בחדר</button>
                     <button class="kill-btn" onclick="killRoom('${r}', '${s.type}')">🗑️ מחיקת חדר מהזיכרון</button>
                     <div style="margin-right: 100px;">
-                        <div>חדר: <strong style="color: #38bdf8; font-size:1.2rem;">${r}</strong> | ${typeIcon}</div>
-                        <div><span class="${statusClass}">${s.isActive ? 'פעיל' : 'ממתין'}</span> | 👥 שחקנים: <strong>${s.players}</strong></div>
+                        <div>חדר: <strong style="color: #38bdf8; font-size:1.2rem;">${r}</strong> | ${typeIcon} <span style="font-size:0.85rem; color:#64748b;">(נוצר: ${timeString})</span></div>
+                        <div><span class="${statusClass}">${s.isActive ? 'פעיל' : 'ממתין'}</span> | 👥 שחקנים: <strong>${s.players}</strong>${qCountDisplay}</div>
                     </div>
                 </div>`;
             }
-            if (roomCount === 0) area.innerHTML = '<p style="color:#94a3b8;">אין חדרים פעילים.</p>';
         });
 
         function killRoom(roomId, type) { if(confirm(`להשמיד את חדר ${roomId} מהזיכרון?\nפעולה זו תנתק את כל השחקנים.`)) { socket.emit('killRoom', { roomId: roomId, type: type }); setTimeout(fetchLiveStats, 500); } }
@@ -305,8 +343,8 @@
             
             const linksArea = document.getElementById('spyMagicLinks');
             linksArea.innerHTML = `
-                <button style="background: #3b82f6;" onclick="window.open('/admin?pin=${roomId}', '_blank')">⚙️ כנס לניהול המשחק</button>
-                <button style="background: #10b981;" onclick="window.open('/play?pin=${roomId}', '_blank')">📺 כנס למסך הקהל</button>
+                <button style="background: #3b82f6;" onclick="window.open('/admin?pin=${roomId}', '_blank')">⚙️ ניהול המשחק</button>
+                <button style="background: #10b981;" onclick="window.open('/play?pin=${roomId}', '_blank')">📺 מסך הקהל</button>
                 <button style="background: #e67e22;" onclick="window.open('/arena?pin=${roomId}', '_blank')">⚔️ כנס לזירה</button>
             `;
             
