@@ -37,13 +37,7 @@ try {
             db = { ...db, ...parsed }; 
             if(!db.analytics) db.analytics = { portal: 0, audience: 0, admin: 0, arena: 0, desk: 0, adClicks: 0 }; 
             if(!db.analytics.adClicks) db.analytics.adClicks = 0;
-            
-            // 🔥 התיקון הקריטי: דורס בכוח אם הזיכרון הישן מחזיק פחות מ-5 שאלות
-            if(!db.arenaQuestions || !db.arenaQuestions.family || db.arenaQuestions.family.length < 5) { 
-                db.arenaQuestions = defaultArenaQuestions; 
-                saveDB(); 
-            }
-            
+            if(!db.arenaQuestions || !db.arenaQuestions.family || db.arenaQuestions.family.length < 5) { db.arenaQuestions = defaultArenaQuestions; saveDB(); }
             if(!db.portalMsg || typeof db.portalMsg === 'string') db.portalMsg = { permanent: db.portalMsg, temporary: "" };
             if(!db.ads) db.ads = { projectors: [], computers: [], phones: [], general: [] };
         }
@@ -59,7 +53,8 @@ function getRoom(roomId) {
         rooms[roomId] = {
             activePlayers: {}, questions: [], currentQuestion: -1, gameActive: false, answersLocked: true, isDoublePoints: false, 
             gameSettings: { gameName: "קליקינט", phoneNumber: "077-2296674", sponsorUrl: "", isPremium: (db.pins[roomId]?.type === 'premium' || db.pins[roomId]?.type === 'gold'), isGold: (db.pins[roomId]?.type === 'gold') },
-            calibrationState: 'off', calibrationStartTime: 0, questionStartTime: 0, timerTimeout: null
+            calibrationState: 'off', calibrationStartTime: 0, questionStartTime: 0, timerTimeout: null,
+            createdAt: Date.now(), lastActivity: Date.now() // הוספנו חותמות זמן
         };
         if (!db.phonebooks[roomId]) db.phonebooks[roomId] = {};
         if (!db.savedGames[roomId]) db.savedGames[roomId] = {};
@@ -68,9 +63,17 @@ function getRoom(roomId) {
     return rooms[roomId];
 }
 
-// 🌐 ניתובים (הפניה מ-/portal ל-/)
+// 🧹 מנקה חדרים מתים (10 שעות ללא פעילות)
+setInterval(() => {
+    let now = Date.now();
+    const TEN_HOURS = 10 * 60 * 60 * 1000;
+    for (let r in rooms) { if (now - (rooms[r].lastActivity || rooms[r].createdAt || now) > TEN_HOURS) { delete rooms[r]; } }
+    for (let r in arenaRooms) { if (now - (arenaRooms[r].lastActivity || arenaRooms[r].createdAt || now) > TEN_HOURS) { delete arenaRooms[r]; } }
+}, 30 * 60 * 1000); // בודק כל חצי שעה
+
+// ניתובים
 app.get('/', (req, res) => { db.analytics.portal++; saveDB(); emitSuperData(); res.sendFile(__dirname + '/portal.html'); });
-app.get('/portal', (req, res) => { res.redirect(301, '/'); }); // מעביר את כולם לכתובת החדשה!
+app.get('/portal', (req, res) => { res.redirect(301, '/'); }); 
 app.get('/play', (req, res) => { db.analytics.audience++; saveDB(); emitSuperData(); res.sendFile(__dirname + '/index.html'); });
 app.get('/admin', (req, res) => { db.analytics.admin++; saveDB(); emitSuperData(); res.sendFile(__dirname + '/admin.html'); });
 app.get('/arena', (req, res) => { db.analytics.arena++; saveDB(); emitSuperData(); res.sendFile(__dirname + '/arena.html'); });
@@ -94,13 +97,14 @@ app.all('/api/answer', (req, res) => {
                 if (!db.pins[val]) return res.send(`read=t-קוד שגוי נא לנסות שוב=val_1,no,10,1,15,no,no`);
                 if (db.pins[val].expiresAt && exactHitTime > db.pins[val].expiresAt) return res.send(`id_list_message=t-תוקף הקוד פג&go_to_folder=hangup`);
                 if (db.pins[val].gamesLeft <= 0) return res.send(`id_list_message=t-הקוד סיים מכסה&go_to_folder=hangup`);
-                callToRoom[callId] = val; const room = getRoom(val);
+                callToRoom[callId] = val; const room = getRoom(val); room.lastActivity = Date.now();
                 if (!room.activePlayers[phone]) { room.activePlayers[phone] = { name: db.phonebooks[val]?.[phone] || "שחקן חדש", score: 0, lastAnswered: -1, ping: 0, streak: 0, lastBreakdown: "" }; io.to(val).emit('updateLeaderboard', room.activePlayers); }
                 return res.send(`id_list_message=t-מחובר בהצלחה&read=t-ממתין=val_1,no,1,1,10,no,no`);
             } else { return res.send("read=t-ברוכים הבאים הקישו קוד משחק וסולמית=val_1,no,10,1,15,no,no"); }
         }
 
-        const room = getRoom(roomId); let player = room.activePlayers[phone];
+        const room = getRoom(roomId); room.lastActivity = Date.now();
+        let player = room.activePlayers[phone];
         if (!player) { room.activePlayers[phone] = { name: db.phonebooks[roomId]?.[phone] || "שחקן חדש", score: 0, lastAnswered: -1, ping: 0, streak: 0, lastBreakdown: "" }; player = room.activePlayers[phone]; io.to(roomId).emit('updateLeaderboard', room.activePlayers); }
         if (!val || val === '') return res.send(`read=t-ממתין=val_1,no,1,1,10,no,no`);
 
@@ -139,14 +143,14 @@ app.all('/api/arena', (req, res) => {
             if (val !== undefined && val !== '') {
                 if (!db.pins[val]) return res.send(`read=t-קוד שגוי נא לנסות שוב=val_1,no,10,1,15,no,no`);
                 arenaCallToRoom[callId] = val; 
-                if (!arenaRooms[val]) arenaRooms[val] = { players: {}, phase: 'lobby' }; 
-                const room = arenaRooms[val];
+                if (!arenaRooms[val]) arenaRooms[val] = { players: {}, phase: 'lobby', createdAt: Date.now(), lastActivity: Date.now() }; 
+                const room = arenaRooms[val]; room.lastActivity = Date.now();
                 if (!room.players[phone]) { room.players[phone] = { name: db.phonebooks[val]?.[phone] || "שחקן חדש", phone: phone, score: 0, currentVote: 0 }; io.to('arena_'+val).emit('arenaUpdatePlayers', room.players); }
                 return res.send(`id_list_message=t-מחובר לזירה&read=t-ממתין=val_1,no,10,1,10,no,no`); 
             } else { return res.send("read=t-ברוכים הבאים לזירה הקישו קוד משחק וסולמית=val_1,no,10,1,15,no,no"); }
         }
 
-        const room = arenaRooms[roomId];
+        const room = arenaRooms[roomId]; room.lastActivity = Date.now();
         if (!room.players[phone]) { room.players[phone] = { name: db.phonebooks[roomId]?.[phone] || "שחקן חדש", phone: phone, score: 0, currentVote: 0 }; io.to('arena_'+roomId).emit('arenaUpdatePlayers', room.players); }
         if (!val || val === '') return res.send(`read=t-ממתין=val_1,no,10,1,10,no,no`);
 
@@ -194,18 +198,29 @@ io.on('connection', (socket) => {
     socket.on('submitMessage', msg => { if(!db.messages) db.messages = []; db.messages.push({ date: new Date().toLocaleString('he-IL'), name: msg.name, text: msg.text }); saveDB(); socket.emit('messageResult', { success: true }); emitSuperData(); });
     socket.on('deleteMessage', index => { if(db.messages && db.messages[index]) { db.messages.splice(index, 1); saveDB(); emitSuperData(); } });
 
+    // 👁️ הרדאר המעודכן - עם מניית שאלות ומיון לפי תאריך!
     socket.on('fetchLiveStats', () => { 
         let stats = {}; 
-        for (let r in rooms) { let activeCount = Object.keys(rooms[r].activePlayers).length; if (activeCount > 0 || rooms[r].gameActive || rooms[r].questions.length > 0) { stats[r] = { type: 'trivia', players: activeCount, isActive: rooms[r].gameActive, qCount: rooms[r].questions.length, currentQ: rooms[r].currentQuestion + 1, playersData: rooms[r].activePlayers }; } }
-        for (let r in arenaRooms) { let activeCount = Object.keys(arenaRooms[r].players).length; if (activeCount > 0 || arenaRooms[r].phase !== 'lobby') { stats[r] = { type: 'arena', players: activeCount, isActive: (arenaRooms[r].phase !== 'lobby'), phase: arenaRooms[r].phase, playersData: arenaRooms[r].players }; } }
+        for (let r in rooms) { 
+            let activeCount = Object.keys(rooms[r].activePlayers).length; 
+            if (activeCount > 0 || rooms[r].gameActive || rooms[r].questions.length > 0) { 
+                stats[r] = { type: 'trivia', players: activeCount, isActive: rooms[r].gameActive, qCount: rooms[r].questions.length, currentQ: rooms[r].currentQuestion + 1, playersData: rooms[r].activePlayers, createdAt: rooms[r].createdAt || Date.now() }; 
+            } 
+        }
+        for (let r in arenaRooms) { 
+            let activeCount = Object.keys(arenaRooms[r].players).length; 
+            if (activeCount > 0 || arenaRooms[r].phase !== 'lobby') { 
+                stats[r] = { type: 'arena', players: activeCount, isActive: (arenaRooms[r].phase !== 'lobby'), phase: arenaRooms[r].phase, playersData: arenaRooms[r].players, createdAt: arenaRooms[r].createdAt || Date.now() }; 
+            } 
+        }
         let calls = { trivia: callToRoom, arena: arenaCallToRoom };
         socket.emit('liveStatsData', { stats: stats, calls: calls }); 
     });
 
-    // --- קליקינט טריוויה ---
-    socket.on('joinRoom', (roomId) => { if (!db.pins[roomId]) return socket.emit('loginResponse', { success: false, error: 'קוד לא קיים!' }); if (db.pins[roomId].expiresAt && Date.now() > db.pins[roomId].expiresAt) return socket.emit('loginResponse', { success: false, error: 'הקוד פג תוקף!' }); socket.join(roomId); socket.roomId = roomId; const room = getRoom(roomId); let gamesDisplay = (db.pins[roomId].type === 'gold') ? 'ללא הגבלה 👑' : db.pins[roomId].gamesLeft; socket.emit('loginResponse', { success: true, gamesLeft: gamesDisplay }); socket.emit('updateSettings', room.gameSettings); socket.emit('updateLeaderboard', room.activePlayers); socket.emit('lockState', room.answersLocked); socket.emit('updateQuestions', room.questions); socket.emit('doublePointsState', room.isDoublePoints); });
-    socket.on('startGame', () => { if(!socket.roomId) return; let room = rooms[socket.roomId]; if(room.questions.length === 0) return; if (db.pins[socket.roomId].type !== 'gold') { db.pins[socket.roomId].gamesLeft--; saveDB(); } let gamesDisplay = (db.pins[socket.roomId].type === 'gold') ? 'ללא הגבלה 👑' : db.pins[socket.roomId].gamesLeft; io.to(socket.roomId).emit('updateGamesLeft', gamesDisplay); room.gameActive = true; room.currentQuestion = 0; room.answersLocked = true; room.isDoublePoints = false; for(let p in room.activePlayers) { room.activePlayers[p].score = 0; room.activePlayers[p].lastAnswered = -1; room.activePlayers[p].streak = 0; room.activePlayers[p].currentChoice = null; } io.to(socket.roomId).emit('doublePointsState', false); io.to(socket.roomId).emit('newQuestion', room.questions[room.currentQuestion]); io.to(socket.roomId).emit('lockState', true); io.to(socket.roomId).emit('updateLeaderboard', room.activePlayers); });
-    socket.on('addSingleQuestion', q => { if(socket.roomId) { if (q.imgBase64) { const base64Data = q.imgBase64.replace(/^data:image\/\w+;base64,/, ""); const fileName = 'img_' + Date.now() + '.png'; fs.writeFileSync('uploads/' + fileName, base64Data, 'base64'); q.image = '/uploads/' + fileName; delete q.imgBase64; } rooms[socket.roomId].questions.push(q); io.to(socket.roomId).emit('updateQuestions', rooms[socket.roomId].questions); } });
+    // --- טריוויה ---
+    socket.on('joinRoom', (roomId) => { if (!db.pins[roomId]) return socket.emit('loginResponse', { success: false, error: 'קוד לא קיים!' }); if (db.pins[roomId].expiresAt && Date.now() > db.pins[roomId].expiresAt) return socket.emit('loginResponse', { success: false, error: 'הקוד פג תוקף!' }); socket.join(roomId); socket.roomId = roomId; const room = getRoom(roomId); room.lastActivity = Date.now(); let gamesDisplay = (db.pins[roomId].type === 'gold') ? 'ללא הגבלה 👑' : db.pins[roomId].gamesLeft; socket.emit('loginResponse', { success: true, gamesLeft: gamesDisplay }); socket.emit('updateSettings', room.gameSettings); socket.emit('updateLeaderboard', room.activePlayers); socket.emit('lockState', room.answersLocked); socket.emit('updateQuestions', room.questions); socket.emit('doublePointsState', room.isDoublePoints); });
+    socket.on('startGame', () => { if(!socket.roomId) return; let room = rooms[socket.roomId]; if(room.questions.length === 0) return; if (db.pins[socket.roomId].type !== 'gold') { db.pins[socket.roomId].gamesLeft--; saveDB(); } let gamesDisplay = (db.pins[socket.roomId].type === 'gold') ? 'ללא הגבלה 👑' : db.pins[socket.roomId].gamesLeft; io.to(socket.roomId).emit('updateGamesLeft', gamesDisplay); room.gameActive = true; room.currentQuestion = 0; room.answersLocked = true; room.isDoublePoints = false; room.lastActivity = Date.now(); for(let p in room.activePlayers) { room.activePlayers[p].score = 0; room.activePlayers[p].lastAnswered = -1; room.activePlayers[p].streak = 0; room.activePlayers[p].currentChoice = null; } io.to(socket.roomId).emit('doublePointsState', false); io.to(socket.roomId).emit('newQuestion', room.questions[room.currentQuestion]); io.to(socket.roomId).emit('lockState', true); io.to(socket.roomId).emit('updateLeaderboard', room.activePlayers); });
+    socket.on('addSingleQuestion', q => { if(socket.roomId) { if (q.imgBase64) { const base64Data = q.imgBase64.replace(/^data:image\/\w+;base64,/, ""); const fileName = 'img_' + Date.now() + '.png'; fs.writeFileSync('uploads/' + fileName, base64Data, 'base64'); q.image = '/uploads/' + fileName; delete q.imgBase64; } rooms[socket.roomId].questions.push(q); rooms[socket.roomId].lastActivity = Date.now(); io.to(socket.roomId).emit('updateQuestions', rooms[socket.roomId].questions); } });
     socket.on('deleteSingleQuestion', index => { if(socket.roomId && rooms[socket.roomId].questions[index]) { rooms[socket.roomId].questions.splice(index, 1); io.to(socket.roomId).emit('updateQuestions', rooms[socket.roomId].questions); } });
     socket.on('kickPlayer', phone => { if(socket.roomId && rooms[socket.roomId].activePlayers[phone]) { delete rooms[socket.roomId].activePlayers[phone]; io.to(socket.roomId).emit('updateLeaderboard', rooms[socket.roomId].activePlayers); } });
     socket.on('uploadSponsor', data => { if(socket.roomId && rooms[socket.roomId].gameSettings.isGold && data.imgBase64) { const base64Data = data.imgBase64.replace(/^data:image\/\w+;base64,/, ""); const fileName = 'sponsor_' + socket.roomId + '_' + Date.now() + '.png'; fs.writeFileSync('uploads/' + fileName, base64Data, 'base64'); rooms[socket.roomId].gameSettings.sponsorUrl = '/uploads/' + fileName; io.to(socket.roomId).emit('updateSettings', rooms[socket.roomId].gameSettings); } });
@@ -214,25 +229,24 @@ io.on('connection', (socket) => {
     socket.on('revealAnswer', () => { if(socket.roomId && rooms[socket.roomId].currentQuestion >= 0 && rooms[socket.roomId].currentQuestion < rooms[socket.roomId].questions.length) { io.to(socket.roomId).emit('showCorrectAnswer', rooms[socket.roomId].questions[rooms[socket.roomId].currentQuestion].ans); } });
     socket.on('triggerEffect', type => { if(socket.roomId) io.to(socket.roomId).emit('playEffect', type); });
     socket.on('toggleMusic', state => { if(socket.roomId) io.to(socket.roomId).emit('musicState', state); });
-    socket.on('addBulkQuestions', qs => { if(socket.roomId) { rooms[socket.roomId].questions = rooms[socket.roomId].questions.concat(qs); io.to(socket.roomId).emit('updateQuestions', rooms[socket.roomId].questions); } });
+    socket.on('addBulkQuestions', qs => { if(socket.roomId) { rooms[socket.roomId].questions = rooms[socket.roomId].questions.concat(qs); rooms[socket.roomId].lastActivity = Date.now(); io.to(socket.roomId).emit('updateQuestions', rooms[socket.roomId].questions); } });
     socket.on('clearQuestions', () => { if(socket.roomId) { rooms[socket.roomId].questions = []; io.to(socket.roomId).emit('updateQuestions', rooms[socket.roomId].questions); } });
     socket.on('saveGameToBank', name => { if(socket.roomId) { db.savedGames[socket.roomId][name] = [...rooms[socket.roomId].questions]; saveDB(); io.to(socket.roomId).emit('updateSavedGames', Object.keys(db.savedGames[socket.roomId])); } });
     socket.on('loadGameFromBank', name => { if(socket.roomId && db.savedGames[socket.roomId][name]) { rooms[socket.roomId].questions = [...db.savedGames[socket.roomId][name]]; io.to(socket.roomId).emit('updateQuestions', rooms[socket.roomId].questions); } });
     socket.on('deleteGameFromBank', name => { if(socket.roomId) { delete db.savedGames[socket.roomId][name]; saveDB(); io.to(socket.roomId).emit('updateSavedGames', Object.keys(db.savedGames[socket.roomId])); } });
     socket.on('toggleLock', lock => { if(socket.roomId) { rooms[socket.roomId].answersLocked = lock; if(lock && rooms[socket.roomId].timerTimeout) clearTimeout(rooms[socket.roomId].timerTimeout); io.to(socket.roomId).emit('lockState', rooms[socket.roomId].answersLocked); } });
     socket.on('startTimer', sec => { if(socket.roomId) { let room = rooms[socket.roomId]; room.answersLocked = false; room.questionStartTime = Date.now(); io.to(socket.roomId).emit('lockState', false); io.to(socket.roomId).emit('startCountdown', sec); if(room.timerTimeout) clearTimeout(room.timerTimeout); room.timerTimeout = setTimeout(() => { room.answersLocked = true; io.to(socket.roomId).emit('lockState', true); io.to(socket.roomId).emit('playEffect', 'shake'); }, sec * 1000); } });
-    socket.on('nextQuestion', () => { if(socket.roomId) { let room = rooms[socket.roomId]; room.currentQuestion++; if (room.currentQuestion < room.questions.length) { room.answersLocked = true; room.isDoublePoints = false; io.to(socket.roomId).emit('doublePointsState', false); for(let p in room.activePlayers) room.activePlayers[p].currentChoice = null; io.to(socket.roomId).emit('newQuestion', room.questions[room.currentQuestion]); io.to(socket.roomId).emit('lockState', true); } else { room.gameActive = false; room.answersLocked = true; io.to(socket.roomId).emit('gameOver'); } } });
-    socket.on('prevQuestion', () => { if(socket.roomId) { let room = rooms[socket.roomId]; if (room.currentQuestion > 0) { room.currentQuestion--; room.answersLocked = true; room.isDoublePoints = false; io.to(socket.roomId).emit('doublePointsState', false); for(let p in room.activePlayers) room.activePlayers[p].currentChoice = null; io.to(socket.roomId).emit('newQuestion', room.questions[room.currentQuestion]); io.to(socket.roomId).emit('lockState', true); } } });
+    socket.on('nextQuestion', () => { if(socket.roomId) { let room = rooms[socket.roomId]; room.currentQuestion++; room.lastActivity = Date.now(); if (room.currentQuestion < room.questions.length) { room.answersLocked = true; room.isDoublePoints = false; io.to(socket.roomId).emit('doublePointsState', false); for(let p in room.activePlayers) room.activePlayers[p].currentChoice = null; io.to(socket.roomId).emit('newQuestion', room.questions[room.currentQuestion]); io.to(socket.roomId).emit('lockState', true); } else { room.gameActive = false; room.answersLocked = true; io.to(socket.roomId).emit('gameOver'); } } });
+    socket.on('prevQuestion', () => { if(socket.roomId) { let room = rooms[socket.roomId]; if (room.currentQuestion > 0) { room.currentQuestion--; room.lastActivity = Date.now(); room.answersLocked = true; room.isDoublePoints = false; io.to(socket.roomId).emit('doublePointsState', false); for(let p in room.activePlayers) room.activePlayers[p].currentChoice = null; io.to(socket.roomId).emit('newQuestion', room.questions[room.currentQuestion]); io.to(socket.roomId).emit('lockState', true); } } });
     socket.on('showVictoryScreen', () => { if(socket.roomId) { let room = rooms[socket.roomId]; room.gameActive = false; room.answersLocked = true; io.to(socket.roomId).emit('lockState', true); const topPlayers = Object.values(room.activePlayers).sort((a,b) => b.score - a.score).slice(0, 3); io.to(socket.roomId).emit('victoryPodium', topPlayers); } });
     socket.on('updatePlayerName', ({ phone, newName }) => { if(socket.roomId) { db.phonebooks[socket.roomId][phone] = newName; saveDB(); if (rooms[socket.roomId].activePlayers[phone]) rooms[socket.roomId].activePlayers[phone].name = newName; io.to(socket.roomId).emit('updateLeaderboard', rooms[socket.roomId].activePlayers); } });
 
-    // --- זירה ---
     socket.on('getArenaQuestions', () => { socket.emit('arenaQuestionsData', db.arenaQuestions); }); 
-    socket.on('joinArenaRoom', roomId => { if (!db.pins[roomId]) return socket.emit('loginResponse', { success: false, error: 'קוד מפיק לא קיים!' }); if (db.pins[roomId].expiresAt && Date.now() > db.pins[roomId].expiresAt) return socket.emit('loginResponse', { success: false, error: 'הקוד פג תוקף!' }); socket.join('arena_' + roomId); if (!arenaRooms[roomId]) arenaRooms[roomId] = { players: {}, phase: 'lobby' }; socket.emit('loginResponse', { success: true }); socket.emit('arenaUpdatePlayers', arenaRooms[roomId].players); });
-    socket.on('arenaSetPhase', data => { if(arenaRooms[data.roomId]) arenaRooms[data.roomId].phase = data.phase; });
+    socket.on('joinArenaRoom', roomId => { if (!db.pins[roomId]) return socket.emit('loginResponse', { success: false, error: 'קוד מפיק לא קיים!' }); if (db.pins[roomId].expiresAt && Date.now() > db.pins[roomId].expiresAt) return socket.emit('loginResponse', { success: false, error: 'הקוד פג תוקף!' }); socket.join('arena_' + roomId); if (!arenaRooms[roomId]) arenaRooms[roomId] = { players: {}, phase: 'lobby', createdAt: Date.now(), lastActivity: Date.now() }; arenaRooms[roomId].lastActivity = Date.now(); socket.emit('loginResponse', { success: true }); socket.emit('arenaUpdatePlayers', arenaRooms[roomId].players); });
+    socket.on('arenaSetPhase', data => { if(arenaRooms[data.roomId]) { arenaRooms[data.roomId].phase = data.phase; arenaRooms[data.roomId].lastActivity = Date.now(); } });
     socket.on('arenaUpdateScores', data => { if(arenaRooms[data.roomId]) arenaRooms[data.roomId].players = data.players; });
     socket.on('arenaUpdatePlayerName', data => { if(arenaRooms[data.roomId]) { db.phonebooks[data.roomId] = db.phonebooks[data.roomId] || {}; db.phonebooks[data.roomId][data.phone] = data.name; saveDB(); if(arenaRooms[data.roomId].players[data.phone]) arenaRooms[data.roomId].players[data.phone].name = data.name; } });
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V71.0 (Full SuperAdmin) is ONLINE ==="));
+http.listen(PORT, '0.0.0.0', () => console.log("=== Clickinet V72.0 (Radar Upgrade) is ONLINE ==="));
